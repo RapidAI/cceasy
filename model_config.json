@@ -1,0 +1,25 @@
+{
+  "models": [
+    {
+      "model_name": "glm",
+      "model_url": "https://open.bigmodel.cn/api/coding/paas/v4",
+      "api_key": "your_glm_api_key_here",
+      "temperature": 0.7,
+      "max_tokens": 1000
+    },
+    {
+      "model_name": "kimi",
+      "model_url": "https://api.kimi.com/coding/",
+      "api_key": "your_kimi_api_key_here",
+      "temperature": 0.7,
+      "max_tokens": 1000
+    },
+    {
+      "model_name": "doubao",
+      "model_url": "https://ark.cn-beijing.volces.com/api/coding",
+      "api_key": "your_doubao_api_key_here",
+      "temperature": 0.7,
+      "max_tokens": 1000
+    }
+  ]
+}
