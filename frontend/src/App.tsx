@@ -14,6 +14,7 @@ const translations: any = {
     "en": {
         "title": "Claude Code Easy Suite",
         "about": "About",
+        "manual": "Manual",
         "cs146s": "CS146s CN",
         "hide": "Hide",
         "launch": "LAUNCH",
@@ -42,6 +43,7 @@ const translations: any = {
     "zh-Hans": {
         "title": "Claude Code 简易套件",
         "about": "关于",
+        "manual": "使用说明",
         "cs146s": "CS146s 中文版",
         "hide": "隐藏",
         "launch": "启动",
@@ -70,6 +72,7 @@ const translations: any = {
     "zh-Hant": {
         "title": "Claude Code 簡易套件",
         "about": "關於",
+        "manual": "使用說明",
         "cs146s": "CS146s 中文版",
         "hide": "隱藏",
         "launch": "啟動",
@@ -98,6 +101,7 @@ const translations: any = {
     "ko": {
         "title": "Claude Code 이지 스위트",
         "about": "정보",
+        "manual": "매뉴얼",
         "cs146s": "CS146s CN",
         "hide": "숨기기",
         "launch": "시작",
@@ -126,6 +130,7 @@ const translations: any = {
     "ja": {
         "title": "Claude Code イージー・スイート",
         "about": "バージョン情報",
+        "manual": "マニュアル",
         "cs146s": "CS146s CN",
         "hide": "隠す",
         "launch": "起動",
@@ -154,6 +159,7 @@ const translations: any = {
     "de": {
         "title": "Claude Code Easy Suite",
         "about": "Über",
+        "manual": "Handbuch",
         "cs146s": "CS146s CN",
         "hide": "Verbergen",
         "launch": "Starten",
@@ -182,6 +188,7 @@ const translations: any = {
     "fr": {
         "title": "Suite Facile Claude Code",
         "about": "À propos",
+        "manual": "Manuel",
         "cs146s": "CS146s CN",
         "hide": "Masquer",
         "launch": "Lancer",
@@ -242,7 +249,7 @@ function App() {
         // Environment Check Logic
         const logHandler = (msg: string) => setEnvLog(msg);
         const doneHandler = () => {
-            ResizeWindow(600, 676);
+            ResizeWindow(792, 676);
             setIsLoading(false);
         };
 
@@ -345,6 +352,14 @@ function App() {
         }
     };
 
+    const handleOpenManual = () => {
+        const isChinese = lang === "zh-Hans" || lang === "zh-Hant";
+        const url = isChinese 
+            ? "https://github.com/RapidAI/cceasy/blob/main/UserManual_CN.md" 
+            : "https://github.com/RapidAI/cceasy/blob/main/UserManual_EN.md";
+        BrowserOpenURL(url);
+    };
+
     const save = () => {
         if (!config) return;
         setStatus(t("saving"));
@@ -436,6 +451,12 @@ function App() {
                             onClick={() => setShowAbout(true)}
                         >
                             {t("about")}
+                        </button>
+                        <button 
+                            className="btn-link" 
+                            onClick={handleOpenManual}
+                        >
+                            {t("manual")}
                         </button>
                         <button 
                             className="btn-link" 

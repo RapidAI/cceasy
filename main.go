@@ -88,7 +88,7 @@ func main() {
 	err := wails.Run(&options.App{
 		Title:     "Claude Code Easy Suite",
 		Frameless: true,
-		Width:     600,
+		Width:     792,
 		Height:    250,
 		SingleInstanceLock: &options.SingleInstanceLock{
 			UniqueId: "claude-code-easy-suite-lock",
