@@ -1,6 +1,6 @@
 # Claude Code Easy Suite
 
-[English](README_EN.md) | [中文](README.md)
+[📖 User Manual](UserManual_EN.md) | [English](README_EN.md) | [中文](README.md)
 
 Claude Code Easy Suite is a desktop GUI tool built with Wails, Go, and React. It is designed to provide convenient configuration management, model switching, and one-click launch capabilities for Anthropic's command-line tool, `claude-code`.
 
