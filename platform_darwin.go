@@ -4,12 +4,14 @@ package main
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 
-	"github.com/wailsapp/wails/v2/pkg/runtime"
+	wails_runtime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 func (a *App) platformStartup() {
@@ -19,13 +21,19 @@ func (a *App) platformStartup() {
 func (a *App) CheckEnvironment() {
 	go func() {
 		a.log("Checking Node.js installation...")
+		
+		home, _ := os.UserHomeDir()
+		localNodeDir := filepath.Join(home, ".cceasy", "node")
+		localBinDir := filepath.Join(localNodeDir, "bin")
 
 		// 1. Setup PATH correctly for GUI apps on macOS
 		envPath := os.Getenv("PATH")
 		commonPaths := []string{"/usr/local/bin", "/opt/homebrew/bin", "/usr/bin", "/bin", "/usr/sbin", "/sbin"}
 		
-		home, _ := os.UserHomeDir()
 		commonPaths = append(commonPaths, filepath.Join(home, ".npm-global/bin"))
+		
+		// Add local node bin to PATH
+		commonPaths = append([]string{localBinDir}, commonPaths...)
 
 		newPathParts := strings.Split(envPath, ":")
 		pathChanged := false
@@ -39,6 +47,7 @@ func (a *App) CheckEnvironment() {
 		if pathChanged {
 			envPath = strings.Join(newPathParts, ":")
 			os.Setenv("PATH", envPath)
+			a.log("Updated PATH: " + envPath)
 		}
 
 		// 2. Search for Node.js
@@ -67,23 +76,41 @@ func (a *App) CheckEnvironment() {
 				}
 			}
 
-			if brewExec == "" {
-				a.log("Homebrew not found. Please install Node.js manually.")
-				runtime.EventsEmit(a.ctx, "env-check-done")
-				return
-			}
-
-			a.log("Installing Node.js via Homebrew...")
-			cmd := exec.Command(brewExec, "install", "node")
-			if err := cmd.Run(); err != nil {
-				a.log("Installation failed.")
-				runtime.EventsEmit(a.ctx, "env-check-done")
-				return
+			if brewExec != "" {
+				a.log("Installing Node.js via Homebrew...")
+				cmd := exec.Command(brewExec, "install", "node")
+				if err := cmd.Run(); err != nil {
+					a.log("Homebrew installation failed.")
+				} else {
+					a.log("Node.js installed via Homebrew.")
+				}
+			} else {
+				a.log("Homebrew not found. Attempting manual installation...")
+				if err := a.installNodeJSManually(localNodeDir); err != nil {
+					a.log("Manual installation failed: " + err.Error())
+					wails_runtime.EventsEmit(a.ctx, "env-check-done")
+					return
+				}
+				a.log("Node.js manually installed to " + localNodeDir)
 			}
 			
-			a.log("Node.js installed. Restarting...")
-			a.restartApp()
-			return
+			a.log("Verifying Node.js installation...")
+			
+			// Re-check for node
+			nodePath, err = exec.LookPath("node")
+			if err != nil {
+				// Check explicitly in local bin if LookPath fails
+				localNodePath := filepath.Join(localBinDir, "node")
+				if _, err := os.Stat(localNodePath); err == nil {
+					nodePath = localNodePath
+				}
+			}
+			
+			if nodePath == "" {
+				a.log("Node.js installation completed but binary not found.")
+				wails_runtime.EventsEmit(a.ctx, "env-check-done")
+				return
+			}
 		}
 
 		a.log("Node.js found at: " + nodePath)
@@ -91,37 +118,45 @@ func (a *App) CheckEnvironment() {
 		// 4. Search for npm
 		npmExec, err := exec.LookPath("npm")
 		if err != nil {
-			for _, p := range commonPaths {
-				fullPath := filepath.Join(p, "npm")
-				if _, err := os.Stat(fullPath); err == nil {
-					npmExec = fullPath
-					break
-				}
+			localNpmPath := filepath.Join(localBinDir, "npm")
+			if _, err := os.Stat(localNpmPath); err == nil {
+				npmExec = localNpmPath
 			}
 		}
-
+		
 		if npmExec == "" {
 			a.log("npm not found.")
-			runtime.EventsEmit(a.ctx, "env-check-done")
+			wails_runtime.EventsEmit(a.ctx, "env-check-done")
 			return
 		}
 
 		// 5. Search for Claude
 		claudePath, _ := exec.LookPath("claude")
 		if claudePath == "" {
-			prefixCmd := exec.Command(npmExec, "config", "get", "prefix")
-			if out, err := prefixCmd.Output(); err == nil {
-				prefix := strings.TrimSpace(string(out))
-				globalClaude := filepath.Join(prefix, "bin", "claude")
-				if _, err := os.Stat(globalClaude); err == nil {
-					claudePath = globalClaude
+			// Check if we are using local node, claude might be in local bin
+			localClaude := filepath.Join(localBinDir, "claude")
+			if _, err := os.Stat(localClaude); err == nil {
+				claudePath = localClaude
+			} else {
+				prefixCmd := exec.Command(npmExec, "config", "get", "prefix")
+				if out, err := prefixCmd.Output(); err == nil {
+					prefix := strings.TrimSpace(string(out))
+					globalClaude := filepath.Join(prefix, "bin", "claude")
+					if _, err := os.Stat(globalClaude); err == nil {
+						claudePath = globalClaude
+					}
 				}
 			}
 		}
 
 		if claudePath == "" {
 			a.log("Claude Code not found. Installing...")
+			
+			// Use local npm install -g if we are using manual node
+			// If npm is in ~/.cceasy/node/bin/npm, it should default global install to ~/.cceasy/node/lib...
+			
 			installCmd := exec.Command(npmExec, "install", "-g", "@anthropic-ai/claude-code")
+			installCmd.Env = os.Environ() // Explicitly pass environment with updated PATH
 			if err := installCmd.Run(); err != nil {
 				a.log("Standard installation failed. Trying with sudo...")
 				script := fmt.Sprintf(`do shell script "%s install -g @anthropic-ai/claude-code" with administrator privileges`, npmExec)
@@ -129,20 +164,61 @@ func (a *App) CheckEnvironment() {
 				if err := adminCmd.Run(); err != nil {
 					a.log("Installation failed.")
 				} else {
-					a.log("Claude Code installed. Restarting...")
-					a.restartApp()
-					return
+					a.log("Claude Code installed.")
 				}
 			} else {
-				a.log("Claude Code installed. Restarting...")
-				a.restartApp()
-				return
+				a.log("Claude Code installed.")
 			}
 		}
 
 		a.log("Environment check complete.")
-		runtime.EventsEmit(a.ctx, "env-check-done")
+		wails_runtime.EventsEmit(a.ctx, "env-check-done")
 	}()
+}
+
+func (a *App) installNodeJSManually(destDir string) error {
+	arch := runtime.GOARCH
+	if arch == "amd64" {
+		arch = "x64" // Node uses x64 for amd64
+	}
+	
+	version := "v22.12.0"
+	fileName := fmt.Sprintf("node-%s-darwin-%s.tar.gz", version, arch)
+	url := fmt.Sprintf("https://nodejs.org/dist/%s/%s", version, fileName)
+	
+	a.log("Downloading Node.js from " + url)
+	
+	resp, err := http.Get(url)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("bad status: %s", resp.Status)
+	}
+	
+	// Create destination directory
+	if err := os.MkdirAll(destDir, 0755); err != nil {
+		return err
+	}
+	
+	a.log("Extracting Node.js using native tar (much faster)...")
+	
+	// Using native tar command is significantly faster than Go's archive/tar
+	// We pipe the response body directly to tar
+	cmd := exec.Command("tar", "-xz", "-C", destDir, "--strip-components", "1")
+	cmd.Stdin = resp.Body
+	
+	// Capture errors
+	var stderr strings.Builder
+	cmd.Stderr = &stderr
+	
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("tar extraction failed: %v, stderr: %s", err, stderr.String())
+	}
+	
+	return nil
 }
 
 func contains(slice []string, item string) bool {
@@ -161,15 +237,21 @@ func (a *App) restartApp() {
 	}
 	appBundle := filepath.Dir(filepath.Dir(filepath.Dir(executable)))
 	if !strings.HasSuffix(appBundle, ".app") {
-		runtime.Quit(a.ctx)
+		wails_runtime.Quit(a.ctx)
 		return
 	}
 	exec.Command("open", "-n", appBundle).Start()
-	runtime.Quit(a.ctx)
+	wails_runtime.Quit(a.ctx)
 }
 
 func (a *App) LaunchClaude(yoloMode bool, projectDir string) {
-	config, _ := a.LoadConfig()
+	a.log("Launching Claude Code...")
+	config, err := a.LoadConfig()
+	if err != nil {
+		a.log("Error loading config: " + err.Error())
+		return
+	}
+	
 	var selectedModel *ModelConfig
 	for _, m := range config.Models {
 		if m.ModelName == config.CurrentModel {
@@ -179,28 +261,78 @@ func (a *App) LaunchClaude(yoloMode bool, projectDir string) {
 	}
 
 	if selectedModel == nil {
+		a.log("No model selected or model not found in config.")
 		return
 	}
 
 	baseUrl := getBaseUrl(selectedModel)
 	claudePath, _ := exec.LookPath("claude")
 	if claudePath == "" {
-		claudePath = "claude"
+		// Try fallback to local bin
+		home, _ := os.UserHomeDir()
+		claudePath = filepath.Join(home, ".cceasy", "node", "bin", "claude")
+	}
+	a.log("Using claude at: " + claudePath)
+	
+	// Prepare the launch script
+	home, _ := os.UserHomeDir()
+	localBinDir := filepath.Join(home, ".cceasy", "node", "bin")
+	scriptsDir := filepath.Join(home, ".cceasy", "scripts")
+	if err := os.MkdirAll(scriptsDir, 0755); err != nil {
+		a.log("Failed to create scripts dir: " + err.Error())
+		return
+	}
+	launchScriptPath := filepath.Join(scriptsDir, "launch.sh")
+
+	// Construct script content
+	var sb strings.Builder
+	sb.WriteString("#!/bin/bash\n")
+	// Export local bin to PATH
+	sb.WriteString(fmt.Sprintf("export PATH=\"%s:$PATH\"\n", localBinDir))
+	// Export Auth Tokens
+	sb.WriteString(fmt.Sprintf("export ANTHROPIC_AUTH_TOKEN=\"%s\"\n", selectedModel.ApiKey))
+	sb.WriteString(fmt.Sprintf("export ANTHROPIC_BASE_URL=\"%s\"\n", baseUrl))
+	
+	// Navigate to project directory
+	if projectDir != "" {
+		// Escape quotes in project path for bash
+		safeProjectDir := strings.ReplaceAll(projectDir, "\"", "\\\"")
+		sb.WriteString(fmt.Sprintf("cd \"%s\" || exit\n", safeProjectDir))
 	}
 
-	command := fmt.Sprintf("export ANTHROPIC_AUTH_TOKEN=%s && export ANTHROPIC_BASE_URL=%s && %s", 
-		selectedModel.ApiKey, baseUrl, claudePath)
+	// Clear screen to hide the command invocation
+	sb.WriteString("clear\n")
 	
+	// Execute claude (using exec to replace the shell process)
+	sb.WriteString(fmt.Sprintf("exec \"%s\"", claudePath))
 	if yoloMode {
-		command += " --dangerously-skip-permissions"
+		sb.WriteString(" --dangerously-skip-permissions")
+	}
+	sb.WriteString("\n")
+
+	// Write script to file
+	if err := os.WriteFile(launchScriptPath, []byte(sb.String()), 0700); err != nil {
+		a.log("Failed to write launch script: " + err.Error())
+		return
 	}
 
-	script := fmt.Sprintf(`tell application "Terminal" to do script "cd %s && %s"`, projectDir, command)
-	if projectDir == "" {
-		script = fmt.Sprintf(`tell application "Terminal" to do script "%s"`, command)
-	}
+	// Launch Terminal via AppleScript
+	// We run the script file. We quote the path in case of spaces in home dir.
+	// We escape double quotes for AppleScript string logic.
+	safeLaunchPath := strings.ReplaceAll(launchScriptPath, "\"", "\\\"")
 	
-	exec.Command("osascript", "-e", script).Start()
+	script := fmt.Sprintf(`try
+	tell application "Terminal" to do script "\"%s\""
+	tell application "Terminal" to activate
+on error errMsg
+	display dialog "Failed to launch Terminal: " & errMsg
+end try`, safeLaunchPath)
+	
+	a.log("Executing AppleScript...")
+	cmd := exec.Command("osascript", "-e", script)
+	if err := cmd.Start(); err != nil {
+		a.log("Failed to launch Terminal: " + err.Error())
+	}
 }
 
 func (a *App) syncToSystemEnv(config AppConfig) {

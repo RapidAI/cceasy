@@ -2,7 +2,7 @@ import {useEffect, useState} from 'react';
 import './App.css';
 import {buildNumber} from './version';
 import {LoadConfig, SaveConfig, CheckEnvironment, ResizeWindow, LaunchClaude, SelectProjectDir, SetLanguage, GetUserHomeDir, CheckUpdate} from "../wailsjs/go/main/App";
-import {WindowHide, EventsOn, EventsOff, BrowserOpenURL} from "../wailsjs/runtime";
+import {WindowHide, EventsOn, EventsOff, BrowserOpenURL, ClipboardGetText} from "../wailsjs/runtime";
 import {main} from "../wailsjs/go/models";
 
 const subscriptionUrls: {[key: string]: string} = {
@@ -53,7 +53,8 @@ const translations: any = {
         "noUpdate": "No updates available",
         "updateAvailable": "Update available: ",
         "foundNewVersion": "Found new version",
-        "downloadNow": "Download Now"
+        "downloadNow": "Download Now",
+        "paste": "Paste"
     },
     "zh-Hans": {
         "title": "Claude Code Easy Suite",
@@ -93,7 +94,8 @@ const translations: any = {
         "noUpdate": "无可用更新",
         "updateAvailable": "发现新版本: ",
         "foundNewVersion": "发现新版本",
-        "downloadNow": "立即下载"
+        "downloadNow": "立即下载",
+        "paste": "粘贴"
     },
     "zh-Hant": {
         "title": "Claude Code Easy Suite",
@@ -128,7 +130,13 @@ const translations: any = {
         "syncing": "正在同步到 Claude Code...",
         "switched": "模型已切換並同步！",
         "langName": "繁體中文",
-        "custom": "自定義"
+        "custom": "自定義",
+        "checkUpdate": "檢查更新",
+        "noUpdate": "無可用更新",
+        "updateAvailable": "發現新版本: ",
+        "foundNewVersion": "發現新版本",
+        "downloadNow": "立即下載",
+        "paste": "貼上"
     },
     "ko": {
         "title": "Claude Code Easy Suite",
@@ -163,7 +171,8 @@ const translations: any = {
         "syncing": "Claude Code와 동기화 중...",
         "switched": "모델 전환 및 동기화 완료!",
         "langName": "한국어",
-        "custom": "사용자 정의"
+        "custom": "사용자 정의",
+        "paste": "붙여넣기"
     },
     "ja": {
         "title": "Claude Code Easy Suite",
@@ -198,7 +207,8 @@ const translations: any = {
         "syncing": "Claude Code に同期中...",
         "switched": "モデルの切り替えと同期が完了しました！",
         "langName": "日本語",
-        "custom": "カスタム"
+        "custom": "カスタム",
+        "paste": "貼り付け"
     },
     "de": {
         "title": "Claude Code Easy Suite",
@@ -233,7 +243,8 @@ const translations: any = {
         "syncing": "Synchronisiere mit Claude Code...",
         "switched": "Modell gewechselt & synchronisiert!",
         "langName": "Deutsch",
-        "custom": "Benutzerdefiniert"
+        "custom": "Benutzerdefiniert",
+        "paste": "Einfügen"
     },
     "fr": {
         "title": "Claude Code Easy Suite",
@@ -268,7 +279,8 @@ const translations: any = {
         "syncing": "Synchronisation avec Claude Code...",
         "switched": "Modèle changé et synchronisé !",
         "langName": "Français",
-        "custom": "Personnalisé"
+        "custom": "Personnalisé",
+        "paste": "Coller"
     }
 };
 
@@ -967,7 +979,7 @@ function App() {
                             <h3 style={{fontSize: '1.1rem', color: '#3b82f6', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0}}>{t("modelSettings")}</h3>
                             <div style={{display: 'flex', alignItems: 'center'}}>
                                 <span style={{marginRight: '15px', fontSize: '0.9rem', color: status.includes("Error") ? 'red' : 'green'}}>{status}</span>
-                                <button className="btn-primary" style={{padding: '5px 15px'}} onClick={save}>{t("saveChanges")}</button>
+                                <button className="btn-primary" style={{padding: '5px 15px', marginRight: '30px'}} onClick={save}>{t("saveChanges")}</button>
                             </div>
                         </div>
 
@@ -1007,6 +1019,16 @@ function App() {
                                         onChange={(e) => handleApiKeyChange(e.target.value)}
                                         placeholder={`${t("enterKey")} (${currentModelConfig.model_name})`}
                                     />
+                                    <button 
+                                        className="btn-subscribe" 
+                                        onClick={async () => {
+                                            const text = await ClipboardGetText();
+                                            if (text) handleApiKeyChange(text);
+                                        }}
+                                        title={t("paste")}
+                                    >
+                                        📋
+                                    </button>
                                     {!currentModelConfig.is_custom && (
                                     <button 
                                         className="btn-subscribe" 

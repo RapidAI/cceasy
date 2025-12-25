@@ -25,8 +25,11 @@ func setupTray(app *App, appOptions *options.App) {
 		// Start energye/systray in a goroutine
 		go systray.Run(func() {
 			systray.SetIcon(icon)
-			systray.SetTitle("Claude Config Manager")
+			// Do not set title for macOS as requested
 			systray.SetTooltip("Claude Config Manager")
+			
+			// Ensure clicking the icon shows the menu immediately on macOS
+			systray.CreateMenu()
 
 			mShow := systray.AddMenuItem("Show Main Window", "Show Main Window")
 			mLaunch := systray.AddMenuItem("Launch Claude Code", "Launch Claude Code in Terminal")
@@ -70,7 +73,6 @@ func setupTray(app *App, appOptions *options.App) {
 				if !ok {
 					t = trayTranslations["en"]
 				}
-				systray.SetTitle(t["title"])
 				systray.SetTooltip(t["title"])
 				mShow.SetTitle(t["show"])
 				mLaunch.SetTitle(t["launch"])
