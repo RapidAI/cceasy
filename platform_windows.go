@@ -3,8 +3,12 @@
 package main
 
 import (
+	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"syscall"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -36,18 +40,15 @@ func (a *App) platformStartup() {
 func (a *App) CheckEnvironment() {
 	go func() {
 		a.log("Checking Node.js installation...")
-		
+
 		npmPath := "npm"
 		// Check for node
 		nodeCmd := exec.Command("node", "--version")
 		nodeCmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 		if err := nodeCmd.Run(); err != nil {
-			a.log("Node.js not found. Installing via Winget (this may take a while)...")
-			// Try installing Node.js
-			cmd := exec.Command("winget", "install", "-e", "--id", "OpenJS.NodeJS", "--silent", "--accept-package-agreements", "--accept-source-agreements")
-			cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
-			if out, err := cmd.CombinedOutput(); err != nil {
-				a.log("Error installing Node.js: " + string(out))
+			a.log("Node.js not found. Downloading and installing...")
+			if err := a.installNodeJS(); err != nil {
+				a.log("Failed to install Node.js: " + err.Error())
 			} else {
 				a.log("Node.js installed successfully.")
 				npmPath = `C:\Program Files\nodejs\npm.cmd`
@@ -57,7 +58,7 @@ func (a *App) CheckEnvironment() {
 		}
 
 		a.log("Checking Claude Code...")
-		
+
 		claudeCheckCmd := exec.Command("claude", "--version")
 		claudeCheckCmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 		claudeExists := claudeCheckCmd.Run() == nil
@@ -66,7 +67,7 @@ func (a *App) CheckEnvironment() {
 			a.log("Claude Code not found. Installing...")
 			installCmd := exec.Command(npmPath, "install", "-g", "@anthropic-ai/claude-code")
 			installCmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
-			
+
 			if out, err := installCmd.CombinedOutput(); err != nil {
 				if npmPath == "npm" {
 					installCmd = exec.Command(`C:\Program Files\nodejs\npm.cmd`, "install", "-g", "@anthropic-ai/claude-code")
@@ -84,11 +85,11 @@ func (a *App) CheckEnvironment() {
 			} else {
 				a.log("Claude Code installed successfully. Restarting app to apply changes...")
 				a.restartApp()
-				return
+return
 			}
 		} else {
 			a.log("Claude Code found. Checking for updates (npm install -g @anthropic-ai/claude-code)...")
-			
+
 			installCmd := exec.Command(npmPath, "install", "-g", "@anthropic-ai/claude-code")
 			installCmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 			if out, err := installCmd.CombinedOutput(); err != nil {
@@ -111,6 +112,66 @@ func (a *App) CheckEnvironment() {
 		a.log("Environment check complete.")
 		runtime.EventsEmit(a.ctx, "env-check-done")
 	}()
+}
+
+func (a *App) installNodeJS() error {
+	arch := os.Getenv("PROCESSOR_ARCHITECTURE")
+	nodeArch := ""
+	switch arch {
+	case "AMD64":
+		nodeArch = "x64"
+	case "ARM64":
+		nodeArch = "arm64"
+	default:
+		return fmt.Errorf("unsupported architecture: %s", arch)
+	}
+
+	// It's better to fetch the latest LTS version dynamically
+	// For this example, we are hardcoding the version
+	nodeVersion := "20.12.2"
+	fileName := fmt.Sprintf("node-v%s-%s.msi", nodeVersion, nodeArch)
+	downloadURL := fmt.Sprintf("https://nodejs.org/dist/v%s/%s", nodeVersion, fileName)
+
+	a.log(fmt.Sprintf("Downloading Node.js %s for %s...", nodeVersion, nodeArch))
+
+	tempDir := os.TempDir()
+	msiPath := filepath.Join(tempDir, fileName)
+
+	if err := downloadFile(msiPath, downloadURL); err != nil {
+		return fmt.Errorf("error downloading Node.js installer: %w", err)
+	}
+	defer os.Remove(msiPath)
+
+	a.log("Installing Node.js (this may take a moment)...")
+	cmd := exec.Command("msiexec", "/i", msiPath, "/qn")
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("error installing Node.js: %s\n%s", err, string(output))
+	}
+
+	return nil
+}
+
+func downloadFile(filepath string, url string) error {
+	resp, err := http.Get(url)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("bad status: %s", resp.Status)
+	}
+
+	out, err := os.Create(filepath)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	_, err = io.Copy(out, resp.Body)
+	return err
 }
 
 func (a *App) restartApp() {

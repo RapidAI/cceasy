@@ -58,7 +58,7 @@ body {
 
 .main-content {
     flex: 1;
-    padding: 15px;
+    padding: 15px 15px 0 15px;
     overflow-y: hidden;
     background: linear-gradient(to bottom, #ffffff, #f8faff);
 }
@@ -222,7 +222,7 @@ body {
 
 .model-btn {
     flex: 1;
-    padding: 10px;
+    padding: 15px 10px;
     border: 1px solid var(--border-color);
     background-color: var(--surface-color);
     color: var(--text-secondary);

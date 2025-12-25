@@ -741,19 +741,21 @@ function App() {
             <div className="main-content" style={{overflowY: currentModelConfig.is_custom ? 'auto' : 'hidden'}}>
                 <div style={{
                     backgroundColor: '#eff6ff', 
-                    margin: '0 10px 15px 10px', 
-                    padding: '10px 10px 15px 10px', 
+                    margin: '-5px 10px 0 10px', 
+                    padding: '25px 10px', 
                     borderRadius: '12px',
                     border: '1px solid rgba(59, 130, 246, 0.1)'
                 }}>
-                    <div style={{padding: '0 10px', position: 'relative', display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: '5px'}}>
-                        <h3 style={{fontSize: '1.1rem', color: '#3b82f6', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '5px', marginTop: '-5px', textAlign: 'center'}}>{t("activeModel")}</h3>
+                    <div style={{padding: '0', position: 'relative', display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: '15px'}}>
+                        <h3 style={{fontSize: '1.1rem', color: '#3b82f6', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0, textAlign: 'center'}}>{t("activeModel")}</h3>
                         <button 
                             className="btn-link" 
                             onClick={() => setShowModelSettings(true)}
                             style={{
                                 position: 'absolute', 
                                 right: '0', 
+                                top: '50%',
+                                transform: 'translateY(-50%)',
                                 borderColor: '#3b82f6', 
                                 color: '#3b82f6',
                                 fontSize: '0.8rem'
@@ -779,43 +781,36 @@ function App() {
                     </div>
                 </div>
 
-                                                                                                                                <div style={{
-
-                                                                                                                                    backgroundColor: '#eff6ff', 
-
-                                                                                                                                    margin: '0px 10px 0px 10px', 
-
-                                                                                                                                    padding: '10px 10px 10px 10px', 
-
-                                                                                                                                    borderRadius: '12px',
-
-                                                                                                                                    border: '1px solid rgba(59, 130, 246, 0.1)'
-
-                                                                                                                                }}>
-
-                                                                                                                                    <div style={{padding: '20px 10px 0 10px', position: 'relative'}}>
-
-                                                                                                                                        <div style={{display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: '5px', position: 'relative'}}>
-
-                                                                                                                                            <h3 style={{fontSize: '1.1rem', color: '#3b82f6', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0, marginTop: '-10px', textAlign: 'center'}}>Vibe Coding</h3>
-                                                                        <button 
-                                                                            className="btn-link" 
-                                                                            onClick={() => setShowProjectManager(true)}
-                                                                            style={{
-                                                                                position: 'absolute', 
-                                                                                right: '0', 
-                                                                                borderColor: '#3b82f6', 
-                                                                                color: '#3b82f6',
-                                                                                fontSize: '0.8rem'
-                                                                            }}
-                                                                        >
-                                                                            📂 {t("manageProjects")}
-                                                                        </button>
-                                                                    </div>
+                <div style={{
+                    backgroundColor: '#eff6ff', 
+                    margin: '15px 10px 0 10px', 
+                    padding: '15px 10px', 
+                    borderRadius: '12px',
+                    border: '1px solid rgba(59, 130, 246, 0.1)'
+                }}>
+                    <div style={{padding: '0', position: 'relative', marginBottom: '5px'}}>
+                        <div style={{display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative'}}>
+                            <h3 style={{fontSize: '1.1rem', color: '#3b82f6', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0, textAlign: 'center'}}>Vibe Coding</h3>
+                            <button 
+                                className="btn-link" 
+                                onClick={() => setShowProjectManager(true)}
+                                style={{
+                                    position: 'absolute', 
+                                    right: '0', 
+                                    top: '50%',
+                                    transform: 'translateY(-50%)',
+                                    borderColor: '#3b82f6', 
+                                    color: '#3b82f6',
+                                    fontSize: '0.8rem'
+                                }}
+                            >
+                                📂 {t("manageProjects")}
+                            </button>
+                        </div>
                                             
                                                                                                                                                                                                             {/* Project Tabs */}
                                             
-                                                                                                                                                                                                            <div className="tabs" style={{marginBottom: '2px', borderBottom: 'none', justifyContent: 'flex-start'}}>
+                                                                                                                                                                                                            <div className="tabs" style={{marginBottom: '0', borderBottom: 'none', justifyContent: 'flex-start'}}>
                                             
                                                                                                                                                                                                                 {projectOffset > 0 && (
                                             
@@ -931,22 +926,21 @@ function App() {
                                             
                                                                                                                                                                                                         </div>
                                             
-                                                                                                                                                                                                        <button className="btn-launch" style={{marginTop: '5px'}} onClick={() => {
-                                            
-                                                                                                                                                                                                            if (!currentProject.path || currentProject.path.trim() === "") {
-                                            
-                                                                                                                                                                                                                setStatus(t("projectDirError"));
-                                            
-                                                                                                                                                                                                                setTimeout(() => setStatus(""), 2000);
-                                            
-                                                                                                                                                                                                                return;
-                                            
-                                                                                                                                                                                                            }
-                                            
-                                                                                                                                                                                                            LaunchClaude(currentProject.yolo_mode, currentProject.path || "")
-                                            
-                                                                                                                                                                                                        }}>
-                                            
+                                                                                                                                                                                                                                    <button className="btn-launch" style={{marginTop: '10px'}} onClick={() => {
+                                                                                                                                                                                                                                                    
+                                                                                                                                                                                                                                        if (!currentProject.path || currentProject.path.trim() === "") {
+                                                                                                                                                                                                                                                    
+                                                                                                                                                                                                                                            setStatus(t("projectDirError"));
+                                                                                                                                                                                                                                                    
+                                                                                                                                                                                                                                            setTimeout(() => setStatus(""), 2000);
+                                                                                                                                                                                                                                                    
+                                                                                                                                                                                                                                            return;
+                                                                                                                                                                                                                                                    
+                                                                                                                                                                                                                                        }
+                                                                                                                                                                                                                                                    
+                                                                                                                                                                                                                                        LaunchClaude(currentProject.yolo_mode, currentProject.path || "")
+                                                                                                                                                                                                                                                    
+                                                                                                                                                                                                                                    }}>                                            
                                                                                                                                                                                                             {t("launchBtn")}
                                             
                                                                                                                                                                                                         </button>
