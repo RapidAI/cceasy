@@ -40,23 +40,25 @@ func setupTray(app *App, appOptions *options.App) {
 				
 				modelName := model.ModelName
 				m.Click(func() {
-					currentConfig, _ := app.LoadConfig()
-					// Check if target model has API key
-					for _, m := range currentConfig.Models {
-						if m.ModelName == modelName {
-							if m.ApiKey == "" {
-								// No API key, do not switch
-								// Ideally show a notification, but for now just show window so user sees status?
-								// Or just ignore. The request says "not allow switching".
-								// Showing window might be helpful.
-								runtime.WindowShow(app.ctx)
-								return
+					go func() {
+						currentConfig, _ := app.LoadConfig()
+						// Check if target model has API key
+						for _, m := range currentConfig.Models {
+							if m.ModelName == modelName {
+								if m.ApiKey == "" {
+									// No API key, do not switch
+									// Ideally show a notification, but for now just show window so user sees status?
+									// Or just ignore. The request says "not allow switching".
+									// Showing window might be helpful.
+									runtime.WindowShow(app.ctx)
+									return
+								}
+								break
 							}
-							break
 						}
-					}
-					currentConfig.CurrentModel = modelName
-					app.SaveConfig(currentConfig)
+						currentConfig.CurrentModel = modelName
+						app.SaveConfig(currentConfig)
+					}()
 				})
 			}
 
@@ -90,17 +92,21 @@ func setupTray(app *App, appOptions *options.App) {
 
 			// Handle menu clicks
 			mShow.Click(func() {
-				runtime.WindowShow(app.ctx)
+				go runtime.WindowShow(app.ctx)
 			})
 
 			mLaunch.Click(func() {
-				cfg, _ := app.LoadConfig()
-				app.LaunchClaude(false, cfg.ProjectDir)
+				go func() {
+					cfg, _ := app.LoadConfig()
+					app.LaunchClaude(false, cfg.ProjectDir)
+				}()
 			})
 
 			mQuit.Click(func() {
-				systray.Quit()
-				runtime.Quit(app.ctx)
+				go func() {
+					systray.Quit()
+					runtime.Quit(app.ctx)
+				}()
 			})
 
 			if app.CurrentLanguage != "" {
