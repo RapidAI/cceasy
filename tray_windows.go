@@ -19,6 +19,11 @@ func setupTray(app *App, appOptions *options.App) {
 			systray.SetIcon(icon)
 			systray.SetTitle("Claude Config Manager")
 			systray.SetTooltip("Claude Config Manager")
+			systray.SetOnDClick(func(menu systray.IMenu) {
+				runtime.WindowShow(app.ctx)
+				runtime.WindowSetAlwaysOnTop(app.ctx, true)
+				runtime.WindowSetAlwaysOnTop(app.ctx, false)
+			})
 
 			mShow := systray.AddMenuItem("Show", "Show Main Window")
 			mLaunch := systray.AddMenuItem("Launch Claude Code", "Launch Claude Code in Terminal")
@@ -36,6 +41,20 @@ func setupTray(app *App, appOptions *options.App) {
 				modelName := model.ModelName
 				m.Click(func() {
 					currentConfig, _ := app.LoadConfig()
+					// Check if target model has API key
+					for _, m := range currentConfig.Models {
+						if m.ModelName == modelName {
+							if m.ApiKey == "" {
+								// No API key, do not switch
+								// Ideally show a notification, but for now just show window so user sees status?
+								// Or just ignore. The request says "not allow switching".
+								// Showing window might be helpful.
+								runtime.WindowShow(app.ctx)
+								return
+							}
+							break
+						}
+					}
 					currentConfig.CurrentModel = modelName
 					app.SaveConfig(currentConfig)
 				})

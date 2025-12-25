@@ -1,5 +1,6 @@
 import {useEffect, useState} from 'react';
 import './App.css';
+import {buildNumber} from './version';
 import {LoadConfig, SaveConfig, CheckEnvironment, ResizeWindow, LaunchClaude, SelectProjectDir, SetLanguage, GetUserHomeDir} from "../wailsjs/go/main/App";
 import {WindowHide, EventsOn, EventsOff, BrowserOpenURL} from "../wailsjs/runtime";
 import {main} from "../wailsjs/go/models";
@@ -1064,7 +1065,7 @@ function App() {
                     <div className="modal-content" onClick={e => e.stopPropagation()}>
                         <button className="modal-close" onClick={() => setShowAbout(false)}>&times;</button>
                         <h3 style={{marginTop: 0, color: '#3b82f6'}}>Claude Code Easy Suite</h3>
-                        <p style={{color: '#6b7280', margin: '5px 0'}}>Version V1.0.001 Beta</p>
+                        <p style={{color: '#6b7280', margin: '5px 0'}}>Version V1.1 Beta (Build {buildNumber})</p>
                         <p style={{color: '#6b7280', margin: '5px 0'}}>Author: Dr. Daniel</p>
                         <div style={{display: 'flex', justifyContent: 'center', marginTop: '20px'}}>
                             <button 

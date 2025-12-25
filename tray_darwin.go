@@ -44,6 +44,16 @@ func setupTray(app *App, appOptions *options.App) {
 				
 				m.Click(func() {
 					currentConfig, _ := app.LoadConfig()
+					// Check if target model has API key
+					for _, m := range currentConfig.Models {
+						if m.ModelName == modelName {
+							if m.ApiKey == "" {
+								runtime.WindowShow(app.ctx)
+								return
+							}
+							break
+						}
+					}
 					currentConfig.CurrentModel = modelName
 					app.SaveConfig(currentConfig)
 				})

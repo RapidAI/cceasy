@@ -241,22 +241,22 @@ func (a *App) LoadConfig() (AppConfig, error) {
 				{
 					ModelName: "GLM",
 					ModelUrl:  "https://open.bigmodel.cn/api/anthropic",
-					ApiKey:    "your_glm_api_key_here",
+					ApiKey:    "",
 				},
 				{
 					ModelName: "kimi",
 					ModelUrl:  "https://api.kimi.com/coding",
-					ApiKey:    "your_kimi_api_key_here",
+					ApiKey:    "",
 				},
 				{
 					ModelName: "doubao",
 					ModelUrl:  "https://ark.cn-beijing.volces.com/api/coding",
-					ApiKey:    "your_doubao_api_key_here",
+					ApiKey:    "",
 				},
 				{
 					ModelName: "MiniMax",
 					ModelUrl:  "https://api.minimaxi.com/anthropic",
-					ApiKey:    "your_minimax_api_key_here",
+					ApiKey:    "",
 				},
 				{
 					ModelName: "Custom",
