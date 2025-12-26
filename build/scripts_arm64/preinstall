@@ -3,6 +3,8 @@ ARCH=$(uname -m)
 logger "CCEASY: Checking architecture for arm64 build. System is $ARCH"
 if [ "$ARCH" != "arm64" ]; then
     logger "CCEASY ERROR: Architecture mismatch. Expected arm64, got $ARCH"
+    # Try to display a dialog, but don't fail if osascript fails
+    /usr/bin/osascript -e 'display dialog "This package is for Apple Silicon (arm64) Macs only. Please install the amd64 version for Intel Macs." buttons {"OK"} default button "OK" with icon stop' 2>/dev/null
     exit 1
 fi
 exit 0
