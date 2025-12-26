@@ -619,12 +619,12 @@ function App() {
                 textAlign: 'center',
                 boxSizing: 'border-box'
             }}>
-                <h2 style={{color: '#3b82f6', marginBottom: '20px'}}>Claude Code Easy Suite</h2>
-                <div style={{width: '100%', height: '4px', backgroundColor: '#e5e7eb', borderRadius: '2px', overflow: 'hidden', marginBottom: '15px'}}>
+                <h2 style={{color: '#fb923c', marginBottom: '20px'}}>Claude Code Easy Suite</h2>
+                <div style={{width: '100%', height: '4px', backgroundColor: '#ffedd5', borderRadius: '2px', overflow: 'hidden', marginBottom: '15px'}}>
                     <div style={{
                         width: '50%', 
                         height: '100%', 
-                        backgroundColor: '#3b82f6', 
+                        backgroundColor: '#fb923c', 
                         borderRadius: '2px', 
                         animation: 'indeterminate 1.5s infinite linear'
                     }}></div>
@@ -642,8 +642,8 @@ function App() {
                             fontSize: '0.85rem',
                             fontFamily: 'monospace',
                             color: '#4b5563',
-                            backgroundColor: '#f9fafb',
-                            border: '1px solid #e5e7eb',
+                            backgroundColor: '#fffdfa',
+                            border: '1px solid #ffedd5',
                             borderRadius: '8px',
                             resize: 'none',
                             outline: 'none',
@@ -662,7 +662,7 @@ function App() {
                         style={{
                             background: 'none',
                             border: 'none',
-                            color: '#3b82f6',
+                            color: '#fb923c',
                             fontSize: '0.8rem',
                             cursor: 'pointer',
                             textDecoration: 'underline'
@@ -722,7 +722,7 @@ function App() {
                  <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
                     <div style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
                         <div style={{position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
-                            <div style={{position: 'absolute', width: '32px', height: '32px', background: 'rgba(168, 85, 247, 0.4)', filter: 'blur(8px)', borderRadius: '50%'}}></div>
+                            <div style={{position: 'absolute', width: '32px', height: '32px', background: 'rgba(249, 115, 22, 0.4)', filter: 'blur(8px)', borderRadius: '50%'}}></div>
                             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{position: 'relative'}}>
                                 <rect width="24" height="24" rx="7" fill="url(#vibe_grad)" />
                                 <path d="M8 10L5 12.5L8 15" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -730,9 +730,9 @@ function App() {
                                 <path d="M13.5 8L10.5 17" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
                                 <defs>
                                     <linearGradient id="vibe_grad" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse">
-                                        <stop stopColor="#F472B6" />
-                                        <stop offset="0.5" stopColor="#A855F7" />
-                                        <stop offset="1" stopColor="#6366F1" />
+                                        <stop stopColor="#FB923C" />
+                                        <stop offset="0.5" stopColor="#F97316" />
+                                        <stop offset="1" stopColor="#EA580C" />
                                     </linearGradient>
                                 </defs>
                             </svg>
@@ -741,10 +741,10 @@ function App() {
                             margin: 0, 
                             fontSize: '1.25rem',
                             fontWeight: 'bold',
-                            background: 'linear-gradient(135deg, #F472B6 0%, #A855F7 50%, #6366F1 100%)', 
+                            background: 'linear-gradient(135deg, #FB923C 0%, #F97316 50%, #EA580C 100%)', 
                             WebkitBackgroundClip: 'text', 
                             WebkitTextFillColor: 'transparent',
-                            filter: 'drop-shadow(0 2px 4px rgba(168, 85, 247, 0.2))'
+                            filter: 'drop-shadow(0 2px 4px rgba(249, 115, 22, 0.15))'
                         }}>{t("title")}</h2>
                     </div>
                     <div style={{display: 'flex', gap: '10px', alignItems: 'center', '--wails-draggable': 'no-drag', zIndex: 1000, position: 'relative'} as any}>
@@ -813,24 +813,22 @@ function App() {
 
             <div className="main-content" style={{overflowY: currentModelConfig.is_custom ? 'auto' : 'hidden'}}>
                 <div style={{
-                    backgroundColor: '#eff6ff', 
-                    margin: '10px 10px 0 10px', 
-                    padding: '15px 10px', 
+                    backgroundColor: '#fffbf5', 
+                    margin: '0 10px 15px 10px', 
+                    padding: '10px 10px 15px 10px', 
                     borderRadius: '12px',
-                    border: '1px solid rgba(59, 130, 246, 0.1)'
+                    border: '1px solid rgba(251, 146, 60, 0.1)'
                 }}>
-                    <div style={{padding: '0', position: 'relative', display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: '15px'}}>
-                        <h3 style={{fontSize: '1.1rem', color: '#3b82f6', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0, textAlign: 'center'}}>{t("activeModel")}</h3>
+                    <div style={{padding: '0 10px', position: 'relative', display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: '5px'}}>
+                        <h3 style={{fontSize: '1.1rem', color: '#fb923c', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '5px', marginTop: '-5px', textAlign: 'center'}}>{t("activeModel")}</h3>
                         <button 
                             className="btn-link" 
                             onClick={() => setShowModelSettings(true)}
                             style={{
                                 position: 'absolute', 
                                 right: '0', 
-                                top: '50%',
-                                transform: 'translateY(-50%)',
-                                borderColor: '#3b82f6', 
-                                color: '#3b82f6',
+                                borderColor: '#fb923c', 
+                                color: '#fb923c',
                                 fontSize: '0.8rem'
                             }}
                         >
@@ -845,7 +843,7 @@ function App() {
                                 onClick={() => handleModelSwitch(model.model_name)}
                                 style={{
                                     textAlign: 'center',
-                                    borderBottom: (model.api_key && model.api_key.trim() !== "") ? '3px solid #3b82f6' : '1px solid var(--border-color)'
+                                    borderBottom: (model.api_key && model.api_key.trim() !== "") ? '3px solid #fb923c' : '1px solid var(--border-color)'
                                 }}
                             >
                                 {model.model_name}
@@ -854,33 +852,39 @@ function App() {
                     </div>
                 </div>
 
-                <div style={{
-                    backgroundColor: '#eff6ff', 
-                    margin: '10px 10px 0 10px', 
-                    padding: '10px', 
-                    borderRadius: '12px',
-                    border: '1px solid rgba(59, 130, 246, 0.1)'
-                }}>
-                    <div style={{padding: '0', position: 'relative', marginBottom: '5px'}}>
-                        <div style={{display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative'}}>
-                            <h3 style={{fontSize: '1.1rem', color: '#3b82f6', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0, textAlign: 'center'}}>Vibe Coding</h3>
-                            <button 
-                                className="btn-link" 
-                                onClick={() => setShowProjectManager(true)}
-                                style={{
-                                    position: 'absolute', 
-                                    right: '0', 
-                                    top: '50%',
-                                    transform: 'translateY(-50%)',
-                                    borderColor: '#3b82f6', 
-                                    color: '#3b82f6',
-                                    fontSize: '0.8rem'
-                                }}
-                            >
-                                📂 {t("manageProjects")}
-                            </button>
-                        </div>
-                                            
+                                                                                                                                                <div style={{
+                
+                                                                                                                                                    backgroundColor: '#fffbf5', 
+                
+                                                                                                                                                    margin: '0px 10px 0px 10px', 
+                
+                                                                                                                                                    padding: '10px 10px 10px 10px', 
+                
+                                                                                                                                                    borderRadius: '12px',
+                
+                                                                                                                                                    border: '1px solid rgba(251, 146, 60, 0.1)'
+                
+                                                                                                                                                }}>
+                
+                                                                                                                                                    <div style={{padding: '20px 10px 0 10px', position: 'relative'}}>
+                
+                                                                                                                                                        <div style={{display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: '5px', position: 'relative'}}>
+                
+                                                                                                                                                            <h3 style={{fontSize: '1.1rem', color: '#fb923c', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0, marginTop: '-10px', textAlign: 'center'}}>Vibe Coding</h3>
+                                                                                        <button 
+                                                                                            className="btn-link" 
+                                                                                            onClick={() => setShowProjectManager(true)}
+                                                                                            style={{
+                                                                                                position: 'absolute', 
+                                                                                                right: '0', 
+                                                                                                borderColor: '#fb923c', 
+                                                                                                color: '#fb923c',
+                                                                                                fontSize: '0.8rem'
+                                                                                            }}
+                                                                                        >
+                                                                                            📂 {t("manageProjects")}
+                                                                                        </button>
+                                                                                    </div>                                            
                                                                                                                                                                                                             {/* Project Tabs */}
                                             
                                                                                                                                                                                                             <div className="tabs" style={{marginBottom: '0', borderBottom: 'none', justifyContent: 'flex-start'}}>
@@ -1043,7 +1047,7 @@ function App() {
                                                 
             
                                                 <div style={{padding: '0 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px'}}>
-                            <h3 style={{fontSize: '1.1rem', color: '#3b82f6', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0}}>{t("modelSettings")}</h3>
+                            <h3 style={{fontSize: '1.1rem', color: '#fb923c', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0}}>{t("modelSettings")}</h3>
                             <div style={{display: 'flex', alignItems: 'center'}}>
                                 <span style={{marginRight: '15px', fontSize: '0.9rem', color: status.includes("Error") ? 'red' : 'green'}}>{status}</span>
                                 <button className="btn-primary" style={{padding: '5px 15px', marginRight: '30px'}} onClick={save}>{t("saveChanges")}</button>
@@ -1129,7 +1133,7 @@ function App() {
                 <div className="modal-overlay">
                     <div className="modal-content" onClick={e => e.stopPropagation()} style={{width: '500px', textAlign: 'left'}}>
                         <button className="modal-close" onClick={() => setShowProjectManager(false)}>&times;</button>
-                        <h3 style={{marginTop: 0, color: '#3b82f6', marginBottom: '20px'}}>{t("projectManagement")}</h3>
+                        <h3 style={{marginTop: 0, color: '#fb923c', marginBottom: '20px'}}>{t("projectManagement")}</h3>
                         
                         <div style={{maxHeight: '300px', overflowY: 'auto', marginBottom: '10px'}}>
                             {tempProjects.map((proj: any) => (
@@ -1162,7 +1166,7 @@ function App() {
                         )}
 
                         <div style={{display: 'flex', flexDirection: 'column', gap: '10px'}}>
-                            <button className="btn-primary" style={{width: '100%', background: 'transparent', border: '1px dashed #3b82f6', color: '#3b82f6'}} onClick={handleAddTempProject}>
+                            <button className="btn-primary" style={{width: '100%', background: 'transparent', border: '1px dashed #fb923c', color: '#fb923c'}} onClick={handleAddTempProject}>
                                 {t("addNewProject")}
                             </button>
                             <button 
@@ -1182,48 +1186,9 @@ function App() {
                 <div className="modal-overlay" onClick={() => setShowUpdateModal(false)}>
                     <div className="modal-content" onClick={e => e.stopPropagation()} style={{width: '320px'}}>
                         <button className="modal-close" onClick={() => setShowUpdateModal(false)}>&times;</button>
-                        <h3 style={{marginTop: 0, color: '#3b82f6'}}>{t("checkUpdate")}</h3>
-                        <div style={{margin: '20px 0', fontSize: '1rem'}}>
-                            {updateResult?.has_update ? (
-                                <div style={{color: '#10b981', fontWeight: 600}}>
-                                    {t("updateAvailable")} {updateResult.latest_version}
-                                </div>
-                            ) : (
-                                <div style={{color: '#6b7280'}}>
-                                    {t("noUpdate")}
-                                </div>
-                            )}
-                        </div>
-                        <div style={{display: 'flex', gap: '10px'}}>
-                            {updateResult?.has_update && (
-                                <button 
-                                    className="btn-primary" 
-                                    style={{flex: 1}}
-                                    onClick={() => {
-                                        BrowserOpenURL("https://github.com/RapidAI/cceasy/releases");
-                                        setShowUpdateModal(false);
-                                    }}
-                                >
-                                    {t("downloadNow")}
-                                </button>
-                            )}
-                            <button 
-                                className="btn-primary" 
-                                style={{flex: 1, backgroundColor: updateResult?.has_update ? '#6b7280' : '#3b82f6'}}
-                                onClick={() => setShowUpdateModal(false)}
-                            >
-                                {updateResult?.has_update ? t("hide") : "OK"}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {showAbout && (
-                <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setShowAbout(false); }}>
-                    <div className="modal-content" onClick={e => e.stopPropagation()}>
-                        <button className="modal-close" onClick={() => setShowAbout(false)}>&times;</button>
-                        <h3 style={{marginTop: 0, color: '#3b82f6'}}>Claude Code Easy Suite</h3>
+                        <h3 style={{marginTop: 0, color: '#fb923c'}}>{t("checkUpdate")}</h3>
+...
+                        <h3 style={{marginTop: 0, color: '#fb923c'}}>Claude Code Easy Suite</h3>
                         <p style={{color: '#6b7280', margin: '5px 0'}}>Version V{APP_VERSION} Beta (Build {buildNumber})</p>
                         <p style={{color: '#6b7280', margin: '5px 0'}}>Author: Dr. Daniel</p>
                         <div style={{display: 'flex', justifyContent: 'center', marginTop: '20px'}}>

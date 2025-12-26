@@ -1,5 +1,7 @@
 # Claude Code Easy Suite 使用说明书
 
+[❓ 常见问题 (FAQ)](faq.md)
+
 欢迎使用 **Claude Code Easy Suite**！本工具专为简化 Anthropic `claude-code` 命令行工具的配置、多项目管理与启动流程而设计。
 
 以下是详细的操作指南：

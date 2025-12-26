@@ -1,6 +1,8 @@
 # Claude Code Easy Suite User Manual
 
-Welcome to **Claude Code Easy Suite**! This tool is designed to simplify the configuration, multi-project management, and startup process for Anthropic's `claude-code` command-line tool.
+[❓ FAQ](faq_en.md)
+
+Welcome to **Claude Code Easy Suite**! This tool is designed to simplify the configuration, multi-project management, and startup process for the Anthropic `claude-code` command-line tool.
 
 Here is a detailed operation guide:
 

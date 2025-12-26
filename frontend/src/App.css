@@ -1,15 +1,15 @@
 :root {
-    --primary-color: #3b82f6;
-    --primary-light: #60a5fa;
-    --primary-dark: #2563eb;
-    --accent-bg: #eff6ff; /* Light blue tint for backgrounds */
-    --bg-color: #f8faff; /* Very subtle blue-white for body */
+    --primary-color: #fb923c; /* Orange 400 (Lighter than 500) */
+    --primary-light: #fdba74; /* Orange 300 */
+    --primary-dark: #f97316;  /* Orange 500 */
+    --accent-bg: #fffbf5; /* Even lighter orange tint */
+    --bg-color: #fffdfa; /* Almost white with a hint of orange */
     --surface-color: #ffffff;
     --text-color: #374151;
     --text-secondary: #6b7280;
-    --border-color: #e2e8f0;
+    --border-color: #ffedd5; /* Orange 100 */
     --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --shadow-md: 0 4px 6px -1px rgba(249, 115, 22, 0.08), 0 2px 4px -1px rgba(249, 115, 22, 0.04);
 }
 
 html, body {
