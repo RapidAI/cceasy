@@ -87,6 +87,31 @@ func (a *App) CheckEnvironment() {
 		// Update path for the current process anyway to ensure npm is found
 		a.updatePathForNode()
 
+		// Check for Git
+		a.log("Checking Git installation...")
+		if _, err := exec.LookPath("git"); err != nil {
+			// Check common locations before giving up
+			gitFound := false
+			if _, err := os.Stat(`C:\Program Files\Git\cmd\git.exe`); err == nil {
+				gitFound = true
+			}
+			
+			if gitFound {
+				a.updatePathForGit()
+				a.log("Git found in standard location.")
+			} else {
+				a.log("Git not found. Downloading and installing...")
+				if err := a.installGitBash(); err != nil {
+					a.log("Failed to install Git: " + err.Error())
+				} else {
+					a.log("Git installed successfully.")
+					a.updatePathForGit()
+				}
+			}
+		} else {
+			a.log("Git is installed.")
+		}
+
 		npmPath := "npm"
 		if _, err := exec.LookPath("npm"); err != nil {
 			npmPath = `C:\Program Files\nodejs\npm.cmd`
@@ -181,6 +206,67 @@ func (a *App) installNodeJS() error {
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("error installing Node.js: %s\n%s", err, string(output))
+	}
+
+	// Wait a bit for the system to finalize the installation
+	time.Sleep(2 * time.Second)
+
+	return nil
+}
+
+func (a *App) updatePathForGit() {
+	// Common git paths
+	gitPaths := []string{
+		`C:\Program Files\Git\cmd`,
+		`C:\Program Files\Git\bin`,
+	}
+	
+	currentPath := os.Getenv("PATH")
+	newPath := currentPath
+	
+	for _, path := range gitPaths {
+		if _, err := os.Stat(path); err == nil {
+			if !strings.Contains(strings.ToLower(currentPath), strings.ToLower(path)) {
+				newPath = path + string(os.PathListSeparator) + newPath
+			}
+		}
+	}
+
+	if newPath != currentPath {
+		os.Setenv("PATH", newPath)
+		a.log("Updated PATH environment variable for Git.")
+	}
+}
+
+func (a *App) installGitBash() error {
+	gitVersion := "2.47.1"
+	// git-for-windows versioning can be tricky. v2.47.1.windows.1
+	fullVersion := "v2.47.1.windows.1"
+	fileName := fmt.Sprintf("Git-%s-64-bit.exe", gitVersion)
+	
+	downloadURL := fmt.Sprintf("https://github.com/git-for-windows/git/releases/download/%s/%s", fullVersion, fileName)
+	if strings.HasPrefix(strings.ToLower(a.CurrentLanguage), "zh") {
+		downloadURL = fmt.Sprintf("https://npmmirror.com/mirrors/git-for-windows/%s/%s", fullVersion, fileName)
+	}
+	
+	a.log(fmt.Sprintf("Downloading Git %s...", gitVersion))
+
+	tempDir := os.TempDir()
+	exePath := filepath.Join(tempDir, fileName)
+
+	if err := a.downloadFile(exePath, downloadURL); err != nil {
+		return fmt.Errorf("error downloading Git installer: %w", err)
+	}
+	defer os.Remove(exePath)
+
+	a.log("Installing Git (this may take a moment, please grant administrator permission if prompted)...")
+	// Silent installation
+	cmd := exec.Command(exePath, "/VERYSILENT", "/NORESTART", "/NOCANCEL", "/SP-", "/CLOSEAPPLICATIONS", "/RESTARTAPPLICATIONS")
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+	
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("error installing Git: %s\n%s", err, string(output))
 	}
 
 	// Wait a bit for the system to finalize the installation
