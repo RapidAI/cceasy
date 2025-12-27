@@ -26,7 +26,7 @@ func main() {
 	appOptions := &options.App{
 		Title:     "Claude Code Easy Suite",
 		Frameless: true,
-		Width:     692,
+		Width:     554,
 		Height:    200,
 		SingleInstanceLock: &options.SingleInstanceLock{
 			UniqueId: "claude-code-easy-suite-lock",

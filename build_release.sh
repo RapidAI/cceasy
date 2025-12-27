@@ -5,9 +5,9 @@ APP_NAME="Claude Code Easy Suite"
 # Read version from build_number if exists, else default
 if [ -f "build_number" ]; then
     BUILD_NUM=$(cat build_number)
-    VERSION="1.0.${BUILD_NUM}"
+    VERSION="1.3.2.${BUILD_NUM}"
 else
-    VERSION="1.0.0"
+    VERSION="1.3.2.0"
 fi
 
 IDENTIFIER="com.wails.ClaudeCodeEasySuite"

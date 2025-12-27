@@ -13,7 +13,7 @@ const subscriptionUrls: {[key: string]: string} = {
     "minimax": "https://platform.minimaxi.com/user-center/payment/coding-plan"
 };
 
-const APP_VERSION = "1.3.0.1";
+const APP_VERSION = "1.3.2.1";
 
 const translations: any = {
     "en": {
@@ -416,7 +416,7 @@ function App() {
             }
         };
         const doneHandler = () => {
-            ResizeWindow(1038, 480);
+            ResizeWindow(760, 480);
             setIsLoading(false);
         };
 
@@ -855,54 +855,45 @@ function App() {
                             <option value="de">Deutsch</option>
                             <option value="fr">Français</option>
                         </select>
-                        <button 
-                            className="btn-link" 
-                            onClick={() => setShowAbout(true)}
-                        >
-                            {t("about")}
-                        </button>
-                        <button 
-                            className="btn-link" 
-                            onClick={handleOpenManual}
-                        >
-                            {t("manual")}
-                        </button>
-                        <button 
-                            className="btn-link" 
-                            onClick={() => {
-                                setStatus(t("checkUpdate") + "...");
-                                CheckUpdate(APP_VERSION).then((result: any) => {
-                                    setUpdateResult(result);
-                                    setShowUpdateModal(true);
-                                    setStatus("");
-                                }).catch((err: any) => {
-                                    setStatus("Error: " + err);
-                                });
-                            }}
-                        >
-                            {t("checkUpdate")}
-                        </button>
-                        <button 
-                            className="btn-link" 
-                            onClick={() => BrowserOpenURL("https://github.com/BIT-ENGD/cs146s_cn")}
-                        >
-                            {t("cs146s")}
-                        </button>
-                        <button 
-                            className="btn-link" 
-                            onClick={() => {
-                                setRecoverStatus("idle");
-                                setShowRecoverModal(true);
-                            }}
-                        >
-                            {t("recoverCC")}
-                        </button>
-                        <button 
-                            onClick={WindowHide} 
-                            className="btn-hide"
-                        >
-                            {t("hide")}
-                        </button>
+                        <div style={{
+                            display: 'grid', 
+                            gridTemplateColumns: 'repeat(3, auto)', 
+                            gap: '8px 10px', 
+                            alignItems: 'center',
+                            justifyItems: 'end'
+                        }}>
+                            <button className="btn-link" onClick={() => setShowAbout(true)}>{t("about")}</button>
+                            <button className="btn-link" onClick={handleOpenManual}>{t("manual")}</button>
+                            <button onClick={WindowHide} className="btn-hide" style={{margin: 0, height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+                                {t("hide")}
+                            </button>
+                            
+                            <button 
+                                className="btn-link" 
+                                onClick={() => {
+                                    setStatus(t("checkUpdate") + "...");
+                                    CheckUpdate(APP_VERSION).then((result: any) => {
+                                        setUpdateResult(result);
+                                        setShowUpdateModal(true);
+                                        setStatus("");
+                                    }).catch((err: any) => {
+                                        setStatus("Error: " + err);
+                                    });
+                                }}
+                            >
+                                {t("checkUpdate")}
+                            </button>
+                            <button 
+                                className="btn-link" 
+                                onClick={() => {
+                                    setRecoverStatus("idle");
+                                    setShowRecoverModal(true);
+                                }}
+                            >
+                                {t("recoverCC")}
+                            </button>
+                            <button className="btn-link" onClick={() => BrowserOpenURL("https://github.com/BIT-ENGD/cs146s_cn")}>{t("cs146s")}</button>
+                        </div>
                     </div>
                  </div>
             </div>

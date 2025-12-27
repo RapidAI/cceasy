@@ -26,6 +26,10 @@ export function LoadConfig() {
   return window['go']['main']['App']['LoadConfig']();
 }
 
+export function RecoverCC() {
+  return window['go']['main']['App']['RecoverCC']();
+}
+
 export function ResizeWindow(arg1, arg2) {
   return window['go']['main']['App']['ResizeWindow'](arg1, arg2);
 }
@@ -40,10 +44,6 @@ export function SelectProjectDir() {
 
 export function SetLanguage(arg1) {
   return window['go']['main']['App']['SetLanguage'](arg1);
-}
-
-export function RecoverCC() {
-  return window['go']['main']['App']['RecoverCC']();
 }
 
 export function ShowMessage(arg1, arg2) {

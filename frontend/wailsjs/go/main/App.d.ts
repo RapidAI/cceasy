@@ -14,6 +14,8 @@ export function LaunchClaude(arg1:boolean,arg2:string):Promise<void>;
 
 export function LoadConfig():Promise<main.AppConfig>;
 
+export function RecoverCC():Promise<void>;
+
 export function ResizeWindow(arg1:number,arg2:number):Promise<void>;
 
 export function SaveConfig(arg1:main.AppConfig):Promise<void>;
@@ -21,7 +23,5 @@ export function SaveConfig(arg1:main.AppConfig):Promise<void>;
 export function SelectProjectDir():Promise<string>;
 
 export function SetLanguage(arg1:string):Promise<void>;
-
-export function RecoverCC():Promise<void>;
 
 export function ShowMessage(arg1:string,arg2:string):Promise<void>;
