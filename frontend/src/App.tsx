@@ -939,187 +939,108 @@ function App() {
                     </div>
                 </div>
 
-                                                                                                                                                <div style={{
-                
-                                                                                                                                                    backgroundColor: '#fffbf5', 
-                
-                                                                                                                                                    margin: '0px 10px 0px 10px', 
-                
-                                                                                                                                                    padding: '10px 10px 10px 10px', 
-                
-                                                                                                                                                    borderRadius: '12px',
-                
-                                                                                                                                                    border: '1px solid rgba(251, 146, 60, 0.1)'
-                
-                                                                                                                                                }}>
-                
-                                                                                                                                                    <div style={{padding: '20px 10px 0 10px', position: 'relative'}}>
-                
-                                                                                                                                                        <div style={{display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: '5px', position: 'relative'}}>
-                
-                                                                                                                                                            <h3 style={{fontSize: '1.1rem', color: '#fb923c', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0, marginTop: '-10px', textAlign: 'center'}}>Vibe Coding</h3>
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        <button 
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            className="btn-link" 
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            onClick={() => setShowProjectManager(true)}
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            style={{
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                position: 'absolute', 
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                right: '0', 
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                borderColor: '#fb923c', 
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                color: '#fb923c',
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                fontSize: '0.8rem'
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            }}
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        >
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            📂 {t("manageProjects")}
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        </button>                                                                                    </div>                                            
-                                                                                                                                                                                                            {/* Project Tabs */}
-                                            
-                                                                                                                                                                                                            <div className="tabs" style={{marginBottom: '0', borderBottom: 'none', justifyContent: 'flex-start'}}>
-                                            
-                                                                                                                                                                                                                {projectOffset > 0 && (
-                                            
-                                                                                                                                                                                                                    <button 
-                                            
-                                                                                                                                                                                                                        className="tab-button" 
-                                            
-                                                                                                                                                                                                                        onClick={() => setProjectOffset(prev => Math.max(0, prev - 1))}
-                                            
-                                                                                                                                                                                                                        title="Previous Projects"
-                                            
-                                                                                                                                                                                                                    >
-                                            
-                                                                                                                                                                                                                        ◀
-                                            
-                                                                                                                                                                                                                    </button>
-                                            
-                                                                                                                                                                                                                )}
-                                            
-                                                                                                                                                                                                                {visibleProjects.map((proj: any) => (
-                                            
-                                                                                                                                                                                                                    <button
-                                            
-                                                                                                                                                                                                                        key={proj.id}
-                                            
-                                                                                                                                                                                                                        className={`tab-button ${config.current_project === proj.id ? 'active' : ''}`}
-                                            
-                                                                                                                                                                                                                        onClick={() => handleProjectSwitch(proj.id)}
-                                            
-                                                                                                                                                                                                                        style={{fontSize: '0.85rem', padding: '5px 10px'}}
-                                            
-                                                                                                                                                                                                                    >
-                                            
-                                                                                                                                                                                                                        {proj.name}
-                                            
-                                                                                                                                                                                                                    </button>
-                                            
-                                                                                                                                                                                                                ))}
-                                            
-                                                                                                                                                                                                                {config.projects && config.projects.length > projectOffset + 5 && (
-                                            
-                                                                                                                                                                                                                    <button 
-                                            
-                                                                                                                                                                                                                        className="tab-button" 
-                                            
-                                                                                                                                                                                                                        onClick={() => setProjectOffset(prev => (prev + 5 < config.projects.length ? prev + 1 : prev))}
-                                            
-                                                                                                                                                                                                                        title="Next Projects"
-                                            
-                                                                                                                                                                                                                    >
-                                            
-                                                                                                                                                                                                                        ▶
-                                            
-                                                                                                                                                                                                                    </button>
-                                            
-                                                                                                                                                                                                                )}
-                                            
-                                                                                                                                                                                                            </div>                                
-                                            
-                                                                                                                                                                                                    {currentProject && (
-                                            
-                                                                                                                                                                                                    <>
-                                            
-                                                                                                                                                                                                        <div className="form-group" style={{display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px'}}>
-                                            
-                                                                                                                                                                                                            <label className="form-label" style={{marginBottom: 0, whiteSpace: 'nowrap', textAlign: 'left'}}>{t("projectDir")}:</label>
-                                            
-                                                                                                                                                                                                            <div style={{display: 'flex', gap: '10px', flexGrow: 1}}>
-                                            
-                                                                                                                                                                                                                <input 
-                                            
-                                                                                                                                                                                                                    type="text" 
-                                            
-                                                                                                                                                                                                                    className="form-input"
-                                            
-                                                                                                                                                                                                                    value={currentProject.path} 
-                                            
-                                                                                                                                                                                                                    readOnly
-                                            
-                                                                                                                                                                                                                    style={{backgroundColor: '#f9fafb', color: '#6b7280', flexGrow: 1, textAlign: 'left'}}
-                                            
-                                                                                                                                                                                                                />
-                                            
-                                                                                                                                                                                                                <button className="btn-primary" style={{padding: '10px 15px', whiteSpace: 'nowrap'}} onClick={handleSelectDir}>{t("change")}</button>
-                                            
-                                                                                                                                                                                                            </div>
-                                            
-                                                                                                                                                                                                        </div>
-                                            
-                                                                                                                                                                                                            
-                                            
-                                                                                                                                                                                                        <div style={{marginBottom: '0px'}}>
-                                            
-                                                                                                                                                                                                            <label className="form-label" style={{display:'flex', alignItems:'center', cursor:'pointer'}}>
-                                            
-                                                                                                                                                                                                                <input 
-                                            
-                                                                                                                                                                                                                    type="checkbox" 
-                                            
-                                                                                                                                                                                                                    checked={currentProject.yolo_mode}
-                                            
-                                                                                                                                                                                                                    onChange={(e) => handleYoloChange(e.target.checked)}
-                                            
-                                                                                                                                                                                                                    style={{marginRight: '8px', transform: 'scale(1.2)'}}
-                                            
-                                                                                                                                                                                                                />
-                                            
-                                                                                                                                                                                                                <span style={{fontWeight: 600}}>{t("yoloMode")}</span> 
-                                            
-                                                                                                                                                                                                                <span style={{marginLeft:'8px', color:'#ef4444', fontSize:'0.85em'}}>{t("dangerouslySkip")}</span>
-                                            
-                                                                                                                                                                                                            </label>
-                                            
-                                                                                                                                                                                                        </div>
-                                            
-                                                                                                                                                                                                                                    <button className="btn-launch" style={{marginTop: '5px'}} onClick={() => {
-                                                                                                                                                                                                                                                    
-                                                                                                                                                                                                                                        if (!currentProject.path || currentProject.path.trim() === "") {
-                                                                                                                                                                                                                                                    
-                                                                                                                                                                                                                                            setStatus(t("projectDirError"));
-                                                                                                                                                                                                                                                    
-                                                                                                                                                                                                                                            setTimeout(() => setStatus(""), 2000);
-                                                                                                                                                                                                                                                    
-                                                                                                                                                                                                                                            return;
-                                                                                                                                                                                                                                                    
-                                                                                                                                                                                                                                        }
-                                                                                                                                                                                                                                                    
-                                                                                                                                                                                                                                        LaunchClaude(currentProject.yolo_mode, currentProject.path || "")
-                                                                                                                                                                                                                                                    
-                                                                                                                                                                                                                                    }}>
-                                            
-                                                                                                                                                                                                            {t("launchBtn")}
-                                            
-                                                                                                                                                                                                        </button>
-                                            
-                                                                                                                                                                                                        <div style={{textAlign: 'center', marginTop: '2px', minHeight: '20px'}}>
-                                            
-                                                                                                                                                                                                            <span style={{fontSize: '0.9rem', color: (status.includes("Error") || status.includes("！") || status.includes("!") || status.includes("first")) ? '#ef4444' : '#10b981'}}>{status}</span>
-                                            
-                                                                                                                                                                                                        </div>
-                                            
-                                                                                                                                                                                                    </>
-                                            
-                                                                                                                                                                                                    )}
-                                                                                                                                                                                            </div>
+                <div style={{
+                    backgroundColor: '#fffbf5',
+                    margin: '0px 10px 0px 10px',
+                    padding: '15px 15px 10px 15px',
+                    borderRadius: '12px',
+                    border: '1px solid rgba(251, 146, 60, 0.1)',
+                    position: 'relative'
+                }}>
+                    <div style={{display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: '15px', position: 'relative'}}>
+                        <h3 style={{fontSize: '1.1rem', color: '#fb923c', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0, textAlign: 'center'}}>Vibe Coding</h3>
+                        <button 
+                            className="btn-link" 
+                            onClick={() => setShowProjectManager(true)}
+                            style={{
+                                position: 'absolute', 
+                                right: '0', 
+                                borderColor: '#fb923c', 
+                                color: '#fb923c',
+                                fontSize: '0.8rem'
+                            }}
+                        >
+                            📂 {t("manageProjects")}
+                        </button>
+                    </div>
+
+                    <div className="tabs" style={{marginBottom: '15px', borderBottom: '1px solid var(--border-color)', justifyContent: 'flex-start', overflowX: 'auto'}}>
+                        {projectOffset > 0 && (
+                            <button 
+                                className="tab-button" 
+                                onClick={() => setProjectOffset(prev => Math.max(0, prev - 1))}
+                                title="Previous Projects"
+                                style={{padding: '5px 10px'}}
+                            >
+                                ◀
+                            </button>
+                        )}
+                        {visibleProjects.map((proj: any) => (
+                            <button
+                                key={proj.id}
+                                className={`tab-button ${config.current_project === proj.id ? 'active' : ''}`}
+                                onClick={() => handleProjectSwitch(proj.id)}
+                            >
+                                {proj.name}
+                            </button>
+                        ))}
+                        {config.projects && config.projects.length > projectOffset + 5 && (
+                            <button 
+                                className="tab-button" 
+                                onClick={() => setProjectOffset(prev => (prev + 5 < config.projects.length ? prev + 1 : prev))}
+                                title="Next Projects"
+                                style={{padding: '5px 10px'}}
+                            >
+                                ▶
+                            </button>
+                        )}
+                    </div>
+
+                    {currentProject && (
+                        <>
+                            <div className="form-group" style={{display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px'}}>
+                                <label className="form-label" style={{marginBottom: 0, whiteSpace: 'nowrap', textAlign: 'left', minWidth: '110px'}}>{t("projectDir")}:</label>
+                                <div style={{display: 'flex', gap: '10px', flexGrow: 1}}>
+                                    <input 
+                                        type="text" 
+                                        className="form-input"
+                                        value={currentProject.path} 
+                                        readOnly
+                                        style={{backgroundColor: '#f9fafb', color: '#6b7280', flexGrow: 1, textAlign: 'left', padding: '10px'}}
+                                    />
+                                    <button className="btn-primary" style={{padding: '10px 15px', whiteSpace: 'nowrap'}} onClick={handleSelectDir}>{t("change")}</button>
                                 </div>
+                            </div>
+
+                            <div style={{marginBottom: '10px'}}>
+                                <label className="form-label" style={{display:'flex', alignItems:'center', cursor:'pointer'}}>
+                                    <input 
+                                        type="checkbox" 
+                                        checked={currentProject.yolo_mode}
+                                        onChange={(e) => handleYoloChange(e.target.checked)}
+                                        style={{marginRight: '8px', transform: 'scale(1.2)'}}
+                                    />
+                                    <span style={{fontWeight: 600}}>{t("yoloMode")}</span> 
+                                    <span style={{marginLeft:'8px', color:'#ef4444', fontSize:'0.85em'}}>{t("dangerouslySkip")}</span>
+                                </label>
+                            </div>
+
+                            <button className="btn-launch" onClick={() => {
+                                if (!currentProject.path || currentProject.path.trim() === "") {
+                                    setStatus(t("projectDirError"));
+                                    setTimeout(() => setStatus(""), 2000);
+                                    return;
+                                }
+                                LaunchClaude(currentProject.yolo_mode, currentProject.path || "")
+                            }}>
+                                {t("launchBtn")}
+                            </button>
+                            <div style={{textAlign: 'center', marginTop: '5px', minHeight: '20px'}}>
+                                <span style={{fontSize: '0.9rem', color: (status.includes("Error") || status.includes("！") || status.includes("!") || status.includes("first")) ? '#ef4444' : '#10b981'}}>{status}</span>
+                            </div>
+                        </>
+                    )}
+                </div>
                 
                                         </div>
                             
