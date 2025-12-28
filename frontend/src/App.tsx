@@ -57,6 +57,8 @@ const translations: any = {
         "loadingConfig": "Loading config...",
         "syncing": "Syncing to Claude Code...",
         "switched": "Model switched & synced!",
+        "projectSwitched": "Project switched!",
+        "dirUpdated": "Directory updated!",
         "langName": "English",
         "custom": "Custom",
         "checkUpdate": "Check Update",
@@ -108,6 +110,8 @@ const translations: any = {
         "loadingConfig": "加载配置中...",
         "syncing": "正在同步到 Claude Code...",
         "switched": "模型已切换并同步！",
+        "projectSwitched": "项目已切换！",
+        "dirUpdated": "目录已更新！",
         "langName": "简体中文",
         "custom": "自定义",
         "checkUpdate": "检查更新",
@@ -539,6 +543,8 @@ function App() {
         if (!config) return;
         const newConfig = new main.AppConfig({...config, current_project: projectId});
         setConfig(newConfig);
+        setStatus(t("projectSwitched"));
+        setTimeout(() => setStatus(""), 1500);
         SaveConfig(newConfig);
     };
 
@@ -556,6 +562,8 @@ function App() {
                 // Update deprecated project_dir for backward compat if needed, but primarily use projects list
                 const newConfig = new main.AppConfig({...config, projects: newProjects, project_dir: dir});
                 setConfig(newConfig);
+                setStatus(t("dirUpdated"));
+                setTimeout(() => setStatus(""), 1500);
                 SaveConfig(newConfig);
             }
         });
@@ -572,6 +580,8 @@ function App() {
         
         const newConfig = new main.AppConfig({...config, projects: newProjects});
         setConfig(newConfig);
+        setStatus(t("saved"));
+        setTimeout(() => setStatus(""), 1500);
         SaveConfig(newConfig);
     };
 
@@ -1035,8 +1045,8 @@ function App() {
                             }}>
                                 {t("launchBtn")}
                             </button>
-                            <div style={{textAlign: 'center', marginTop: '5px', minHeight: '20px'}}>
-                                <span style={{fontSize: '0.9rem', color: (status.includes("Error") || status.includes("！") || status.includes("!") || status.includes("first")) ? '#ef4444' : '#10b981'}}>{status}</span>
+                            <div className="status-message" style={{marginTop: '5px', minHeight: '20px'}}>
+                                <span key={status} style={{color: (status.includes("Error") || status.includes("！") || status.includes("!") || status.includes("first")) ? '#ef4444' : '#10b981'}}>{status}</span>
                             </div>
                         </>
                     )}
@@ -1058,7 +1068,9 @@ function App() {
                                                 <div style={{padding: '0 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px'}}>
                             <h3 style={{fontSize: '1.1rem', color: '#fb923c', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0}}>{t("modelSettings")}</h3>
                             <div style={{display: 'flex', alignItems: 'center'}}>
-                                <span style={{marginRight: '15px', fontSize: '0.9rem', color: status.includes("Error") ? 'red' : 'green'}}>{status}</span>
+                                <div className="status-message" style={{margin: '0 15px 0 0', minHeight: 'auto'}}>
+                                    <span key={status} style={{color: status.includes("Error") ? 'red' : 'green'}}>{status}</span>
+                                </div>
                                 <button className="btn-primary" style={{padding: '5px 15px', marginRight: '30px'}} onClick={save}>{t("saveChanges")}</button>
                             </div>
                         </div>
