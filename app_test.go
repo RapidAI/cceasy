@@ -121,3 +121,44 @@ func TestSyncToClaudeSettings(t *testing.T) {
 		t.Errorf("Key 'sk-test-key-123' not found in approved list: %v", approved)
 	}
 }
+
+func TestGetCurrentProjectPath(t *testing.T) {
+	tmpHome, err := os.MkdirTemp("", "cceasy-test-project")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpHome)
+
+	originalHome := os.Getenv("HOME")
+	defer os.Setenv("HOME", originalHome)
+	os.Setenv("HOME", tmpHome)
+
+	app := &App{}
+	
+	// Setup test config file
+	configPath := filepath.Join(tmpHome, ".claude_model_config.json")
+	config := AppConfig{
+		CurrentProject: "proj2",
+		Projects: []ProjectConfig{
+			{Id: "proj1", Name: "Project 1", Path: "/path/to/1"},
+			{Id: "proj2", Name: "Project 2", Path: "/path/to/2"},
+		},
+	}
+	data, _ := json.Marshal(config)
+	os.WriteFile(configPath, data, 0644)
+
+	path := app.GetCurrentProjectPath()
+	if path != "/path/to/2" {
+		t.Errorf("Expected '/path/to/2', got '%s'", path)
+	}
+
+	// Test fallback to first project
+	config.CurrentProject = "non-existent"
+	data, _ = json.Marshal(config)
+	os.WriteFile(configPath, data, 0644)
+	
+	path = app.GetCurrentProjectPath()
+	if path != "/path/to/1" {
+		t.Errorf("Expected '/path/to/1' (fallback), got '%s'", path)
+	}
+}
