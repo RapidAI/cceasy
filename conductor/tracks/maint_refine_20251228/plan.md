@@ -19,10 +19,10 @@ Goal: Polishing the multi-project tabbed interface.
 - [x] Task: Implement Feature: Improved visual feedback when switching projects or changing working directories. e0fe6b9
 - [x] Task: Conductor - User Manual Verification 'UI/UX Refinement (Vibe Coding)' (Protocol in workflow.md)
 
-## Phase 3: Stability & Bug Fixes
+## Phase 3: Stability & Bug Fixes [checkpoint: 39f35ba]
 Goal: Address known issues and improve overall robustness.
 
 - [x] Task: Fix Single Instance Lock issues on Darwin (macOS). 8d343fd
 - [x] Task: Improve Tray Menu reliability and responsiveness. eea70c6
 - [x] Task: Write Tests: Integration tests for the "Launch Claude Code" trigger. 68af8ba
-- [~] Task: Conductor - User Manual Verification 'Stability & Bug Fixes' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Stability & Bug Fixes' (Protocol in workflow.md)
