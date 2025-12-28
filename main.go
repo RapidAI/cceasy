@@ -31,10 +31,15 @@ func main() {
 		SingleInstanceLock: &options.SingleInstanceLock{
 			UniqueId: "claude-code-easy-suite-lock",
 			OnSecondInstanceLaunch: func(secondInstanceData options.SecondInstanceData) {
-				runtime.WindowUnminimise(app.ctx)
-				runtime.WindowShow(app.ctx)
-				runtime.WindowSetAlwaysOnTop(app.ctx, true)
-				runtime.WindowSetAlwaysOnTop(app.ctx, false)
+				if app.ctx == nil {
+					return
+				}
+				go func() {
+					runtime.WindowUnminimise(app.ctx)
+					runtime.WindowShow(app.ctx)
+					runtime.WindowSetAlwaysOnTop(app.ctx, true)
+					runtime.WindowSetAlwaysOnTop(app.ctx, false)
+				}()
 			},
 		},
 		AssetServer: &assetserver.Options{
