@@ -75,6 +75,9 @@ func setupTray(app *App, appOptions *options.App) {
 
 				// Register config change listener
 				OnConfigChanged = func(cfg AppConfig) {
+					if modelItems == nil {
+						return
+					}
 					for name, item := range modelItems {
 						if name == cfg.CurrentModel {
 							item.Check()
@@ -92,15 +95,8 @@ func setupTray(app *App, appOptions *options.App) {
 
 							mLaunch.Click(func() {
 								go func() {
-									cfg, _ := app.LoadConfig()
-									projectPath := cfg.ProjectDir
-									for _, p := range cfg.Projects {
-										if p.Id == cfg.CurrentProject {
-											projectPath = p.Path
-											break
-										}
-									}
-									app.LaunchClaude(false, projectPath)
+									path := app.GetCurrentProjectPath()
+									app.LaunchClaude(false, path)
 								}()
 							})
 				mQuit.Click(func() {

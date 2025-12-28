@@ -148,9 +148,23 @@ func (a *App) SelectProjectDir() string {
 	return selection
 }
 
-func (a *App) GetUserHomeDir() string {
-	home, _ := os.UserHomeDir()
-	return home
+func (a *App) GetCurrentProjectPath() string {
+	config, err := a.LoadConfig()
+	if err != nil {
+		return ""
+	}
+	
+	for _, p := range config.Projects {
+		if p.Id == config.CurrentProject {
+			return p.Path
+		}
+	}
+	
+	if len(config.Projects) > 0 {
+		return config.Projects[0].Path
+	}
+	
+	return config.ProjectDir // Fallback
 }
 
 func (a *App) syncToClaudeSettings(config AppConfig) error {
