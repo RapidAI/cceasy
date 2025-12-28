@@ -331,6 +331,7 @@ func (a *App) LaunchClaude(yoloMode bool, projectDir string) {
 	sb.WriteString(fmt.Sprintf("export PATH=\"%s:$PATH\"\n", strings.Join(pathDirs, ":")))
 	
 	sb.WriteString(fmt.Sprintf("export ANTHROPIC_AUTH_TOKEN=\"%s\"\n", selectedModel.ApiKey))
+	sb.WriteString(fmt.Sprintf("export ANTHROPIC_API_KEY=\"%s\"\n", selectedModel.ApiKey))
 	sb.WriteString(fmt.Sprintf("export ANTHROPIC_BASE_URL=\"%s\"\n", baseUrl))
 
 	if projectDir != "" {

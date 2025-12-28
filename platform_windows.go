@@ -397,6 +397,7 @@ func (a *App) syncToSystemEnv(config AppConfig) {
 
 	// Set environment variables for the current process immediately
 	os.Setenv("ANTHROPIC_AUTH_TOKEN", selectedModel.ApiKey)
+	os.Setenv("ANTHROPIC_API_KEY", selectedModel.ApiKey)
 	os.Setenv("ANTHROPIC_BASE_URL", baseUrl)
 
 	// Set persistent environment variables on Windows in a goroutine because setx is slow
@@ -404,6 +405,10 @@ func (a *App) syncToSystemEnv(config AppConfig) {
 		cmd1 := exec.Command("setx", "ANTHROPIC_AUTH_TOKEN", selectedModel.ApiKey)
 		cmd1.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 		cmd1.Run()
+
+		cmdAuth := exec.Command("setx", "ANTHROPIC_API_KEY", selectedModel.ApiKey)
+		cmdAuth.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+		cmdAuth.Run()
 
 		cmd2 := exec.Command("setx", "ANTHROPIC_BASE_URL", baseUrl)
 		cmd2.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}

@@ -124,6 +124,8 @@ func (a *App) syncToClaudeSettings(config AppConfig) error {
 	env := make(map[string]string)
 
 	env["ANTHROPIC_AUTH_TOKEN"] = selectedModel.ApiKey
+	env["ANTHROPIC_API_KEY"] = selectedModel.ApiKey // Compatibility fallback
+	env["CLAUDE_CODE_USE_COLORS"] = "true"
 
 	switch strings.ToLower(selectedModel.ModelName) {
 	case "kimi":
