@@ -1,55 +1,47 @@
-# Claude Code Easy Suite
+# AICoder
 
 [📖 User Manual](UserManual_EN.md) | [❓ FAQ](faq_en.md) | [English](README_EN.md) | [中文](README.md)
 
-Claude Code Easy Suite is a desktop GUI tool built with Wails, Go, and React. It is designed to provide convenient configuration management, model switching, and one-click launch capabilities for Anthropic's command-line tool, `claude-code`.
+AICoder is a desktop AI programming assistant dashboard built with Wails, Go, and React. It is designed to provide unified configuration management, automated environment deployment, and one-click launch capabilities for multiple AI CLI tools (Anthropic Claude Code, OpenAI Codex, and Google Gemini CLI).
 
-This application is specifically integrated with popular programming models (GLM, Kimi, Doubao), supporting rapid API Key configuration and automatic synchronization.
+This application is deeply integrated with popular AI programming models, supporting rapid API Key configuration and automatic synchronization.
 <img width="806" height="526" alt="image" src="https://github.com/user-attachments/assets/3e1ff4c0-a21c-420a-8012-f6c6bce6dc65" />
 
 ## Core Features
 
-*   **🚀 Automatic Environment Preparation**: Automatically detects Node.js environment and Claude Code installation status upon startup, supporting automatic installation and version updates.
-*   **🖼️ Modern & Clean UI**: Features a light blue themed design with a frameless window, supporting top dragging and quick hiding in the upper right corner.
+*   **🚀 Automatic Environment Preparation**: Automatically detects and prepares the required AI CLI environments (Claude Code, Codex, Gemini) upon startup, supporting automatic installation and version updates.
+*   **🖼️ Unified Sidebar UI**: Features a modern vertical sidebar navigation for quick switching between different AI programming tools.
 *   **📂 Multi-Project Management (Vibe Coding)**:
-    *   **Tabbed Interface**: Manage multiple projects simultaneously and switch contexts quickly using top tabs.
+    *   **Tabbed Interface**: Manage multiple projects simultaneously and switch contexts quickly using tabs.
     *   **Independent Configuration**: Each project can have its own working directory and launch parameters (e.g., Yolo Mode).
-    *   **Visual Management**: Provides a project management panel to easily add, rename, or delete projects.
-*   **🔄 One-Click Model Switching**:
-    *   Integrated with **GLM**, **Kimi**, **Doubao**, and **MiniMax** models.
-    *   Supports **Custom** mode for connecting to any Anthropic-compatible API endpoint.
-    *   Supports independent storage of API Keys for each model.
-    *   **Instant Sync**: Automatically updates `~/.claude/settings.json`, `~/.claude.json`, and system environment variables (`ANTHROPIC_AUTH_TOKEN`, `ANTHROPIC_BASE_URL`) when switching models.
-*   **🌍 Multi-language Support**: Interface supports English, Simplified Chinese, Traditional Chinese, Korean, Japanese, German, and French, with automatic switching based on OS language.
-*   **🖱️ System Tray Support**:
-    *   Double-click the tray icon to show the main window.
-    *   Right-click menu for quick model switching, one-click Claude Code launch, and quitting the application.
-*   **⚡ One-Click Launch**:
-    *   Main interface provides a large "Launch Claude Code" button.
-    *   Supports **Yolo Mode** (adds `--dangerously-skip-permissions` parameter).
-    *   Automatic Authentication: Automatically approves custom API Keys by modifying `.claude.json`, skipping interactive prompts.
-*   **🔒 Single Instance Lock**: Prevents multiple instances from running; launching again will wake up and bring the existing instance to the top.
+*   **🔄 Multi-Model & Cross-Platform Support**:
+    *   Integrated with **Claude Code**, **OpenAI Codex**, and **Google Gemini CLI**.
+    *   Supports **Custom** mode for connecting to compatible API endpoints.
+    *   **Instant Sync**: Automatically updates configuration files and system environment variables.
+*   **🌍 Multi-language Support**: Interface supports English, Simplified Chinese, Traditional Chinese, Korean, Japanese, German, and French.
+*   **🖱️ System Tray Support**: Quick model switching, one-click launch, and quitting the application.
+*   **⚡ One-Click Launch**: Large buttons to launch the respective CLI tool with pre-configured environments and authentication.
 
 ## Quick Start
 
 ### 1. Run the Program
-Run `Claude Code Easy Suite.exe` directly.
+Run `AICoder.exe` directly.
 
 ### 2. Environment Detection
-On the first launch, the program performs an environment self-check. If Node.js is not installed, the program will attempt to install it via Winget (please ensure network connectivity). It will then automatically install/update to the latest version of `@anthropic-ai/claude-code`.
+On the first launch, the program performs an environment self-check. If required runtimes or tools are missing, AICoder will attempt to install them automatically.
 
 ### 3. Configure API Key
-In the "Model Settings" tab of the main interface, enter your API Key for GLM, Kimi, Doubao, MiniMax, or Custom.
+Enter your API Key in the configuration panel for each tool.
 *   If you don't have a Key yet, click the **"Get Key"** button next to the input field to jump to the respective provider's application page.
 
 ### 4. Switch and Launch
-*   Select your desired model in the "Active Model" area at the top. System environments and Claude configuration files will sync immediately.
-*   **Select Project**: Click a project tab in the "Vibe Coding" area to switch projects. Click **"Change"** to modify the working directory.
-*   Click **"Launch Claude Code"**; a CMD window with a pre-configured environment will pop up and run Claude automatically.
+*   Select your desired AI tool (Claude, Codex, or Gemini) in the left sidebar.
+*   **Select Project**: Click a project tab in the "Vibe Coding" area to switch projects.
+*   Click **"Launch"**; a terminal window with a pre-configured environment will pop up and run the tool automatically.
 
 ## About
 
-*   **Version**: V1.3.2.53
+*   **Version**: V1.4.0
 *   **Author**: Dr. Daniel
 *   **GitHub**: [RapidAI/cceasy](https://github.com/RapidAI/cceasy)
 *   **Resources**: [CS146s Chinese Version](https://github.com/BIT-ENGD/cs146s_cn)

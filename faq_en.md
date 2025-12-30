@@ -4,31 +4,32 @@
 In earlier versions, if background operations (such as file I/O) blocked the main thread, the tray icon might temporarily become unresponsive. The current version has optimized this issue through asynchronous processing and OS thread locking. If you still encounter this, please try restarting the program.
 
 ## 2. How to use a Custom Model?
-1. Click "Model Settings".
-2. Select the "Custom" tab.
-3. Enter your model name (e.g., `claude-3-5-sonnet-20241022`).
-4. Enter an API Endpoint compatible with the Anthropic protocol.
-5. Enter your API Key and save.
+1. Select the AI tool (e.g., Claude) in the sidebar.
+2. Click "Model Settings".
+3. Select the "Custom" tab.
+4. Enter your model name (e.g., `claude-3-5-sonnet-20241022`).
+5. Enter an API Endpoint compatible with the protocol.
+6. Enter your API Key and save.
 
 ## 3. My API Key is not working?
-The preset shortcuts for GLM, Kimi, Doubao, and MiniMax in the application **only support the "Coding Plan" specific API Keys** provided by each vendor.
+The preset shortcuts in AICoder **may only support specific "Coding Plan" API Keys** provided by each vendor.
 If you are using a general-purpose API Key, please use the **"Custom"** mode and manually enter the corresponding model name and API endpoint.
 
 ## 4. Where is the configuration file saved?
-The application configuration is saved in your user home directory with the filename `.claude_model_config.json`.
-Claude Code's native settings are saved in `~/.claude/settings.json`.
+AICoder's configuration is saved in your user home directory with the filename `.aicoder_config.json`.
+Native settings for various AI tools (like Claude's `~/.claude/settings.json`) are also automatically synced based on your configuration.
 
-## 5. How to update Claude Code?
-Each time the program starts, it automatically checks the version of `@anthropic-ai/claude-code`. If a new version is available, it will automatically run `npm install -g @anthropic-ai/claude-code` for you. You can see the specific execution commands in the installation progress logs.
+## 5. How to update AI CLI tools?
+Each time AICoder starts, it automatically checks the versions of supported tools (like `claude-code`, `codex`, `gemini-cli`). If a new version is available, it will attempt to update it for you. You can see the specific status in the startup progress window.
 
 ## 6. What if the environment check fails?
-If Node.js installation fails, please check your internet connection. In mainland China, the program automatically attempts to use the Tsinghua University mirror to speed up downloads. If automatic installation continues to fail, it is recommended to manually download and install v22.14.0 or higher from [nodejs.org](https://nodejs.org/).
+If Node.js or tool installation fails, please check your internet connection. In mainland China, the program automatically attempts to use domestic mirrors to speed up downloads. If automatic installation continues to fail, it is recommended to manually install the environment as prompted.
 
 ## 8. What is "Recover CC" and when should I use it?
-The "Recover CC" feature is designed to reset the `claude-code` execution environment to its factory default state.
-*   **Use Case**: Use this if you have manually modified Claude's official configuration, cannot log in due to API Key conflicts, or encounter persistent environment errors that the program cannot automatically fix.
+The "Recover CC" feature is primarily for the Claude Code environment, designed to reset its execution environment to factory defaults.
+*   **Use Case**: Use this if you have manually modified Claude's official configuration, cannot log in due to API Key conflicts, or encounter persistent environment errors.
 *   **Impact**: It will permanently delete all local configurations and authentication tokens in the `~/.claude/` directory.
-*   **Follow-up**: After recovery, **do not** immediately click "Launch Claude Code" in this app. Instead, manually open a new terminal (CMD or PowerShell), run `claude`, and follow the official prompts to complete the initial setup once.
+*   **Follow-up**: After recovery, manually open a new terminal (CMD or PowerShell), run `claude`, and follow the official prompts to complete the initial setup once.
 
 ---
 *For more issues, please visit GitHub Issues: [RapidAI/cceasy/issues](https://github.com/RapidAI/cceasy/issues)*

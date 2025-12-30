@@ -1,58 +1,55 @@
-# Claude Code Easy Suite User Manual
+# AICoder User Manual
 
 [❓ FAQ](faq_en.md)
 
-Welcome to **Claude Code Easy Suite**! This tool is designed to simplify the configuration, multi-project management, and startup process for the Anthropic `claude-code` command-line tool.
+Welcome to **AICoder**! This tool is designed to simplify the configuration, multi-project management, and startup process for various AI programming CLI tools (Claude Code, Codex, and Gemini CLI).
 
 Here is a detailed operation guide:
 
 ## 1. Startup and Environment Check
-When you run the program for the first time, it will automatically check your system environment:
-*   **Node.js**: If not installed, the program will attempt to install it via Winget.
-*   **Claude Code**: The program will automatically install or update `@anthropic-ai/claude-code` to the latest version.
-*   **Note**: If an automatic installation occurs, the program may restart automatically to apply changes.
+When you run AICoder for the first time, it will automatically check your system environment:
+*   **Dependency Check**: Detects Node.js and other required runtimes.
+*   **Tool Installation**: The program automatically detects and attempts to install or update `claude-code`, `codex`, and `gemini-cli` to their latest versions.
+*   **Startup Window**: A progress window will be displayed on startup to show the environment preparation status.
 
-## 2. Model Settings
-Before use, you need to configure an API Key for at least one model.
+## 2. Sidebar Navigation
+AICoder features a vertical sidebar design, allowing you to easily switch between different AI tools:
+*   **Claude**: Configure and launch Anthropic Claude Code.
+*   **Codex**: Configure and launch OpenAI Codex related CLI tools.
+*   **Gemini**: Configure and launch Google Gemini related CLI tools.
 
-1.  Click the **"⚙️ Model Settings"** button to the right of the **"Model Selection"** header.
-2.  Select your desired provider in the popup: **GLM**, **Kimi**, **Doubao**, **MiniMax**, or **Custom**.
-3.  **API Key**: Paste your API Key. A **blue underline** under the model button indicates a successful configuration.
-4.  **Save**: Click **"Save & Close"** to apply changes.
+## 3. Model Settings
+Within each tool's panel, you need to configure the corresponding API Key.
 
-> **Tip**: Settings will open automatically if no keys are found on startup. Models without an API key cannot be activated.
+1.  Select the desired AI tool from the sidebar.
+2.  Locate the **"Model Settings"** area in the main interface.
+3.  **API Key**: Paste your API Key into the input field. Once configured, it will be saved and used for future launches.
+4.  **Model Switching**: Some tools support switching between different sub-models or endpoints.
 
-## 3. Multi-Project Management
-You can manage multiple coding projects with independent directory paths and mode settings.
+## 4. Multi-Project Management
+You can manage multiple coding projects with independent directory paths and settings.
 
-### 3.1 Switching Projects
+### 4.1 Switching Projects
 *   View project tabs in the **"Vibe Coding"** area.
 *   Click a project name to switch instantly.
-*   If you have more than 5 projects, use the **"◀"** or **"▶"** arrows to scroll.
 
-### 3.2 Project Management Modal
-Click the **"📂 Manage Projects"** button next to the **"Vibe Coding"** header:
-*   **Add Project**: Click "+ Add New Project". New projects default to your User Home directory.
-*   **Rename**: Edit names directly. The system ensures each project name is unique.
-*   **Delete**: Click the "Delete" button next to a project.
-*   **Save**: Click **"Save & Close"** to commit all modifications.
+### 4.2 Project Management
+Click the **"Manage Projects"** button in the project area:
+*   **Add Project**: Create a new project and set its independent path.
+*   **Rename/Delete**: Manage your existing list of projects.
 
-## 4. Setting Project Parameters
-After selecting a project tab, configure its specific settings:
-1.  **Project Directory**: Displays the folder path for the current project. Click **"Change"** to pick a new one.
-2.  **Yolo Mode**:
-    *   Check the **"Yolo Mode"** box.
-    *   This mode skips all permission prompts. **Use with caution and only if you trust the model's output.**
+## 5. Setting Project Parameters
+After selecting a project, configure its specific settings:
+1.  **Project Directory**: Click **"Change"** to pick the folder where your code resides.
+2.  **Launch Parameters**: For example, **Yolo Mode** for Claude, which skips permission prompts when checked.
 
-## 5. Launch Claude Code
-1.  Ensure you have selected a valid **Model** (with blue underline) and **Project** (with valid path).
-2.  Click the **"Launch Claude Code"** button.
-3.  If the project directory is not set, a red error will appear in the status bar, and launch will be blocked.
-4.  A new terminal window will open with the Claude Code interactive interface.
+## 6. Launching AI Tools
+1.  Ensure you have selected a valid **Model** and **Project**.
+2.  Click the **"Launch"** button.
+3.  A terminal window (CMD/Terminal) will open with the tool's interactive interface.
 
-## 6. Other Features
-*   **Status Bar**: The bottom area shows real-time feedback (e.g., "Saved successfully"). Errors are highlighted in red.
-*   **Language Switch**: Change languages in the title bar (supports English, Chinese, Japanese, Korean, German, and French).
-*   **Check Update**: Click the **"Check Update"** button in the top right to check for new releases on GitHub.
-*   **Recover CC**: If you encounter persistent environmental issues, click the **"Recover CC"** button to reset Claude Code to its initial state (Warning: this will clear all credentials).
-*   **System Tray**: Right-click the tray icon for quick access to model switching, launching, or hiding the window.
+## 7. Other Features
+*   **Status Bar**: Shows real-time feedback and error messages at the bottom of the interface.
+*   **Language Switch**: Change the interface language in the title bar or settings.
+*   **Check Update**: Get the latest version of AICoder.
+*   **System Tray**: Right-click the tray icon for quick access to tool launching and configuration switching.
