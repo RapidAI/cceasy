@@ -4,13 +4,19 @@ import {main} from '../models';
 
 export function CheckEnvironment():Promise<void>;
 
+export function CheckToolsStatus():Promise<Array<main.ToolStatus>>;
+
 export function CheckUpdate(arg1:string):Promise<main.UpdateResult>;
+
+export function GetCurrentProjectPath():Promise<string>;
 
 export function GetUserHomeDir():Promise<string>;
 
 export function Greet(arg1:string):Promise<string>;
 
-export function LaunchClaude(arg1:boolean,arg2:string):Promise<void>;
+export function InstallTool(arg1:string):Promise<void>;
+
+export function LaunchTool(arg1:string,arg2:boolean,arg3:string):Promise<void>;
 
 export function LoadConfig():Promise<main.AppConfig>;
 

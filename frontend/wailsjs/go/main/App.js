@@ -6,8 +6,16 @@ export function CheckEnvironment() {
   return window['go']['main']['App']['CheckEnvironment']();
 }
 
+export function CheckToolsStatus() {
+  return window['go']['main']['App']['CheckToolsStatus']();
+}
+
 export function CheckUpdate(arg1) {
   return window['go']['main']['App']['CheckUpdate'](arg1);
+}
+
+export function GetCurrentProjectPath() {
+  return window['go']['main']['App']['GetCurrentProjectPath']();
 }
 
 export function GetUserHomeDir() {
@@ -18,8 +26,12 @@ export function Greet(arg1) {
   return window['go']['main']['App']['Greet'](arg1);
 }
 
-export function LaunchClaude(arg1, arg2) {
-  return window['go']['main']['App']['LaunchClaude'](arg1, arg2);
+export function InstallTool(arg1) {
+  return window['go']['main']['App']['InstallTool'](arg1);
+}
+
+export function LaunchTool(arg1, arg2, arg3) {
+  return window['go']['main']['App']['LaunchTool'](arg1, arg2, arg3);
 }
 
 export function LoadConfig() {

@@ -36,12 +36,45 @@ export namespace main {
 	        this.is_custom = source["is_custom"];
 	    }
 	}
-	export class AppConfig {
+	export class ToolConfig {
 	    current_model: string;
-	    project_dir: string;
 	    models: ModelConfig[];
+	
+	    static createFrom(source: any = {}) {
+	        return new ToolConfig(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.current_model = source["current_model"];
+	        this.models = this.convertValues(source["models"], ModelConfig);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class AppConfig {
+	    claude: ToolConfig;
+	    gemini: ToolConfig;
+	    codex: ToolConfig;
 	    projects: ProjectConfig[];
 	    current_project: string;
+	    active_tool: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new AppConfig(source);
@@ -49,11 +82,12 @@ export namespace main {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.current_model = source["current_model"];
-	        this.project_dir = source["project_dir"];
-	        this.models = this.convertValues(source["models"], ModelConfig);
+	        this.claude = this.convertValues(source["claude"], ToolConfig);
+	        this.gemini = this.convertValues(source["gemini"], ToolConfig);
+	        this.codex = this.convertValues(source["codex"], ToolConfig);
 	        this.projects = this.convertValues(source["projects"], ProjectConfig);
 	        this.current_project = source["current_project"];
+	        this.active_tool = source["active_tool"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -76,6 +110,25 @@ export namespace main {
 	}
 	
 	
+	
+	export class ToolStatus {
+	    name: string;
+	    installed: boolean;
+	    version: string;
+	    path: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ToolStatus(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.installed = source["installed"];
+	        this.version = source["version"];
+	        this.path = source["path"];
+	    }
+	}
 	export class UpdateResult {
 	    has_update: boolean;
 	    latest_version: string;
