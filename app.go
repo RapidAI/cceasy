@@ -508,7 +508,7 @@ func (a *App) CheckUpdate(currentVersion string) (UpdateResult, error) {
 	if err != nil {
 		return UpdateResult{}, err
 	}
-	req.Header.Set("User-Agent", "Claude-Code-Easy-Suite")
+	req.Header.Set("User-Agent", "AICoder")
 
 	client := &http.Client{}
 	resp, err := client.Do(req)

@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-APP_NAME="Claude Code Easy Suite"
+APP_NAME="AICoder"
 # Read version from build_number if exists, else default
 if [ -f "build_number" ]; then
     BUILD_NUM=$(cat build_number)
@@ -10,7 +10,7 @@ else
     VERSION="1.3.2.0"
 fi
 
-IDENTIFIER="com.wails.ClaudeCodeEasySuite"
+IDENTIFIER="com.wails.AICoder"
 OUTPUT_DIR="dist"
 BIN_DIR="build/bin"
 
@@ -100,7 +100,7 @@ create_app_bundle() {
     <key>CFBundleVersion</key>
     <string>${VERSION}</string>
     <key>CFBundleGetInfoString</key>
-    <string>Claude Code Easy Suite</string>
+    <string>AICoder</string>
     <key>CFBundleShortVersionString</key>
     <string>${VERSION}</string>
     <key>CFBundleIconFile</key>

@@ -24,12 +24,12 @@ func main() {
 
 	// Create application with options
 	appOptions := &options.App{
-		Title:     "Claude Code Easy Suite",
+		Title:     "AICoder",
 		Frameless: true,
 		Width:     554,
 		Height:    240,
 		SingleInstanceLock: &options.SingleInstanceLock{
-			UniqueId: "claude-code-easy-suite-lock",
+			UniqueId: "aicoder-lock",
 			OnSecondInstanceLaunch: func(secondInstanceData options.SecondInstanceData) {
 				if app.ctx == nil {
 					return

@@ -17,7 +17,7 @@ const APP_VERSION = "1.3.2.1";
 
 const translations: any = {
     "en": {
-        "title": "Claude Code Easy Suite",
+        "title": "AICoder",
         "about": "About",
         "manual": "Manual",
         "cs146s": "Online Course",
@@ -70,7 +70,7 @@ const translations: any = {
         "bugReport": "Bug Report or Suggestion"
     },
     "zh-Hans": {
-        "title": "Claude Code Easy Suite",
+        "title": "AICoder",
         "about": "关于",
         "manual": "使用说明",
         "cs146s": "在线课程",
@@ -123,7 +123,7 @@ const translations: any = {
         "bugReport": "Bug 报告或建议"
     },
     "zh-Hant": {
-        "title": "Claude Code Easy Suite",
+        "title": "AICoder",
         "about": "關於",
         "manual": "使用說明",
         "cs146s": "線上課程",
@@ -173,7 +173,7 @@ const translations: any = {
         "paste": "貼上"
     },
     "ko": {
-        "title": "Claude Code Easy Suite",
+        "title": "AICoder",
         "about": "정보",
         "manual": "매뉴얼",
         "cs146s": "온라인 강의",
@@ -218,7 +218,7 @@ const translations: any = {
         "paste": "붙여넣기"
     },
     "ja": {
-        "title": "Claude Code Easy Suite",
+        "title": "AICoder",
         "about": "バージョン情報",
         "manual": "マニュアル",
         "cs146s": "オンライン講座",
@@ -263,7 +263,7 @@ const translations: any = {
         "paste": "貼り付け"
     },
     "de": {
-        "title": "Claude Code Easy Suite",
+        "title": "AICoder",
         "about": "Über",
         "manual": "Handbuch",
         "cs146s": "Online-Kurs",
@@ -308,7 +308,7 @@ const translations: any = {
         "paste": "Einfügen"
     },
     "fr": {
-        "title": "Claude Code Easy Suite",
+        "title": "AICoder",
         "about": "À propos",
         "manual": "Manuel",
         "cs146s": "Cours en ligne",
@@ -728,7 +728,7 @@ function App() {
                 textAlign: 'center',
                 boxSizing: 'border-box'
             }}>
-                <h2 style={{color: '#fb923c', marginBottom: '20px'}}>Claude Code Easy Suite</h2>
+                <h2 style={{color: '#fb923c', marginBottom: '20px'}}>AICoder</h2>
                 <div style={{width: '100%', height: '4px', backgroundColor: '#ffedd5', borderRadius: '2px', overflow: 'hidden', marginBottom: '15px'}}>
                     <div style={{
                         width: '50%', 
@@ -1315,7 +1315,7 @@ function App() {
                     <div className="modal-content" onClick={e => e.stopPropagation()} style={{textAlign: 'center'}}>
                         <button className="modal-close" onClick={() => setShowAbout(false)}>&times;</button>
                         <img src={appIcon} alt="App Icon" style={{width: '64px', height: '64px', marginBottom: '15px', borderRadius: '12px', boxShadow: '0 4px 12px rgba(249, 115, 22, 0.2)'}} />
-                        <h3 style={{marginTop: 0, color: '#fb923c'}}>Claude Code Easy Suite</h3>
+                        <h3 style={{marginTop: 0, color: '#fb923c'}}>AICoder</h3>
                         <p style={{color: '#6b7280', margin: '5px 0'}}>Version V{APP_VERSION} Beta (Build {buildNumber})</p>
                         <p style={{color: '#6b7280', margin: '5px 0'}}>Author: Dr. Daniel</p>
                         <div style={{display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '20px'}}>
