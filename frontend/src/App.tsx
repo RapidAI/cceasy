@@ -871,13 +871,13 @@ function App() {
             <div className="main-container">
                 <div className="top-header" style={{'--wails-draggable': 'drag'} as any}>
                     <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%'}}>
-                        <h2 style={{margin: 0, fontSize: '1.1rem', color: '#fb923c', fontWeight: 'bold'}}>
+                        <h2 style={{margin: 0, fontSize: '1.1rem', color: '#fb923c', fontWeight: 'bold', marginLeft: '20px'}}>
                             {navTab === 'claude' ? 'Claude Code' : 
                              navTab === 'gemini' ? 'Gemini CLI' : 
                              navTab === 'codex' ? 'OpenAI Codex' : 
                              navTab === 'projects' ? 'Project Management' : 'Global Settings'}
                         </h2>
-                        <div style={{display: 'flex', gap: '10px', '--wails-draggable': 'no-drag'} as any}>
+                        <div style={{display: 'flex', gap: '10px', '--wails-draggable': 'no-drag', marginRight: '5px'} as any}>
                             <button onClick={WindowHide} className="btn-hide">
                                 {t("hide")}
                             </button>
