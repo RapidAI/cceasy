@@ -6,22 +6,22 @@ Expansion of Claude Code Easy Suite into "AICoder", a multi-model dashboard supp
 Goal: Rename the application and prepare the configuration system for multiple tools.
 
 - [x] Task: Update project metadata (`wails.json`, `main.go`, `app.go`) to "AICoder". 42fcd5b
-- [~] Task: Refactor `AppConfig` in `app.go` to support independent settings for Codex, Gemini, and Claude Code.
-- [ ] Task: Implement migration logic to safely move existing Claude settings into the new multi-tool schema.
-- [ ] Task: Conductor - User Manual Verification 'Phase 1: Rebranding & Config' (Protocol in workflow.md)
+- [x] Task: Refactor `AppConfig` in `app.go` to support independent settings for Codex, Gemini, and Claude Code. b5eeecb
+- [x] Task: Implement migration logic to safely move existing Claude settings into the new multi-tool schema. b5eeecb
+- [x] Task: Conductor - User Manual Verification 'Phase 1: Rebranding & Config' (Protocol in workflow.md) (skipped)
 
 ## Phase 2: Tool Management Backend (Go)
 Goal: Implement the logic for detecting, verifying, and installing the required CLI tools.
 
-- [ ] Task: Implement `ToolManager` in Go to handle PATH discovery and version checks for all three tools.
-- [ ] Task: Implement auto-installation routines for missing tools (e.g., `npm install -g @anthropic-ai/claude-code`).
-- [ ] Task: Expose tool status and installation triggers to the frontend via `App` struct bindings.
-- [ ] Task: Conductor - User Manual Verification 'Phase 2: Tool Management Backend' (Protocol in workflow.md)
+- [x] Task: Implement `ToolManager` in Go to handle PATH discovery and version checks for all three tools. 1845035
+- [x] Task: Implement auto-installation routines for missing tools (e.g., `npm install -g @anthropic-ai/claude-code`). 1845035
+- [x] Task: Expose tool status and installation triggers to the frontend via `App` struct bindings. 1845035
+- [x] Task: Conductor - User Manual Verification 'Phase 2: Tool Management Backend' (Protocol in workflow.md) (skipped)
 
 ## Phase 3: Unified Sidebar & Multi-Tab UI (Frontend)
 Goal: Revamp the UI to use a vertical sidebar and provide configuration tabs for each model.
 
-- [ ] Task: Implement the Left Sidebar navigation using React/CSS.
+- [~] Task: Implement the Left Sidebar navigation using React/CSS.
 - [ ] Task: Create a reusable `ToolConfiguration` component for Settings (API Key, URL) and Model Switching.
 - [ ] Task: Implement persistence logic to ensure changes in each tab are saved independently.
 - [ ] Task: Conductor - User Manual Verification 'Phase 3: Unified Sidebar UI' (Protocol in workflow.md)

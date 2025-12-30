@@ -45,7 +45,7 @@ func (tm *ToolManager) GetToolStatus(name string) ToolStatus {
 }
 
 func (tm *ToolManager) getToolVersion(name, path string) (string, error) {
-	var cmd *exec.Command
+	var cmd *exec.Cmd
 	switch name {
 	case "claude":
 		cmd = exec.Command(path, "--version")
@@ -80,7 +80,7 @@ func (tm *ToolManager) getToolVersion(name, path string) (string, error) {
 }
 
 func (tm *ToolManager) InstallTool(name string) error {
-	var cmd *exec.Command
+	var cmd *exec.Cmd
 	switch name {
 	case "claude":
 		cmd = exec.Command("npm", "install", "-g", "@anthropic-ai/claude-code")

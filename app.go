@@ -170,7 +170,8 @@ func (a *App) GetCurrentProjectPath() string {
 		return config.Projects[0].Path
 	}
 	
-	return config.ProjectDir // Fallback
+	home, _ := os.UserHomeDir()
+	return home // Fallback
 }
 
 func (a *App) syncToClaudeSettings(config AppConfig) error {

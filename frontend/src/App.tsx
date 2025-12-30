@@ -356,6 +356,8 @@ const translations: any = {
 
 function App() {
     const [config, setConfig] = useState<main.AppConfig | null>(null);
+    const [navTab, setNavTab] = useState<string>("claude");
+    const [activeTool, setActiveTool] = useState<string>("claude");
     const [status, setStatus] = useState("");
     const [activeTab, setActiveTab] = useState(0);
     const [isLoading, setIsLoading] = useState(true);
@@ -432,14 +434,21 @@ function App() {
         // Config Logic
         LoadConfig().then((cfg) => {
             setConfig(cfg);
-            if (cfg && cfg.models) {
-                const idx = cfg.models.findIndex(m => m.model_name === cfg.current_model);
-                if (idx !== -1) setActiveTab(idx);
+            if (cfg) {
+                const tool = cfg.active_tool || "claude";
+                setActiveTool(tool);
+                setNavTab(tool);
+                
+                const toolCfg = (cfg as any)[tool];
+                if (toolCfg && toolCfg.models) {
+                    const idx = toolCfg.models.findIndex((m: any) => m.model_name === toolCfg.current_model);
+                    if (idx !== -1) setActiveTab(idx);
 
-                // Check if any model has an API key configured
-                const hasAnyApiKey = cfg.models.some(m => m.api_key && m.api_key.trim() !== "");
-                if (!hasAnyApiKey) {
-                    setShowModelSettings(true);
+                    // Check if any model has an API key configured for the active tool
+                    const hasAnyApiKey = toolCfg.models.some((m: any) => m.api_key && m.api_key.trim() !== "");
+                    if (!hasAnyApiKey) {
+                        setShowModelSettings(true);
+                    }
                 }
             }
         }).catch(err => {
@@ -473,35 +482,49 @@ function App() {
         SetLanguage(e.target.value);
     };
 
+    const switchTool = (tool: string) => {
+        setNavTab(tool);
+        if (tool === "projects" || tool === "settings") return;
+        
+        setActiveTool(tool);
+        setActiveTab(0); // Reset model tab when switching tools
+        if (config) {
+            const newConfig = new main.AppConfig({...config, active_tool: tool});
+            setConfig(newConfig);
+            SaveConfig(newConfig);
+        }
+    };
+
     const t = (key: string) => {
         return translations[lang][key] || translations["en"][key] || key;
     };
 
     const handleApiKeyChange = (newKey: string) => {
         if (!config) return;
-        const newModels = [...config.models];
-        newModels[activeTab] = { ...newModels[activeTab], api_key: newKey };
-        setConfig(new main.AppConfig({...config, models: newModels}));
+        const toolCfg = JSON.parse(JSON.stringify((config as any)[activeTool]));
+        toolCfg.models[activeTab].api_key = newKey;
+        const newConfig = new main.AppConfig({...config, [activeTool]: toolCfg});
+        setConfig(newConfig);
     };
 
     const handleModelUrlChange = (newUrl: string) => {
         if (!config) return;
-        const newModels = [...config.models];
-        newModels[activeTab] = { ...newModels[activeTab], model_url: newUrl };
-        setConfig(new main.AppConfig({...config, models: newModels}));
+        const toolCfg = JSON.parse(JSON.stringify((config as any)[activeTool]));
+        toolCfg.models[activeTab].model_url = newUrl;
+        const newConfig = new main.AppConfig({...config, [activeTool]: toolCfg});
+        setConfig(newConfig);
     };
 
     const handleModelNameChange = (newName: string) => {
         if (!config) return;
-        const newModels = [...config.models];
-        // If we rename the currently active model, we need to update current_model ID too
-        const isRenamingActive = config.current_model === newModels[activeTab].model_name;
-        newModels[activeTab] = { ...newModels[activeTab], model_name: newName };
+        const toolCfg = JSON.parse(JSON.stringify((config as any)[activeTool]));
+        const isRenamingActive = toolCfg.current_model === toolCfg.models[activeTab].model_name;
+        toolCfg.models[activeTab].model_name = newName;
+        if (isRenamingActive) toolCfg.current_model = newName;
         
         const newConfig = new main.AppConfig({
             ...config, 
-            models: newModels,
-            current_model: isRenamingActive ? newName : config.current_model
+            [activeTool]: toolCfg
         });
         setConfig(newConfig);
     };
@@ -509,12 +532,11 @@ function App() {
     const handleModelSwitch = (modelName: string) => {
         if (!config) return;
         
-        // Find the model to verify if it has an API key
-        const targetModel = config.models.find(m => m.model_name === modelName);
+        const toolCfg = (config as any)[activeTool];
+        const targetModel = toolCfg.models.find((m: any) => m.model_name === modelName);
         if (!targetModel || !targetModel.api_key || targetModel.api_key.trim() === "") {
             setStatus("Please configure API Key first!");
-            // Set active tab to this model so the user lands on the correct settings page
-            const idx = config.models.findIndex(m => m.model_name === modelName);
+            const idx = toolCfg.models.findIndex((m: any) => m.model_name === modelName);
             if (idx !== -1) setActiveTab(idx);
             
             setShowModelSettings(true);
@@ -522,7 +544,8 @@ function App() {
             return;
         }
 
-        const newConfig = new main.AppConfig({...config, current_model: modelName});
+        const newToolCfg = {...toolCfg, current_model: modelName};
+        const newConfig = new main.AppConfig({...config, [activeTool]: newToolCfg});
         setConfig(newConfig);
         setStatus(t("syncing"));
         SaveConfig(newConfig).then(() => {
@@ -810,13 +833,14 @@ function App() {
 
     if (!config) return <div className="main-content" style={{display:'flex', justifyContent:'center', alignItems:'center'}}>{t("loadingConfig")}</div>;
 
-    const currentModelConfig = config.models[activeTab];
+    const toolCfg = (config as any)[activeTool] || { models: [], current_model: "" };
+    const currentModelConfig = toolCfg.models[activeTab] || { model_name: "", is_custom: false, api_key: "", model_url: "" };
     const currentProject = getCurrentProject();
     const visibleProjects = config.projects ? config.projects.slice(projectOffset, projectOffset + 5) : [];
 
     return (
         <div id="App">
-            {/* Drag Handle */}
+            {/* Drag Handle for the whole window area if needed, but sidebar/header are better */}
             <div style={{
                 height: '30px', 
                 width: '100%', 
@@ -827,518 +851,312 @@ function App() {
                 '--wails-draggable': 'drag'
             } as any}></div>
 
-            <div className="header">
-                 <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-                    <div style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
-                        <div style={{position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
-                            <div style={{position: 'absolute', width: '32px', height: '32px', background: 'rgba(249, 115, 22, 0.4)', filter: 'blur(8px)', borderRadius: '50%'}}></div>
-                            <img src={appIcon} alt="App Icon" style={{width: '28px', height: '28px', position: 'relative', borderRadius: '6px'}} />
-                        </div>
-                        <h2 style={{
-                            margin: 0, 
-                            fontSize: '1.25rem',
-                            fontWeight: 'bold',
-                            background: 'linear-gradient(135deg, #FB923C 0%, #F97316 50%, #EA580C 100%)', 
-                            WebkitBackgroundClip: 'text', 
-                            WebkitTextFillColor: 'transparent',
-                            filter: 'drop-shadow(0 2px 4px rgba(249, 115, 22, 0.15))'
-                        }}>{t("title")}</h2>
-                    </div>
-                    <div style={{display: 'flex', gap: '10px', alignItems: 'center', '--wails-draggable': 'no-drag', zIndex: 1000, position: 'relative'} as any}>
-                        <select
-                            value={lang}
-                            onChange={handleLangChange}
-                            className="btn-link"
-                            style={{
-                                appearance: 'none', 
-                                border: 'none', 
-                                background: 'transparent', 
-                                cursor: 'pointer',
-                                outline: 'none'
-                            }}
-                        >
-                            <option value="en">English</option>
-                            <option value="zh-Hans">简体中文</option>
-                            <option value="zh-Hant">繁體中文</option>
-                            <option value="ko">한국어</option>
-                            <option value="ja">日本語</option>
-                            <option value="de">Deutsch</option>
-                            <option value="fr">Français</option>
-                        </select>
-                        <div style={{
-                            display: 'grid', 
-                            gridTemplateColumns: 'repeat(3, auto)', 
-                            gap: '8px 10px', 
-                            alignItems: 'center',
-                            justifyItems: 'end'
-                        }}>
-                            <button className="btn-link" onClick={() => setShowAbout(true)}>{t("about")}</button>
-                            <button className="btn-link" onClick={handleOpenManual}>{t("manual")}</button>
-                            <button onClick={WindowHide} className="btn-hide" style={{margin: 0, height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
-                                {t("hide")}
-                            </button>
-                            
-                            <button 
-                                className="btn-link" 
-                                onClick={() => {
-                                    setStatus(t("checkUpdate") + "...");
-                                    CheckUpdate(APP_VERSION).then((result: any) => {
-                                        setUpdateResult(result);
-                                        setShowUpdateModal(true);
-                                        setStatus("");
-                                    }).catch((err: any) => {
-                                        setStatus("Error: " + err);
-                                    });
-                                }}
-                            >
-                                {t("checkUpdate")}
-                            </button>
-                            <button 
-                                className="btn-link" 
-                                onClick={() => {
-                                    setRecoverStatus("idle");
-                                    setShowRecoverModal(true);
-                                }}
-                            >
-                                {t("recoverCC")}
-                            </button>
-                            <button className="btn-link" onClick={() => BrowserOpenURL("https://github.com/BIT-ENGD/cs146s_cn")}>{t("cs146s")}</button>
-                        </div>
-                    </div>
-                 </div>
+            <div className="sidebar">
+                <div style={{padding: '0 20px 20px 20px', display: 'flex', alignItems: 'center', gap: '10px'}}>
+                    <img src={appIcon} alt="Logo" style={{width: '24px', height: '24px'}} />
+                    <span style={{fontWeight: 'bold', fontSize: '1.1rem', color: '#fb923c'}}>AICoder</span>
+                </div>
+                
+                <div className={`sidebar-item ${navTab === 'claude' ? 'active' : ''}`} onClick={() => switchTool('claude')}>
+                    <span>🤖 Claude</span>
+                </div>
+                <div className={`sidebar-item ${navTab === 'gemini' ? 'active' : ''}`} onClick={() => switchTool('gemini')}>
+                    <span>♊ Gemini</span>
+                </div>
+                <div className={`sidebar-item ${navTab === 'codex' ? 'active' : ''}`} onClick={() => switchTool('codex')}>
+                    <span>💻 Codex</span>
+                </div>
+                <div className={`sidebar-item ${navTab === 'projects' ? 'active' : ''}`} onClick={() => setNavTab('projects')}>
+                    <span>📁 Projects</span>
+                </div>
+
+                <div className="sidebar-spacer"></div>
+
+                <div className={`sidebar-item ${navTab === 'settings' ? 'active' : ''}`} onClick={() => setNavTab('settings')}>
+                    <span>⚙️ Settings</span>
+                </div>
             </div>
 
-            <div className="main-content" style={{overflowY: currentModelConfig.is_custom ? 'auto' : 'hidden'}}>
-                <div style={{
-                    backgroundColor: '#fffbf5', 
-                    margin: '0 10px 15px 10px', 
-                    padding: '10px 10px 15px 10px', 
-                    borderRadius: '12px',
-                    border: '1px solid rgba(251, 146, 60, 0.1)'
-                }}>
-                    <div style={{position: 'relative', display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: '5px'}}>
-                        <h3 style={{fontSize: '1.1rem', color: '#fb923c', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '5px', marginTop: '-5px', textAlign: 'center'}}>{t("activeModel")}</h3>
-                        <button 
-                            className="btn-link" 
-                            onClick={() => setShowModelSettings(true)}
-                            style={{
-                                position: 'absolute', 
-                                right: '10px', 
-                                borderColor: '#fb923c', 
-                                color: '#fb923c',
-                                fontSize: '0.8rem'
-                            }}
-                        >
-                            ⚙️ {t("modelSettings")}
-                        </button>
-                    </div>
-                    <div className="model-switcher" style={{justifyContent: 'center', padding: '0 10px', marginBottom: 0}}>
-                        {config.models.map((model) => (
-                            <button
-                                key={model.model_name}
-                                className={`model-btn ${config.current_model === model.model_name ? 'selected' : ''}`}
-                                onClick={() => handleModelSwitch(model.model_name)}
-                                style={{
-                                    textAlign: 'center',
-                                    borderBottom: (model.api_key && model.api_key.trim() !== "") ? '3px solid #fb923c' : '1px solid var(--border-color)'
-                                }}
-                            >
-                                {model.model_name}
+            <div className="main-container">
+                <div className="header">
+                    <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                        <h2 style={{margin: 0, fontSize: '1.1rem', color: '#374151'}}>
+                            {navTab === 'claude' ? 'Claude Code' : 
+                             navTab === 'gemini' ? 'Gemini CLI' : 
+                             navTab === 'codex' ? 'OpenAI Codex' : 
+                             navTab === 'projects' ? 'Project Management' : 'Global Settings'}
+                        </h2>
+                        <div style={{display: 'flex', gap: '10px', '--wails-draggable': 'no-drag'} as any}>
+                            <button onClick={WindowHide} className="btn-hide">
+                                {t("hide")}
                             </button>
-                        ))}
+                            <button onClick={Quit} className="btn-hide" style={{borderColor: '#ef4444', color: '#ef4444'}}>
+                                ✕
+                            </button>
+                        </div>
                     </div>
                 </div>
 
-                <div style={{
-                    backgroundColor: '#fffbf5',
-                    margin: '0px 10px 0px 10px',
-                    padding: '15px 15px 10px 15px',
-                    borderRadius: '12px',
-                    border: '1px solid rgba(251, 146, 60, 0.1)',
-                    position: 'relative'
-                }}>
-                    <div style={{display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: '15px', position: 'relative'}}>
-                        <h3 style={{fontSize: '1.1rem', color: '#fb923c', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0, textAlign: 'center'}}>Vibe Coding</h3>
-                        <button 
-                            className="btn-link" 
-                            onClick={() => setShowProjectManager(true)}
-                            style={{
-                                position: 'absolute', 
-                                right: '0', 
-                                borderColor: '#fb923c', 
-                                color: '#fb923c',
-                                fontSize: '0.8rem'
-                            }}
-                        >
-                            📂 {t("manageProjects")}
-                        </button>
-                    </div>
-
-                    <div className="tabs" style={{marginBottom: '15px', borderBottom: '1px solid var(--border-color)', justifyContent: 'flex-start', overflowX: 'auto'}}>
-                        {projectOffset > 0 && (
-                            <button 
-                                className="tab-button" 
-                                onClick={() => setProjectOffset(prev => Math.max(0, prev - 1))}
-                                title="Previous Projects"
-                                style={{padding: '5px 10px'}}
-                            >
-                                ◀
-                            </button>
-                        )}
-                        {visibleProjects.map((proj: any) => (
-                            <button
-                                key={proj.id}
-                                className={`tab-button ${config.current_project === proj.id ? 'active' : ''}`}
-                                onClick={() => handleProjectSwitch(proj.id)}
-                            >
-                                {proj.name}
-                            </button>
-                        ))}
-                        {config.projects && config.projects.length > projectOffset + 5 && (
-                            <button 
-                                className="tab-button" 
-                                onClick={() => setProjectOffset(prev => (prev + 5 < config.projects.length ? prev + 1 : prev))}
-                                title="Next Projects"
-                                style={{padding: '5px 10px'}}
-                            >
-                                ▶
-                            </button>
-                        )}
-                    </div>
-
-                    {currentProject && (
+                <div className="main-content" style={{overflowY: 'auto', paddingBottom: '20px'}}>
+                    {(navTab === 'claude' || navTab === 'gemini' || navTab === 'codex') && (
                         <>
-                            <div className="form-group" style={{display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px'}}>
-                                <label className="form-label" style={{marginBottom: 0, whiteSpace: 'nowrap', textAlign: 'left', minWidth: '110px'}}>{t("projectDir")}:</label>
-                                <div style={{display: 'flex', gap: '10px', flexGrow: 1}}>
-                                    <input 
-                                        type="text" 
-                                        className="form-input"
-                                        value={currentProject.path} 
-                                        readOnly
-                                        style={{backgroundColor: '#f9fafb', color: '#6b7280', flexGrow: 1, textAlign: 'left', padding: '10px'}}
-                                    />
-                                    <button className="btn-primary" style={{padding: '10px 15px', whiteSpace: 'nowrap'}} onClick={handleSelectDir}>{t("change")}</button>
+                            {/* Tool Content (Models, Settings, Launch) */}
+                            <div style={{
+                                backgroundColor: '#fffbf5', 
+                                padding: '15px', 
+                                borderRadius: '12px',
+                                border: '1px solid rgba(251, 146, 60, 0.1)',
+                                marginBottom: '15px'
+                            }}>
+                                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px'}}>
+                                    <h3 style={{fontSize: '0.9rem', color: '#fb923c', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0}}>Models</h3>
+                                    <button 
+                                        className="btn-link" 
+                                        onClick={() => setShowModelSettings(!showModelSettings)}
+                                        style={{borderColor: '#fb923c', color: '#fb923c'}}
+                                    >
+                                        {showModelSettings ? 'Hide Config' : 'Edit Config'}
+                                    </button>
+                                </div>
+                                <div className="model-switcher" style={{flexWrap: 'wrap'}}>
+                                    {toolCfg.models.map((model: any) => (
+                                        <button
+                                            key={model.model_name}
+                                            className={`model-btn ${toolCfg.current_model === model.model_name ? 'selected' : ''}`}
+                                            onClick={() => handleModelSwitch(model.model_name)}
+                                            style={{
+                                                minWidth: '120px',
+                                                borderBottom: (model.api_key && model.api_key.trim() !== "") ? '3px solid #fb923c' : '1px solid var(--border-color)'
+                                            }}
+                                        >
+                                            {model.model_name}
+                                        </button>
+                                    ))}
                                 </div>
                             </div>
 
-                            <div style={{marginBottom: '10px'}}>
-                                <label className="form-label" style={{display:'flex', alignItems:'center', cursor:'pointer'}}>
-                                    <input 
-                                        type="checkbox" 
-                                        checked={currentProject.yolo_mode}
-                                        onChange={(e) => handleYoloChange(e.target.checked)}
-                                        style={{marginRight: '8px', transform: 'scale(1.2)'}}
-                                    />
-                                    <span style={{fontWeight: 600}}>{t("yoloMode")}</span> 
-                                    <span style={{marginLeft:'8px', color:'#ef4444', fontSize:'0.85em'}}>{t("dangerouslySkip")}</span>
-                                </label>
-                            </div>
+                            {showModelSettings && (
+                                <div style={{
+                                    backgroundColor: '#fff', 
+                                    padding: '15px', 
+                                    borderRadius: '12px',
+                                    border: '1px solid var(--border-color)',
+                                    marginBottom: '15px'
+                                }}>
+                                    <div className="tabs" style={{marginBottom: '15px'}}>
+                                        {toolCfg.models.map((model: any, index: number) => (
+                                            <button
+                                                key={index}
+                                                className={`tab-button ${activeTab === index ? 'active' : ''}`}
+                                                onClick={() => setActiveTab(index)}
+                                            >
+                                                {model.model_name}
+                                            </button>
+                                        ))}
+                                    </div>
 
-                            <button className="btn-launch" onClick={() => {
-                                if (!currentProject.path || currentProject.path.trim() === "") {
-                                    setStatus(t("projectDirError"));
-                                    setTimeout(() => setStatus(""), 2000);
-                                    return;
-                                }
-                                LaunchClaude(currentProject.yolo_mode, currentProject.path || "")
+                                    <div className="form-group">
+                                        <label className="form-label">{t("apiKey")}</label>
+                                        <div style={{display: 'flex', gap: '10px'}}>
+                                            <input 
+                                                type="password" 
+                                                className="form-input"
+                                                value={currentModelConfig.api_key} 
+                                                onChange={(e) => handleApiKeyChange(e.target.value)}
+                                                placeholder={t("enterKey")}
+                                            />
+                                            <button className="btn-subscribe" onClick={async () => {
+                                                const text = await ClipboardGetText();
+                                                if (text) handleApiKeyChange(text);
+                                            }}>📋</button>
+                                        </div>
+                                    </div>
+
+                                    <div className="form-group">
+                                        <label className="form-label">{t("apiEndpoint")}</label>
+                                        <input 
+                                            type="text" 
+                                            className="form-input"
+                                            value={currentModelConfig.model_url} 
+                                            onChange={(e) => handleModelUrlChange(e.target.value)}
+                                            placeholder="https://api.example.com/v1"
+                                        />
+                                    </div>
+
+                                    <button className="btn-primary" style={{width: '100%'}} onClick={save}>{t("saveChanges")}</button>
+                                </div>
+                            )}
+
+                            <div style={{
+                                backgroundColor: '#fffbf5',
+                                padding: '15px',
+                                borderRadius: '12px',
+                                border: '1px solid rgba(251, 146, 60, 0.1)'
                             }}>
-                                {t("launchBtn")}
-                            </button>
-                            <div className="status-message" style={{marginTop: '5px', minHeight: '20px'}}>
-                                <span key={status} style={{color: (status.includes("Error") || status.includes("！") || status.includes("!") || status.includes("first")) ? '#ef4444' : '#10b981'}}>{status}</span>
+                                <h3 style={{fontSize: '0.9rem', color: '#fb923c', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '15px', marginTop: 0}}>Execution</h3>
+                                
+                                <div className="tabs" style={{marginBottom: '10px', borderBottom: 'none'}}>
+                                    {config.projects.map((proj: any) => (
+                                        <button
+                                            key={proj.id}
+                                            className={`tab-button ${config.current_project === proj.id ? 'active' : ''}`}
+                                            onClick={() => handleProjectSwitch(proj.id)}
+                                            style={{borderRadius: '4px', marginRight: '5px', border: '1px solid var(--border-color)'}}
+                                        >
+                                            {proj.name}
+                                        </button>
+                                    ))}
+                                </div>
+
+                                {currentProject && (
+                                    <>
+                                        <div style={{fontSize: '0.8rem', color: '#6b7280', marginBottom: '10px', overflow: 'hidden', textOverflow: 'ellipsis'}}>
+                                            📍 {currentProject.path}
+                                        </div>
+                                        <div style={{marginBottom: '15px'}}>
+                                            <label style={{display:'flex', alignItems:'center', cursor:'pointer', fontSize: '0.85rem'}}>
+                                                <input 
+                                                    type="checkbox" 
+                                                    checked={currentProject.yolo_mode}
+                                                    onChange={(e) => handleYoloChange(e.target.checked)}
+                                                    style={{marginRight: '8px'}}
+                                                />
+                                                <span>Yolo Mode (Skip permissions)</span>
+                                            </label>
+                                        </div>
+                                        <button className="btn-launch" onClick={() => LaunchClaude(currentProject.yolo_mode, currentProject.path || "")}>
+                                            Launch {navTab === 'claude' ? 'Claude' : navTab === 'gemini' ? 'Gemini' : 'Codex'}
+                                        </button>
+                                    </>
+                                )}
                             </div>
                         </>
                     )}
-                </div>
-                
-                                        </div>
+
+                    {navTab === 'projects' && (
+                        <div style={{padding: '10px'}}>
+                             <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px'}}>
+                                <h3 style={{margin: 0}}>{t("projectManagement")}</h3>
+                                <button className="btn-primary" onClick={handleAddTempProject}>{t("addNewProject")}</button>
+                            </div>
                             
-                                        {/* Model Settings Modal */}
-                                    {showModelSettings && (
-            
-                                        <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setShowModelSettings(false); }}>
-            
-                                            <div className="modal-content" onClick={e => e.stopPropagation()} style={{width: '600px', textAlign: 'left'}}>
-            
-                                                <button className="modal-close" onClick={() => setShowModelSettings(false)}>&times;</button>
-            
-                                                
-            
-                                                <div style={{padding: '0 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px'}}>
-                            <h3 style={{fontSize: '1.1rem', color: '#fb923c', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0}}>{t("modelSettings")}</h3>
-                            <div style={{display: 'flex', alignItems: 'center'}}>
-                                <div className="status-message" style={{margin: '0 15px 0 0', minHeight: 'auto'}}>
-                                    <span key={status} style={{color: status.includes("Error") ? 'red' : 'green'}}>{status}</span>
-                                </div>
-                                <button className="btn-primary" style={{padding: '5px 15px', marginRight: '30px'}} onClick={save}>{t("saveChanges")}</button>
+                            <div style={{display: 'flex', flexDirection: 'column', gap: '15px'}}>
+                                {config.projects.map((proj: any) => (
+                                    <div key={proj.id} style={{
+                                        padding: '15px', 
+                                        backgroundColor: '#fff', 
+                                        borderRadius: '8px', 
+                                        border: '1px solid var(--border-color)',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        gap: '10px'
+                                    }}>
+                                        <div style={{display: 'flex', justifyContent: 'space-between'}}>
+                                            <input 
+                                                type="text" 
+                                                className="form-input" 
+                                                value={proj.name}
+                                                onChange={(e) => {
+                                                    const newList = config.projects.map((p: any) => p.id === proj.id ? {...p, name: e.target.value} : p);
+                                                    setConfig(new main.AppConfig({...config, projects: newList}));
+                                                }}
+                                                style={{fontWeight: 'bold', border: 'none', padding: 0, fontSize: '1rem'}}
+                                            />
+                                            <button 
+                                                style={{color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer'}}
+                                                onClick={() => {
+                                                    if (config.projects.length > 1) {
+                                                        const newList = config.projects.filter((p: any) => p.id !== proj.id);
+                                                        const newConfig = new main.AppConfig({...config, projects: newList});
+                                                        if (config.current_project === proj.id) newConfig.current_project = newList[0].id;
+                                                        setConfig(newConfig);
+                                                        SaveConfig(newConfig);
+                                                    }
+                                                }}
+                                            >
+                                                {t("delete")}
+                                            </button>
+                                        </div>
+                                        <div style={{display: 'flex', gap: '10px', alignItems: 'center'}}>
+                                            <div style={{flex: 1, fontSize: '0.85rem', color: '#6b7280', backgroundColor: '#f9fafb', padding: '8px', borderRadius: '4px', overflow: 'hidden', textOverflow: 'ellipsis'}}>
+                                                {proj.path}
+                                            </div>
+                                            <button className="btn-link" onClick={() => {
+                                                SelectProjectDir().then(dir => {
+                                                    if (dir) {
+                                                        const newList = config.projects.map((p: any) => p.id === proj.id ? {...p, path: dir} : p);
+                                                        const newConfig = new main.AppConfig({...config, projects: newList});
+                                                        setConfig(newConfig);
+                                                        SaveConfig(newConfig);
+                                                    }
+                                                });
+                                            }}>{t("change")}</button>
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
                         </div>
+                    )}
 
-                        <div className="tabs" style={{padding: '0 10px'}}>
-                            {config.models.map((model, index) => (
-                                <button
-                                    key={model.is_custom ? "custom-tab" : model.model_name}
-                                    className={`tab-button ${activeTab === index ? 'active' : ''}`}
-                                    onClick={() => setActiveTab(index)}
-                                >
-                                    {model.is_custom ? t("custom") || "Custom" : model.model_name}
+                    {navTab === 'settings' && (
+                        <div style={{padding: '10px'}}>
+                            <h3>Global Settings</h3>
+                            <div className="form-group">
+                                <label className="form-label">Language</label>
+                                <select value={lang} onChange={handleLangChange} className="form-input">
+                                    <option value="en">English</option>
+                                    <option value="zh-Hans">简体中文</option>
+                                    <option value="zh-Hant">繁體中文</option>
+                                    <option value="ko">한국어</option>
+                                    <option value="ja">日本語</option>
+                                    <option value="de">Deutsch</option>
+                                    <option value="fr">Français</option>
+                                </select>
+                            </div>
+                            
+                            <div style={{marginTop: '30px', borderTop: '1px solid var(--border-color)', paddingTop: '20px'}}>
+                                <button className="btn-link" style={{marginBottom: '10px'}} onClick={() => setShowAbout(true)}>{t("about")}</button>
+                                <button className="btn-link" style={{marginBottom: '10px', color: '#ef4444', borderColor: '#ef4444'}} onClick={() => setShowRecoverModal(true)}>
+                                    {t("recoverCC")}
                                 </button>
-                            ))}
+                            </div>
                         </div>
+                    )}
+                </div>
 
-                        <div style={{padding: '0 10px'}}>
-                            {currentModelConfig.is_custom && (
-                            <div className="form-group">
-                                <label className="form-label">{t("modelName")}</label>
-                                <input 
-                                    type="text" 
-                                    className="form-input"
-                                    value={currentModelConfig.model_name} 
-                                    onChange={(e) => handleModelNameChange(e.target.value)}
-                                    placeholder="e.g. claude-3-5-sonnet-20241022"
-                                />
-                            </div>
-                            )}
+                <div className="status-message" style={{padding: '0 20px 10px 20px', minHeight: '30px'}}>
+                    <span key={status} style={{color: (status.includes("Error") || status.includes("!") || status.includes("first")) ? '#ef4444' : '#10b981'}}>
+                        {status}
+                    </span>
+                </div>
+            </div>
 
-                            <div className="form-group">
-                                <label className="form-label">{t("apiKey")}</label>
-                                <div style={{display: 'flex', gap: '10px'}}>
-                                    <input 
-                                        type="password" 
-                                        className="form-input"
-                                        value={currentModelConfig.api_key} 
-                                        onChange={(e) => handleApiKeyChange(e.target.value)}
-                                        placeholder={`${t("enterKey")} (${currentModelConfig.model_name})`}
-                                    />
-                                    <button 
-                                        className="btn-subscribe" 
-                                        onClick={async () => {
-                                            const text = await ClipboardGetText();
-                                            if (text) handleApiKeyChange(text);
-                                        }}
-                                        title={t("paste")}
-                                    >
-                                        📋
-                                    </button>
-                                    {!currentModelConfig.is_custom && (
-                                    <button 
-                                        className="btn-subscribe" 
-                                        onClick={() => handleOpenSubscribe(currentModelConfig.model_name)}
-                                    >
-                                        {t("getKey")}
-                                    </button>
-                                    )}
-                                </div>
-                            </div>
-
-                            {currentModelConfig.is_custom && (
-                            <div className="form-group">
-                                <label className="form-label">{t("apiEndpoint")}</label>
-                                <input 
-                                    type="text" 
-                                    className="form-input"
-                                    value={currentModelConfig.model_url} 
-                                    onChange={(e) => handleModelUrlChange(e.target.value)}
-                                    placeholder="https://api.example.com/v1"
-                                />
-                            </div>
-                            )}
-                        </div>
+            {/* Modals remain mostly the same but might need cleanup */}
+            {showAbout && (
+                <div className="modal-overlay" onClick={() => setShowAbout(false)}>
+                    <div className="modal-content" onClick={e => e.stopPropagation()}>
+                        <button className="modal-close" onClick={() => setShowAbout(false)}>&times;</button>
+                        <img src={appIcon} alt="Logo" style={{width: '64px', height: '64px', marginBottom: '15px'}} />
+                        <h3 style={{color: '#fb923c'}}>AICoder</h3>
+                        <p>Version {APP_VERSION}</p>
+                        <button className="btn-primary" onClick={() => BrowserOpenURL("https://github.com/RapidAI/cceasy")}>GitHub</button>
                     </div>
                 </div>
             )}
-
-            {/* Recover CC Modal */}
+            
             {showRecoverModal && (
                 <div className="modal-overlay">
-                    <div className="modal-content" onClick={e => e.stopPropagation()} style={{width: '500px', textAlign: 'left'}}>
-                        {recoverStatus !== "recovering" && (
-                            <button className="modal-close" onClick={() => setShowRecoverModal(false)}>&times;</button>
-                        )}
-                        <h3 style={{marginTop: 0, color: '#fb923c', marginBottom: '15px'}}>{t("recoverTitle")}</h3>
-                        
-                        {recoverStatus === "idle" && (
-                            <div style={{marginBottom: '20px', color: '#ef4444', border: '1px solid #fca5a5', padding: '10px', borderRadius: '6px', backgroundColor: '#fef2f2'}}>
-                                <p style={{margin: 0, fontWeight: 500}}>{t("recoverWarning")}</p>
-                            </div>
-                        )}
-
-                        {recoverStatus !== "idle" && (
-                            <div style={{
-                                width: '100%',
-                                height: '200px',
-                                backgroundColor: '#1e1e1e',
-                                color: '#e5e5e5',
-                                padding: '10px',
-                                borderRadius: '6px',
-                                fontFamily: 'monospace',
-                                fontSize: '0.85rem',
-                                overflowY: 'auto',
-                                marginBottom: '20px'
-                            }}>
-                                {recoverLogs.map((log, i) => (
-                                    <div key={i} style={{marginBottom: '2px'}}>{log}</div>
-                                ))}
-                                <div ref={recoverLogRef} />
-                            </div>
-                        )}
-
-                        <div style={{display: 'flex', justifyContent: 'flex-end', gap: '10px'}}>
-                            {recoverStatus === "idle" ? (
-                                <>
-                                    <button 
-                                        className="btn-primary" 
-                                        style={{backgroundColor: '#6b7280'}}
-                                        onClick={() => setShowRecoverModal(false)}
-                                    >
-                                        {t("close")}
-                                    </button>
-                                    <button 
-                                        className="btn-primary" 
-                                        style={{backgroundColor: '#ef4444'}}
-                                        onClick={handleStartRecover}
-                                    >
-                                        {t("startRecover")}
-                                    </button>
-                                </>
-                            ) : recoverStatus === "success" || recoverStatus === "error" ? (
-                                <button 
-                                    className="btn-primary" 
-                                    onClick={() => setShowRecoverModal(false)}
-                                >
-                                    {t("close")}
-                                </button>
-                            ) : null}
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Project Manager Modal */}
-            {showProjectManager && (
-                <div className="modal-overlay">
-                    <div className="modal-content" onClick={e => e.stopPropagation()} style={{width: '500px', textAlign: 'left'}}>
-                        <button className="modal-close" onClick={() => setShowProjectManager(false)}>&times;</button>
-                        <h3 style={{marginTop: 0, color: '#fb923c', marginBottom: '20px'}}>{t("projectManagement")}</h3>
-                        
-                        <div style={{maxHeight: '300px', overflowY: 'auto', marginBottom: '10px'}}>
-                            {tempProjects.map((proj: any) => (
-                                <div key={proj.id} style={{display: 'flex', alignItems: 'center', marginBottom: '10px', gap: '10px'}}>
-                                    <input 
-                                        type="text" 
-                                        className="form-input" 
-                                        value={proj.name}
-                                        onChange={(e) => handleRenameTempProject(proj.id, e.target.value)}
-                                        placeholder={t("projectName")}
-                                        style={{flex: 1}}
-                                    />
-                                    {tempProjects.length > 1 && (
-                                        <button 
-                                            className="btn-link" 
-                                            style={{color: '#ef4444', borderColor: '#ef4444', padding: '5px 10px', whiteSpace: 'nowrap'}}
-                                            onClick={() => handleDeleteTempProject(proj.id)}
-                                        >
-                                            {t("delete")}
-                                        </button>
-                                    )}
-                                </div>
-                            ))}
-                        </div>
-
-                        {managerStatus && (
-                            <div style={{color: '#ef4444', fontSize: '0.85rem', marginBottom: '15px', fontWeight: 500}}>
-                                {managerStatus}
-                            </div>
-                        )}
-
-                        <div style={{display: 'flex', flexDirection: 'column', gap: '10px'}}>
-                            <button className="btn-primary" style={{width: '100%', background: 'transparent', border: '1px dashed #fb923c', color: '#fb923c'}} onClick={handleAddTempProject}>
-                                {t("addNewProject")}
-                            </button>
-                            <button 
-                                className="btn-primary" 
-                                style={{width: '100%', opacity: managerStatus ? 0.5 : 1, cursor: managerStatus ? 'not-allowed' : 'pointer'}} 
-                                onClick={saveProjectManagerChanges}
-                                disabled={!!managerStatus}
-                            >
-                                {t("saveChanges")}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {showUpdateModal && (
-                <div className="modal-overlay" onClick={() => setShowUpdateModal(false)}>
-                    <div className="modal-content" onClick={e => e.stopPropagation()} style={{width: '320px'}}>
-                        <button className="modal-close" onClick={() => setShowUpdateModal(false)}>&times;</button>
-                        <h3 style={{marginTop: 0, color: '#fb923c'}}>{t("checkUpdate")}</h3>
-                        <div style={{margin: '20px 0', fontSize: '1rem'}}>
-                            {updateResult?.has_update ? (
-                                <div style={{color: '#10b981', fontWeight: 600}}>
-                                    {t("updateAvailable")} {updateResult.latest_version}
-                                </div>
-                            ) : (
-                                <div style={{color: '#6b7280'}}>
-                                    {t("noUpdate")}
-                                </div>
-                            )}
-                        </div>
-                        <div style={{display: 'flex', gap: '10px'}}>
-                            {updateResult?.has_update && (
-                                <button 
-                                    className="btn-primary" 
-                                    style={{flex: 1}}
-                                    onClick={() => {
-                                        BrowserOpenURL("https://github.com/RapidAI/cceasy/releases");
-                                        setShowUpdateModal(false);
-                                    }}
-                                >
-                                    {t("downloadNow")}
-                                </button>
-                            )}
-                            <button 
-                                className="btn-primary" 
-                                style={{flex: 1, backgroundColor: updateResult?.has_update ? '#6b7280' : '#fb923c'}}
-                                onClick={() => setShowUpdateModal(false)}
-                            >
-                                {updateResult?.has_update ? t("hide") : "OK"}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {showAbout && (
-                <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setShowAbout(false); }}>
-                    <div className="modal-content" onClick={e => e.stopPropagation()} style={{textAlign: 'center'}}>
-                        <button className="modal-close" onClick={() => setShowAbout(false)}>&times;</button>
-                        <img src={appIcon} alt="App Icon" style={{width: '64px', height: '64px', marginBottom: '15px', borderRadius: '12px', boxShadow: '0 4px 12px rgba(249, 115, 22, 0.2)'}} />
-                        <h3 style={{marginTop: 0, color: '#fb923c'}}>AICoder</h3>
-                        <p style={{color: '#6b7280', margin: '5px 0'}}>Version V{APP_VERSION} Beta (Build {buildNumber})</p>
-                        <p style={{color: '#6b7280', margin: '5px 0'}}>Author: Dr. Daniel</p>
-                        <div style={{display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '20px'}}>
-                            <button 
-                                className="btn-primary" 
-                                onClick={() => BrowserOpenURL("https://github.com/RapidAI/cceasy")}
-                                style={{display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px'}}
-                            >
-                                <span style={{fontSize: '1.2em'}}>GitHub</span>
-                            </button>
-                            <button 
-                                className="btn-primary" 
-                                onClick={() => BrowserOpenURL("https://github.com/RapidAI/cceasy/issues/new")}
-                                style={{display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', background: 'transparent', border: '1px solid #fb923c', color: '#fb923c'}}
-                            >
-                                {t("bugReport")}
-                            </button>
+                    <div className="modal-content" style={{width: '400px', textAlign: 'left'}}>
+                        <h3>{t("recoverTitle")}</h3>
+                        <p style={{color: '#ef4444'}}>{t("recoverWarning")}</p>
+                        <div style={{display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '20px'}}>
+                            <button className="btn-hide" onClick={() => setShowRecoverModal(false)}>{t("close")}</button>
+                            <button className="btn-primary" style={{backgroundColor: '#ef4444'}} onClick={handleStartRecover}>{t("startRecover")}</button>
                         </div>
                     </div>
                 </div>
             )}
         </div>
-    )
-}
+    );
 
 export default App
