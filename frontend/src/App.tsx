@@ -31,9 +31,9 @@ const translations: any = {
         "yoloMode": "Yolo Mode",
         "dangerouslySkip": "(Dangerously Skip Permissions)",
         "launchBtn": "Launch Claude Code",
-        "activeModel": "ACTIVE MODEL",
-        "modelSettings": "MODEL SETTINGS",
-        "modelName": "Model Name",
+        "activeModel": "ACTIVE PROVIDER",
+        "modelSettings": "PROVIDER SETTINGS",
+        "modelName": "Provider Name",
         "apiKey": "API Key",
         "getKey": "Get API Key",
         "enterKey": "Enter API Key",
@@ -58,7 +58,7 @@ const translations: any = {
         "initializing": "Initializing...",
         "loadingConfig": "Loading config...",
         "syncing": "Syncing to Claude Code...",
-        "switched": "Model switched & synced!",
+        "switched": "Provider switched & synced!",
         "projectSwitched": "Project switched!",
         "dirUpdated": "Directory updated!",
         "langName": "English",
@@ -69,6 +69,8 @@ const translations: any = {
         "foundNewVersion": "Found new version",
         "downloadNow": "Download Now",
         "paste": "Paste",
+        "hideConfig": "Hide Settings",
+        "editConfig": "Edit Settings",
         "bugReport": "Bug Report or Suggestion"
     },
     "zh-Hans": {
@@ -84,9 +86,9 @@ const translations: any = {
         "yoloMode": "Yolo 模式",
         "dangerouslySkip": "(危险：跳过权限检查)",
         "launchBtn": "启动 Claude Code",
-        "activeModel": "模型选择",
-        "modelSettings": "模型设置",
-        "modelName": "模型名称",
+        "activeModel": "服务商选择",
+        "modelSettings": "服务商设置",
+        "modelName": "服务商名称",
         "apiKey": "API 密钥",
         "getKey": "获取API密钥",
         "enterKey": "输入 API Key",
@@ -111,7 +113,7 @@ const translations: any = {
         "initializing": "初始化中...",
         "loadingConfig": "加载配置中...",
         "syncing": "正在同步到 Claude Code...",
-        "switched": "模型已切换并同步！",
+        "switched": "服务商已切换并同步！",
         "projectSwitched": "项目已切换！",
         "dirUpdated": "目录已更新！",
         "langName": "简体中文",
@@ -122,6 +124,8 @@ const translations: any = {
         "foundNewVersion": "发现新版本",
         "downloadNow": "立即下载",
         "paste": "粘贴",
+        "hideConfig": "隐藏设置",
+        "editConfig": "修改设置",
         "bugReport": "Bug 报告或建议"
     },
     "zh-Hant": {
@@ -137,9 +141,9 @@ const translations: any = {
         "yoloMode": "Yolo 模式",
         "dangerouslySkip": "(危險：跳過權限檢查)",
         "launchBtn": "啟動 Claude Code",
-        "activeModel": "模型選擇",
-        "modelSettings": "模型設定",
-        "modelName": "模型名稱",
+        "activeModel": "服務商選擇",
+        "modelSettings": "服務商設定",
+        "modelName": "服務商名稱",
         "apiKey": "API 金鑰",
         "getKey": "獲取API密鑰",
         "enterKey": "輸入 API Key",
@@ -164,7 +168,7 @@ const translations: any = {
         "initializing": "初始化中...",
         "loadingConfig": "載入設定中...",
         "syncing": "正在同步到 Claude Code...",
-        "switched": "模型已切換並同步！",
+        "switched": "服務商已切換並同步！",
         "langName": "繁體中文",
         "custom": "自定義",
         "checkUpdate": "檢查更新",
@@ -187,9 +191,9 @@ const translations: any = {
         "yoloMode": "Yolo 모드",
         "dangerouslySkip": "(위험: 권한 확인 건너뛰기)",
         "launchBtn": "Claude Code 시작",
-        "activeModel": "모델 선택",
-        "modelSettings": "모델 설정",
-        "modelName": "모델 이름",
+        "activeModel": "서비스 제공자 선택",
+        "modelSettings": "서비스 제공자 설정",
+        "modelName": "서비스 제공자 이름",
         "apiKey": "API 키",
         "getKey": "API 키 발급",
         "enterKey": "API 키 입력",
@@ -214,7 +218,7 @@ const translations: any = {
         "initializing": "초기화 중...",
         "loadingConfig": "설정 불러오는 중...",
         "syncing": "Claude Code와 동기화 중...",
-        "switched": "모델 전환 및 동기화 완료!",
+        "switched": "서비스 제공자 전환 및 동기화 완료!",
         "langName": "한국어",
         "custom": "사용자 정의",
         "paste": "붙여넣기"
@@ -232,9 +236,9 @@ const translations: any = {
         "yoloMode": "Yolo モード",
         "dangerouslySkip": "(危険：権限チェックをスキップ)",
         "launchBtn": "Claude Code を起動",
-        "activeModel": "モデル選択",
-        "modelSettings": "モデル設定",
-        "modelName": "モデル名",
+        "activeModel": "プロバイダー選択",
+        "modelSettings": "プロバイダー設定",
+        "modelName": "プロバイダー名",
         "apiKey": "API キー",
         "getKey": "API キーを取得",
         "enterKey": "API キーを入力",
@@ -259,7 +263,7 @@ const translations: any = {
         "initializing": "初期化中...",
         "loadingConfig": "設定を読み込み中...",
         "syncing": "Claude Code に同期中...",
-        "switched": "モデルの切り替えと同期が完了しました！",
+        "switched": "プロバイダーの切り替えと同期が完了しました！",
         "langName": "日本語",
         "custom": "カスタム",
         "paste": "貼り付け"
@@ -277,9 +281,9 @@ const translations: any = {
         "yoloMode": "Yolo-Modus",
         "dangerouslySkip": "(Gefahr: Berechtigungen überspringen)",
         "launchBtn": "Claude Code starten",
-        "activeModel": "Aktives Modell",
-        "modelSettings": "Modell-Einstellungen",
-        "modelName": "Modellname",
+        "activeModel": "Aktiver Anbieter",
+        "modelSettings": "Anbieter-Einstellungen",
+        "modelName": "Anbietername",
         "apiKey": "API-Schlüssel",
         "getKey": "API-Schlüssel erhalten",
         "enterKey": "API-Schlüssel eingeben",
@@ -304,7 +308,7 @@ const translations: any = {
         "initializing": "Initialisiere...",
         "loadingConfig": "Lade Konfiguration...",
         "syncing": "Synchronisiere mit Claude Code...",
-        "switched": "Modell gewechselt & synchronisiert!",
+        "switched": "Anbieter gewechselt & synchronisiert!",
         "langName": "Deutsch",
         "custom": "Benutzerdefiniert",
         "paste": "Einfügen"
@@ -322,9 +326,9 @@ const translations: any = {
         "yoloMode": "Mode Yolo",
         "dangerouslySkip": "(Danger : Ignorer les permissions)",
         "launchBtn": "Lancer Claude Code",
-        "activeModel": "Modèle actif",
-        "modelSettings": "Paramètres du modèle",
-        "modelName": "Nom du modèle",
+        "activeModel": "FOURNISSEUR ACTIF",
+        "modelSettings": "PARAMÈTRES DU FOURNISSEUR",
+        "modelName": "Nom du fournisseur",
         "apiKey": "Clé API",
         "getKey": "Obtenir une clé API",
         "enterKey": "Entrer la clé API",
@@ -349,7 +353,7 @@ const translations: any = {
         "initializing": "Initialisation...",
         "loadingConfig": "Chargement de la configuration...",
         "syncing": "Synchronisation avec Claude Code...",
-        "switched": "Modèle changé et synchronisé !",
+        "switched": "Fournisseur changé et synchronisé !",
         "langName": "Français",
         "custom": "Personnalisé",
         "paste": "Coller"
@@ -388,13 +392,13 @@ const ToolConfiguration = ({
                 marginBottom: '15px'
             }}>
                 <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px'}}>
-                    <h3 style={{fontSize: '0.9rem', color: '#fb923c', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0}}>Models</h3>
+                    <h3 style={{fontSize: '0.9rem', color: '#fb923c', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0}}>{t("activeModel")}</h3>
                     <button 
                         className="btn-link" 
                         onClick={() => setShowModelSettings(!showModelSettings)}
                         style={{borderColor: '#fb923c', color: '#fb923c'}}
                     >
-                        {showModelSettings ? 'Hide Config' : 'Edit Config'}
+                        {showModelSettings ? t("hideConfig") : t("editConfig")}
                     </button>
                 </div>
                 <div className="model-switcher" style={{flexWrap: 'wrap'}}>

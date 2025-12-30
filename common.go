@@ -6,7 +6,7 @@ var trayTranslations = map[string]map[string]string{
 		"show":    "Show AICoder",
 		"launch":  "Launch Claude Code",
 		"quit":    "Quit AICoder",
-		"models":  "Models",
+		"models":  "Providers",
 		"actions": "Actions",
 	},
 	"zh-Hans": {
@@ -14,7 +14,7 @@ var trayTranslations = map[string]map[string]string{
 		"show":    "显示主窗口",
 		"launch":  "启动 Claude Code",
 		"quit":    "退出程序",
-		"models":  "模型选择",
+		"models":  "服务商选择",
 		"actions": "操作",
 	},
 	"zh-Hant": {
@@ -22,7 +22,7 @@ var trayTranslations = map[string]map[string]string{
 		"show":    "顯示主視窗",
 		"launch":  "啟動 Claude Code",
 		"quit":    "退出程式",
-		"models":  "模型選擇",
+		"models":  "服務商選擇",
 		"actions": "操作",
 	},
 	"ko": {
@@ -30,7 +30,7 @@ var trayTranslations = map[string]map[string]string{
 		"show":    "메인 창 표시",
 		"launch":  "Claude Code 시작",
 		"quit":    "프로그램 종료",
-		"models":  "모델",
+		"models":  "서비스 제공자",
 		"actions": "작업",
 	},
 	"ja": {
@@ -38,7 +38,7 @@ var trayTranslations = map[string]map[string]string{
 		"show":    "メインウィンドウを表示",
 		"launch":  "Claude Code を起動",
 		"quit":    "終了",
-		"models":  "モデル",
+		"models":  "プロバイダー選択",
 		"actions": "操作",
 	},
 	"de": {
@@ -46,7 +46,7 @@ var trayTranslations = map[string]map[string]string{
 		"show":    "Hauptfenster anzeigen",
 		"launch":  "Claude Code starten",
 		"quit":    "Beenden",
-		"models":  "Modelle",
+		"models":  "Anbieter",
 		"actions": "Aktionen",
 	},
 	"fr": {
@@ -54,7 +54,7 @@ var trayTranslations = map[string]map[string]string{
 		"show":    "Afficher la fenêtre principale",
 		"launch":  "Lancer Claude Code",
 		"quit":    "Quitter",
-		"models":  "Modèles",
+		"models":  "Fournisseurs",
 		"actions": "Actions",
 	},
 }
