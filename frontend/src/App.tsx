@@ -1177,6 +1177,19 @@ function App() {
                             ))}
                         </div>
 
+                        {(config as any)[activeTool].models[activeTab].is_custom && (
+                            <div className="form-group">
+                                <label className="form-label">{t("modelName")}</label>
+                                <input 
+                                    type="text" 
+                                    className="form-input"
+                                    value={(config as any)[activeTool].models[activeTab].model_name} 
+                                    onChange={(e) => handleModelNameChange(e.target.value)}
+                                    placeholder="Custom Provider Name"
+                                />
+                            </div>
+                        )}
+
                         <div className="form-group">
                             <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px'}}>
                                 <label className="form-label" style={{margin: 0}}>{t("apiKey")}</label>

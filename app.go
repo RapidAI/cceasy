@@ -395,13 +395,12 @@ func (a *App) LoadConfig() (AppConfig, error) {
 		{ModelName: "Custom", ModelUrl: "", ApiKey: "", IsCustom: true},
 	}
 	defaultGeminiModels := []ModelConfig{
-		{ModelName: "Gemini 1.5 Pro", ModelUrl: "", ApiKey: ""},
-		{ModelName: "Gemini 1.5 Flash", ModelUrl: "", ApiKey: ""},
-		{ModelName: "AICodeMirror", ModelUrl: "https://api.aicodemirror.com/api/gemini", ApiKey: ""},
+		{ModelName: "AiCodeMirror", ModelUrl: "https://api.aicodemirror.com/api/gemini", ApiKey: ""},
+		{ModelName: "Custom", ModelUrl: "", ApiKey: "", IsCustom: true},
 	}
 	defaultCodexModels := []ModelConfig{
-		{ModelName: "Codex", ModelUrl: "", ApiKey: ""},
-		{ModelName: "AICodeMirror", ModelUrl: "https://api.aicodemirror.com/api/codex/backend-api/codex", ApiKey: ""},
+		{ModelName: "AiCodeMirror", ModelUrl: "https://api.aicodemirror.com/api/codex/backend-api/codex", ApiKey: ""},
+		{ModelName: "Custom", ModelUrl: "", ApiKey: "", IsCustom: true},
 	}
 
 	if _, err := os.Stat(path); os.IsNotExist(err) {
@@ -488,14 +487,68 @@ func (a *App) LoadConfig() (AppConfig, error) {
 	if config.Claude.CurrentModel == "" && len(config.Claude.Models) > 0 {
 		config.Claude.CurrentModel = config.Claude.Models[0].ModelName
 	}
-	if config.Gemini.Models == nil {
+	
+	// Inject AiCodeMirror if missing
+	ensureAiCodeMirror := func(models *[]ModelConfig, name, url string, strictlyOnly bool) {
+		if strictlyOnly {
+			// For Gemini/Codex, we keep ONLY AiCodeMirror AND Custom
+			var newModels []ModelConfig
+			foundName := false
+			foundCustom := false
+			for _, m := range *models {
+				if m.ModelName == name || m.ModelName == "AiCodeMirror" {
+					newModels = append(newModels, m)
+					foundName = true
+				} else if m.IsCustom || m.ModelName == "Custom" {
+					newModels = append(newModels, m)
+					foundCustom = true
+				}
+			}
+			if !foundName {
+				newModels = append(newModels, ModelConfig{ModelName: name, ModelUrl: url, ApiKey: ""})
+			}
+			if !foundCustom {
+				newModels = append(newModels, ModelConfig{ModelName: "Custom", ModelUrl: "", ApiKey: "", IsCustom: true})
+			}
+			*models = newModels
+			return
+		}
+
+		found := false
+		foundCustom := false
+		for _, m := range *models {
+			if m.ModelName == name {
+				found = true
+			}
+			if m.IsCustom || m.ModelName == "Custom" {
+				foundCustom = true
+			}
+		}
+		if !found {
+			*models = append(*models, ModelConfig{ModelName: name, ModelUrl: url, ApiKey: ""})
+		}
+		if !foundCustom {
+			*models = append(*models, ModelConfig{ModelName: "Custom", ModelUrl: "", ApiKey: "", IsCustom: true})
+		}
+	}
+
+	if config.Gemini.Models == nil || len(config.Gemini.Models) == 0 {
 		config.Gemini.Models = defaultGeminiModels
-		config.Gemini.CurrentModel = "Gemini 1.5 Pro"
+		config.Gemini.CurrentModel = "AiCodeMirror"
 	}
-	if config.Codex.Models == nil {
+	if config.Codex.Models == nil || len(config.Codex.Models) == 0 {
 		config.Codex.Models = defaultCodexModels
-		config.Codex.CurrentModel = "Codex"
+		config.Codex.CurrentModel = "AiCodeMirror"
 	}
+
+	ensureAiCodeMirror(&config.Claude.Models, "AiCodeMirror", "https://api.aicodemirror.com/api/claudecode", false)
+	ensureAiCodeMirror(&config.Gemini.Models, "AiCodeMirror", "https://api.aicodemirror.com/api/gemini", true)
+	ensureAiCodeMirror(&config.Codex.Models, "AiCodeMirror", "https://api.aicodemirror.com/api/codex/backend-api/codex", true)
+
+	// Ensure CurrentModel is valid after filtering
+	config.Gemini.CurrentModel = "AiCodeMirror"
+	config.Codex.CurrentModel = "AiCodeMirror"
+
 	if config.ActiveTool == "" {
 		config.ActiveTool = "claude"
 	}
