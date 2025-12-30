@@ -26,9 +26,8 @@ func (tm *ToolManager) GetToolStatus(name string) ToolStatus {
 	status := ToolStatus{Name: name}
 	
 	binaryName := name
-	if name == "gemini" {
-		binaryName = "claude"
-	}
+	// Check for specific binary names if different from tool name
+	// currently claude -> claude, codex -> codex, gemini -> gemini
 
 	path, err := exec.LookPath(binaryName)
 	if err != nil {
@@ -78,8 +77,7 @@ func (tm *ToolManager) InstallTool(name string) error {
 	case "claude":
 		cmd = exec.Command("npm", "install", "-g", "@anthropic-ai/claude-code")
 	case "gemini":
-		// Gemini uses the same Claude Code CLI as per user instructions
-		cmd = exec.Command("npm", "install", "-g", "@anthropic-ai/claude-code")
+		cmd = exec.Command("npm", "install", "-g", "@google/gemini-cli")
 	case "codex":
 		cmd = exec.Command("npm", "install", "-g", "@openai/codex")
 	default:

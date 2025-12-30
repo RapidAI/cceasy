@@ -320,7 +320,7 @@ func (a *App) LaunchTool(toolName string, yoloMode bool, projectDir string) {
 		toolCfg = config.Gemini
 		envKey = "GEMINI_API_KEY"
 		envBaseUrl = "GEMINI_BASE_URL"
-		binaryName = "claude"
+		binaryName = "gemini"
 	case "codex":
 		toolCfg = config.Codex
 		envKey = "OPENAI_API_KEY"
