@@ -866,6 +866,9 @@ function App() {
                 <div className={`sidebar-item ${navTab === 'settings' ? 'active' : ''}`} onClick={() => switchTool('settings')}>
                     <span className="sidebar-icon">⚙️</span> Settings
                 </div>
+                <div className={`sidebar-item ${navTab === 'about' ? 'active' : ''}`} onClick={() => switchTool('about')}>
+                    <span className="sidebar-icon">ℹ️</span> {t("about")}
+                </div>
             </div>
 
             <div className="main-container">
@@ -982,17 +985,50 @@ function App() {
                             </div>
                             
                             <div style={{marginTop: '30px', borderTop: '1px solid var(--border-color)', paddingTop: '20px'}}>
-                                <button className="btn-link" style={{marginBottom: '10px'}} onClick={() => setShowAbout(true)}>{t("about")}</button>
                                 <button className="btn-link" style={{marginBottom: '10px', color: '#ef4444', borderColor: '#ef4444'}} onClick={() => setShowRecoverModal(true)}>
                                     {t("recoverCC")}
                                 </button>
                             </div>
                         </div>
                     )}
+
+                    {navTab === 'about' && (
+                        <div style={{
+                            padding: '40px 20px', 
+                            display: 'flex', 
+                            flexDirection: 'column', 
+                            alignItems: 'center', 
+                            textAlign: 'center'
+                        }}>
+                            <img src={appIcon} alt="Logo" style={{width: '80px', height: '80px', marginBottom: '20px'}} />
+                            <h2 style={{color: '#fb923c', margin: '0 0 10px 0'}}>AICoder</h2>
+                            <div style={{fontSize: '1rem', color: '#374151', marginBottom: '5px'}}>Version {APP_VERSION}</div>
+                            <div style={{fontSize: '0.9rem', color: '#6b7280', marginBottom: '30px'}}>Author: Dr. Daniel</div>
+                            
+                            <div style={{display: 'flex', gap: '15px'}}>
+                                <button 
+                                    className="btn-primary" 
+                                    onClick={() => {
+                                        setStatus(t("checkingUpdate"));
+                                        CheckUpdate(APP_VERSION).then(res => {
+                                            setUpdateResult(res);
+                                            setShowUpdateModal(true);
+                                            setStatus("");
+                                        }).catch(err => {
+                                            setStatus("Error checking updates: " + err);
+                                        });
+                                    }}
+                                >
+                                    {t("checkUpdate")}
+                                </button>
+                                <button className="btn-link" onClick={() => BrowserOpenURL("https://github.com/RapidAI/cceasy")}>GitHub</button>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* Global Action Bar (Footer) */}
-                {config && (
+                {config && (navTab === 'claude' || navTab === 'gemini' || navTab === 'codex') && (
                     <div className="global-action-bar">
                         <div className="action-bar-row">
                             <div style={{display: 'flex', flexDirection: 'column', gap: '4px'}}>
