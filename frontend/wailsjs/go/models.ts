@@ -132,6 +132,7 @@ export namespace main {
 	export class UpdateResult {
 	    has_update: boolean;
 	    latest_version: string;
+	    release_url: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new UpdateResult(source);
@@ -141,6 +142,7 @@ export namespace main {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.has_update = source["has_update"];
 	        this.latest_version = source["latest_version"];
+	        this.release_url = source["release_url"];
 	    }
 	}
 
