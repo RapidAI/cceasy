@@ -857,7 +857,7 @@ function App() {
 
                 {/* Global Action Bar (Footer) */}
                 {config && (navTab === 'claude' || navTab === 'gemini' || navTab === 'codex') && (
-                    <div className="global-action-bar" style={{marginBottom: '50px'}}>
+                    <div className="global-action-bar">
                         <div className="action-bar-row">
                             <div style={{display: 'flex', flexDirection: 'column', gap: '4px'}}>
                                 <div style={{fontSize: '0.7rem', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em'}}>{t("runnerStatus")}</div>
