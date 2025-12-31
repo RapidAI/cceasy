@@ -30,7 +30,7 @@ func TestSyncToClaudeSettings(t *testing.T) {
 		os.Setenv("USERPROFILE", tmpHome)
 	}
 
-	app := &App{}
+	app := &App{testHomeDir: tmpHome}
 
 	// Define a test configuration
 	config := AppConfig{
@@ -77,9 +77,7 @@ func TestSyncToClaudeSettings(t *testing.T) {
 		t.Errorf("Expected ANTHROPIC_AUTH_TOKEN to be 'sk-test-key-123', got '%v'", env["ANTHROPIC_AUTH_TOKEN"])
 	}
 
-	if env["ANTHROPIC_API_KEY"] != "sk-test-key-123" {
-		t.Errorf("Expected ANTHROPIC_API_KEY to be 'sk-test-key-123', got '%v'", env["ANTHROPIC_API_KEY"])
-	}
+
 	
 	if env["CLAUDE_CODE_USE_COLORS"] != "true" {
 		t.Errorf("Expected CLAUDE_CODE_USE_COLORS to be 'true', got '%v'", env["CLAUDE_CODE_USE_COLORS"])
@@ -133,34 +131,41 @@ func TestGetCurrentProjectPath(t *testing.T) {
 
 	originalHome := os.Getenv("HOME")
 	defer os.Setenv("HOME", originalHome)
-	os.Setenv("HOME", tmpHome)
-
-	app := &App{}
+	app := &App{testHomeDir: tmpHome}
 	
 	// Setup test config file
 	configPath := filepath.Join(tmpHome, ".aicoder_config.json")
+	expectedPath1 := filepath.Join(tmpHome, "path", "to", "1")
+	expectedPath2 := filepath.Join(tmpHome, "path", "to", "2")
+
 	config := AppConfig{
 		CurrentProject: "proj2",
 		Projects: []ProjectConfig{
-			{Id: "proj1", Name: "Project 1", Path: "/path/to/1"},
-			{Id: "proj2", Name: "Project 2", Path: "/path/to/2"},
+			{Id: "proj1", Name: "Project 1", Path: expectedPath1},
+			{Id: "proj2", Name: "Project 2", Path: expectedPath2},
 		},
 	}
-	data, _ := json.Marshal(config)
+	data, err := json.Marshal(config)
+	if err != nil {
+		t.Fatalf("Failed to marshal config: %v", err)
+	}
 	os.WriteFile(configPath, data, 0644)
 
 	path := app.GetCurrentProjectPath()
-	if path != "/path/to/2" {
-		t.Errorf("Expected '/path/to/2', got '%s'", path)
+	if path != expectedPath2 {
+		t.Errorf("Expected '%s', got '%s'", expectedPath2, path)
 	}
 
 	// Test fallback to first project
 	config.CurrentProject = "non-existent"
-	data, _ = json.Marshal(config)
+	data, err = json.Marshal(config)
+	if err != nil {
+		t.Fatalf("Failed to marshal config for fallback test: %v", err)
+	}
 	os.WriteFile(configPath, data, 0644)
 	
 	path = app.GetCurrentProjectPath()
-	if path != "/path/to/1" {
-		t.Errorf("Expected '/path/to/1' (fallback), got '%s'", path)
+	if path != expectedPath1 {
+		t.Errorf("Expected '%s' (fallback), got '%s'", expectedPath1, path)
 	}
 }

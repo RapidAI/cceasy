@@ -8,7 +8,7 @@ This track addresses a bug where environment configuration and cleanup are not c
 2.  **"Original" (原厂) Provider Logic:**
     *   If "Original" is selected for the active tool, the application MUST clear all known configuration files and environment variables associated with that specific CLI.
     *   **NO** new configuration data should be written to files or environment variables.
-    *   Target items for Claude: `~/.claude/`, `~/.claude.json`, `ANTHROPIC_API_KEY`, etc.
+    *   Target items for Claude: `~/.claude/`, `~/.claude.json`, `ANTHROPIC_AUTH_TOKEN`, etc.
     *   Target items for Gemini: `~/.gemini/`, `GEMINI_API_KEY`, etc.
     *   Target items for Codex: `~/.codex/`, `OPENAI_API_KEY`, `WIRE_API`, etc.
 3.  **Third-Party/Custom Provider Logic:**

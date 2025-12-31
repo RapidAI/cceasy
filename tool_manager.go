@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"syscall"
 )
 
 type ToolStatus struct {
@@ -27,39 +28,57 @@ func NewToolManager(app *App) *ToolManager {
 func (tm *ToolManager) GetToolStatus(name string) ToolStatus {
 	status := ToolStatus{Name: name}
 	
-	binaryName := name
-	// Check for specific binary names if different from tool name
-	// currently claude -> claude, codex -> codex, gemini -> gemini
+	binaryNames := []string{name}
+	if name == "codex" {
+		binaryNames = append(binaryNames, "openai")
+	}
 
-	path, err := exec.LookPath(binaryName)
-	if err != nil {
+	var path string
+	var err error
+
+	for _, bn := range binaryNames {
+		path, err = exec.LookPath(bn)
+		if err == nil {
+			break
+		}
+		
 		// Fallback: Check local node bin directly
-		// This handles cases where PATH hasn't been updated yet or is missing the local bin
 		home, _ := os.UserHomeDir()
-		var localBin string
 		
 		if runtime.GOOS == "windows" {
-			// Windows npm global installs usually put .cmd or .ps1 in the prefix root or bin
-			// We check both the bin folder and the prefix root just in case
-			localBin = filepath.Join(home, ".cceasy", "node", binaryName+".cmd")
-			if _, err := os.Stat(localBin); err != nil {
-				localBin = filepath.Join(home, ".cceasy", "node", "bin", binaryName+".cmd")
+			// Check prefix root and bin folder
+			possiblePaths := []string{
+				filepath.Join(home, ".cceasy", "node", bn+".cmd"),
+				filepath.Join(home, ".cceasy", "node", bn),
+				filepath.Join(home, ".cceasy", "node", "bin", bn+".cmd"),
+				filepath.Join(home, ".cceasy", "node", "bin", bn),
+			}
+			for _, p := range possiblePaths {
+				if _, err := os.Stat(p); err == nil {
+					path = p
+					break
+				}
 			}
 		} else {
-			localBin = filepath.Join(home, ".cceasy", "node", "bin", binaryName)
+			localBin := filepath.Join(home, ".cceasy", "node", "bin", bn)
+			if _, err := os.Stat(localBin); err == nil {
+				path = localBin
+			}
 		}
+		
+		if path != "" {
+			break
+		}
+	}
 
-		if _, err := os.Stat(localBin); err == nil {
-			path = localBin
-		} else {
-			return status
-		}
+	if path == "" {
+		return status
 	}
 
 	status.Installed = true
 	status.Path = path
 	
-	version, err := tm.getToolVersion(binaryName, path)
+	version, err := tm.getToolVersion(name, path)
 	if err == nil {
 		status.Version = version
 	}
@@ -69,8 +88,17 @@ func (tm *ToolManager) GetToolStatus(name string) ToolStatus {
 
 func (tm *ToolManager) getToolVersion(name, path string) (string, error) {
 	var cmd *exec.Cmd
-	// Use --version for all tools
-	cmd = exec.Command(path, "--version")
+	
+	if runtime.GOOS == "windows" {
+		// Use cmd /c for Windows to ensure .cmd files are handled and paths are quoted correctly
+		cmd = exec.Command("cmd")
+		cmd.SysProcAttr = &syscall.SysProcAttr{
+			CmdLine:    fmt.Sprintf(`cmd /c ""%s" --version"`, path),
+			HideWindow: true,
+		}
+	} else {
+		cmd = exec.Command(path, "--version")
+	}
 
 	out, err := cmd.Output()
 	if err != nil {
@@ -121,15 +149,32 @@ func (tm *ToolManager) InstallTool(name string) error {
 
 	// Use --prefix to install to our local folder, avoiding sudo/permission issues
 	// This works with both system npm and local npm.
-	args := []string{"install", "-g", packageName, "--prefix", localNodeDir}
+	args := []string{"install", "-g", packageName, "--prefix", localNodeDir, "--loglevel", "info"}
+	
+	if strings.HasPrefix(strings.ToLower(tm.app.CurrentLanguage), "zh") {
+		args = append(args, "--registry=https://registry.npmmirror.com")
+	}
 	
 	var cmd *exec.Cmd
 	if runtime.GOOS == "windows" {
-		// On Windows, if we are using the system npm, it might need 'cmd /c'
-		if !strings.Contains(strings.ToLower(npmPath), ".cmd") && !strings.Contains(strings.ToLower(npmPath), ".exe") {
-			cmd = exec.Command("cmd", append([]string{"/c", npmPath}, args...)...)
-		} else {
-			cmd = exec.Command(npmPath, args...)
+		// Prepare quoted arguments for the command line
+		quotedArgs := make([]string, len(args))
+		for i, arg := range args {
+			if strings.ContainsAny(arg, " &^") {
+				quotedArgs[i] = fmt.Sprintf(`"%s"`, arg)
+			} else {
+				quotedArgs[i] = arg
+			}
+		}
+
+		// Use cmd /c with CmdLine for raw control over quoting on Windows.
+		// We wrap the entire command in another set of quotes to ensure cmd /c
+		// handles the internal quotes correctly.
+		cmdLine := fmt.Sprintf(`cmd /c ""%s" %s"`, npmPath, strings.Join(quotedArgs, " "))
+		cmd = exec.Command("cmd")
+		cmd.SysProcAttr = &syscall.SysProcAttr{
+			CmdLine:    cmdLine,
+			HideWindow: true,
 		}
 	} else {
 		cmd = exec.Command(npmPath, args...)

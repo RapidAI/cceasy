@@ -20,6 +20,8 @@ export function LaunchTool(arg1:string,arg2:boolean,arg3:string):Promise<void>;
 
 export function LoadConfig():Promise<main.AppConfig>;
 
+export function ReadBBS():Promise<string>;
+
 export function RecoverCC():Promise<void>;
 
 export function ResizeWindow(arg1:number,arg2:number):Promise<void>;

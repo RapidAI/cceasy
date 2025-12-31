@@ -38,6 +38,10 @@ export function LoadConfig() {
   return window['go']['main']['App']['LoadConfig']();
 }
 
+export function ReadBBS() {
+  return window['go']['main']['App']['ReadBBS']();
+}
+
 export function RecoverCC() {
   return window['go']['main']['App']['RecoverCC']();
 }

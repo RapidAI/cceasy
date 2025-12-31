@@ -24,6 +24,7 @@ type App struct {
 	ctx             context.Context
 	CurrentLanguage string
 	watcher         *fsnotify.Watcher
+	testHomeDir     string // For testing purposes
 }
 
 var OnConfigChanged func(AppConfig)
@@ -68,10 +69,6 @@ func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 	// Platform specific initialization
 	a.platformStartup()
-	// Force sync system env vars using current config on startup
-	config, _ := a.LoadConfig()
-	a.syncToSystemEnv(config)
-	a.startConfigWatcher()
 	a.startConfigWatcher()
 }
 
@@ -106,8 +103,6 @@ func (a *App) startConfigWatcher() {
 					config, err := a.LoadConfig()
 					if err == nil {
 						runtime.EventsEmit(a.ctx, "config-updated", config)
-						// Also re-sync system envs
-						a.syncToSystemEnv(config)
 					}
 				}
 			case err, ok := <-a.watcher.Errors:
@@ -157,6 +152,9 @@ func (a *App) SelectProjectDir() string {
 }
 
 func (a *App) GetUserHomeDir() string {
+	if a.testHomeDir != "" {
+		return a.testHomeDir
+	}
 	home, _ := os.UserHomeDir()
 	return home
 }
@@ -207,8 +205,11 @@ func (a *App) getCodexConfigPaths() (string, string) {
 
 func (a *App) clearClaudeConfig() {
 	dir, _, legacy := a.getClaudeConfigPaths()
+	home, _ := os.UserHomeDir()
+
 	os.RemoveAll(dir)
 	os.Remove(legacy)
+	os.Remove(filepath.Join(home, ".claude.json.backup"))
 	a.log("Cleared Claude configuration files")
 }
 
@@ -229,7 +230,7 @@ func (a *App) clearEnvVars() {
 	vars := []string{
 		"ANTHROPIC_API_KEY", "ANTHROPIC_BASE_URL", "ANTHROPIC_AUTH_TOKEN",
 		"OPENAI_API_KEY", "OPENAI_BASE_URL", "WIRE_API",
-		"GEMINI_API_KEY", "GEMINI_BASE_URL",
+		"GEMINI_API_KEY", "GOOGLE_GEMINI_BASE_URL",
 	}
 	for _, v := range vars {
 		os.Unsetenv(v)
@@ -263,8 +264,8 @@ func (a *App) syncToClaudeSettings(config AppConfig) error {
 	settings := make(map[string]interface{})
 	env := make(map[string]string)
 
+	// Exclusively use AUTH_TOKEN for custom providers
 	env["ANTHROPIC_AUTH_TOKEN"] = selectedModel.ApiKey
-	env["ANTHROPIC_API_KEY"] = selectedModel.ApiKey // Compatibility fallback
 	env["CLAUDE_CODE_USE_COLORS"] = "true"
 
 	switch strings.ToLower(selectedModel.ModelName) {
@@ -296,6 +297,9 @@ func (a *App) syncToClaudeSettings(config AppConfig) error {
 		env["ANTHROPIC_SMALL_FAST_MODEL"] = "MiniMax-M2.1"
 		env["API_TIMEOUT_MS"] = "3000000"
 		env["CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC"] = "1"
+	case "aicodemirror", "aicodemirror-claude":
+		env["ANTHROPIC_BASE_URL"] = selectedModel.ModelUrl
+		env["ANTHROPIC_MODEL"] = "Haiku"
 	default:
 		env["ANTHROPIC_BASE_URL"] = selectedModel.ModelUrl
 		env["ANTHROPIC_MODEL"] = selectedModel.ModelName
@@ -432,8 +436,13 @@ func (a *App) syncToGeminiSettings(config AppConfig) error {
 
 
 func getBaseUrl(selectedModel *ModelConfig) string {
-	baseUrl := selectedModel.ModelUrl
-	// Match the specific URLs used in settings.json
+	// If user provided a URL for the selected model, always prefer it.
+	if selectedModel.ModelUrl != "" {
+		return selectedModel.ModelUrl
+	}
+
+	// Otherwise, fall back to hardcoded defaults for known providers that have them.
+	baseUrl := "" // Default to empty string
 	switch strings.ToLower(selectedModel.ModelName) {
 	case "kimi":
 		baseUrl = "https://api.kimi.com/coding"
@@ -463,13 +472,13 @@ func (a *App) LaunchTool(toolName string, yoloMode bool, projectDir string) {
 	switch strings.ToLower(toolName) {
 	case "claude":
 		toolCfg = config.Claude
-		envKey = "ANTHROPIC_API_KEY"
+		envKey = "ANTHROPIC_AUTH_TOKEN"
 		envBaseUrl = "ANTHROPIC_BASE_URL"
 		binaryName = "claude"
 	case "gemini":
 		toolCfg = config.Gemini
 		envKey = "GEMINI_API_KEY"
-		envBaseUrl = "GEMINI_BASE_URL"
+		envBaseUrl = "GOOGLE_GEMINI_BASE_URL"
 		binaryName = "gemini"
 	case "codex":
 		toolCfg = config.Codex
@@ -490,114 +499,70 @@ func (a *App) LaunchTool(toolName string, yoloMode bool, projectDir string) {
 	}
 
 		if selectedModel == nil {
+		a.log("No model selected.")
+		return
+	}
 
-			a.log("No model selected.")
+	// Ensure ActiveTool is set correctly for syncToSystemEnv
+	config.ActiveTool = strings.ToLower(toolName)
+	a.syncToSystemEnv(config)
 
-			return
+	// 1. CLEAR PROCESS ENV VARS (Safety First - avoid leaks from current process)
+	a.clearEnvVars()
 
+	env := make(map[string]string)
+	if strings.ToLower(selectedModel.ModelName) != "original" {
+		// --- OTHER PROVIDER MODE: WRITE CONFIG & SET ENV ---
+		
+		// Set process environment variables
+		os.Setenv(envKey, selectedModel.ApiKey)
+		env[envKey] = selectedModel.ApiKey
+		if selectedModel.ModelUrl != "" {
+			os.Setenv(envBaseUrl, selectedModel.ModelUrl)
+			env[envBaseUrl] = selectedModel.ModelUrl
 		}
 
-	
-
-		// 1. CLEAR EVERYTHING FIRST (Safety First)
-
-		a.clearEnvVars()
-
-		// Also clear tool configs to ensure a fresh start every time
-
+		// Tool-specific configurations
 		switch strings.ToLower(toolName) {
-
 		case "claude":
-
-			a.clearClaudeConfig()
-
+			// Ensure AUTH_TOKEN is unset when using API_KEY to avoid conflict
+			a.syncToClaudeSettings(config)
 		case "gemini":
-
-			a.clearGeminiConfig()
-
+			a.syncToGeminiSettings(config)
 		case "codex":
-
-			a.clearCodexConfig()
-
-		}
-
-	
-
-		env := make(map[string]string)
-
-		if strings.ToLower(selectedModel.ModelName) != "original" {
-
-			// --- OTHER PROVIDER MODE: WRITE CONFIG & SET ENV ---
-
-			
-
-			// Set process environment variables
-
-			os.Setenv(envKey, selectedModel.ApiKey)
-
-			env[envKey] = selectedModel.ApiKey
-
+			os.Setenv("WIRE_API", "responses")
+			env["WIRE_API"] = "responses"
+			// Ensure OpenAI standard vars for Codex
+			os.Setenv("OPENAI_API_KEY", selectedModel.ApiKey)
+			env["OPENAI_API_KEY"] = selectedModel.ApiKey
 			if selectedModel.ModelUrl != "" {
-
-				os.Setenv(envBaseUrl, selectedModel.ModelUrl)
-
-				env[envBaseUrl] = selectedModel.ModelUrl
-
+				os.Setenv("OPENAI_BASE_URL", selectedModel.ModelUrl)
+				env["OPENAI_BASE_URL"] = selectedModel.ModelUrl
 			}
-
-	
-
-			// Tool-specific configurations
-
-			switch strings.ToLower(toolName) {
-
-			case "claude":
-
-				os.Setenv("ANTHROPIC_AUTH_TOKEN", selectedModel.ApiKey)
-
-				env["ANTHROPIC_AUTH_TOKEN"] = selectedModel.ApiKey
-
-				a.syncToClaudeSettings(config)
-
-			case "gemini":
-
-				a.syncToGeminiSettings(config)
-
-			case "codex":
-
-				os.Setenv("WIRE_API", "responses")
-
-				env["WIRE_API"] = "responses"
-
-				// Ensure OpenAI standard vars for Codex
-
-				os.Setenv("OPENAI_API_KEY", selectedModel.ApiKey)
-
-				env["OPENAI_API_KEY"] = selectedModel.ApiKey
-
-				if selectedModel.ModelUrl != "" {
-
-					os.Setenv("OPENAI_BASE_URL", selectedModel.ModelUrl)
-
-					env["OPENAI_BASE_URL"] = selectedModel.ModelUrl
-
-				}
-
-				a.syncToCodexSettings(config)
-
-			}
-
-		} else {
-
-			// --- ORIGINAL MODE: ALREADY CLEARED ABOVE ---
-
-			a.log("Running in Original mode: All custom configurations cleared.")
-
+			a.syncToCodexSettings(config)
 		}
+	} else {
+		// --- ORIGINAL MODE: CLEANUP SPECIFIC TOOL ONLY ---
+		
+		// Clear process environment variables for this tool
+		os.Unsetenv(envKey)
+		os.Unsetenv(envBaseUrl)
+		if strings.ToLower(toolName) == "claude" {
+			os.Unsetenv("ANTHROPIC_AUTH_TOKEN")
+			a.clearClaudeConfig()
+		} else if strings.ToLower(toolName) == "gemini" {
+			a.clearGeminiConfig()
+		} else if strings.ToLower(toolName) == "codex" {
+			os.Unsetenv("WIRE_API")
+			os.Unsetenv("OPENAI_API_KEY")
+			os.Unsetenv("OPENAI_BASE_URL")
+			a.clearCodexConfig()
+		}
+		
+		a.log(fmt.Sprintf("Running %s in Original mode: Custom configurations cleared.", toolName))
+	}
 
-	
-
-		// Platform specific launch
+	// Platform specific launch
 
 		a.platformLaunch(binaryName, yoloMode, projectDir, env)
 
@@ -610,6 +575,9 @@ func (a *App) log(message string) {
 }
 
 func (a *App) getConfigPath() (string, error) {
+	if a.testHomeDir != "" {
+		return filepath.Join(a.testHomeDir, ".aicoder_config.json"), nil
+	}
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", err
@@ -845,9 +813,13 @@ func (a *App) LoadConfig() (AppConfig, error) {
 	ensureOriginalFirst(&config.Gemini.Models)
 	ensureOriginalFirst(&config.Codex.Models)
 
-	// Ensure CurrentModel is valid after filtering
-	config.Gemini.CurrentModel = "AiCodeMirror"
-	config.Codex.CurrentModel = "AiCodeMirror"
+	// Ensure CurrentModel is valid
+	if config.Gemini.CurrentModel == "" {
+		config.Gemini.CurrentModel = "Original"
+	}
+	if config.Codex.CurrentModel == "" {
+		config.Codex.CurrentModel = "Original"
+	}
 
 	if config.ActiveTool == "" {
 		config.ActiveTool = "message"
@@ -857,14 +829,6 @@ func (a *App) LoadConfig() (AppConfig, error) {
 }
 
 func (a *App) SaveConfig(config AppConfig) error {
-	// Sync settings for all tools
-	a.syncToClaudeSettings(config)
-	a.syncToGeminiSettings(config)
-	a.syncToCodexSettings(config)
-	
-	// Sync system environment variables
-	a.syncToSystemEnv(config)
-
 	path, err := a.getConfigPath()
 	if err != nil {
 		return err
@@ -987,6 +951,20 @@ func (a *App) RecoverCC() error {
 		a.emitRecoverLog(".claude.json file not found, skipping.")
 	}
 
+	// Remove ~/.claude.json.backup file
+	claudeJsonBackupPath := filepath.Join(home, ".claude.json.backup")
+	a.emitRecoverLog(fmt.Sprintf("Checking file: %s", claudeJsonBackupPath))
+	if _, err := os.Stat(claudeJsonBackupPath); !os.IsNotExist(err) {
+		a.emitRecoverLog("Found .claude.json.backup file. Removing...")
+		if err := os.Remove(claudeJsonBackupPath); err != nil && !os.IsNotExist(err) {
+			a.emitRecoverLog(fmt.Sprintf("Failed to remove .claude.json.backup file: %v", err))
+			return fmt.Errorf("failed to remove .claude.json.backup file: %w", err)
+		}
+		a.emitRecoverLog("Successfully removed .claude.json.backup file.")
+	} else {
+		a.emitRecoverLog(".claude.json.backup file not found, skipping.")
+	}
+
 	a.emitRecoverLog("Recovery process completed successfully.")
 	return nil
 }
@@ -1074,10 +1052,15 @@ func (a *App) getInstalledClaudeVersion(claudePath string) (string, error) {
 		}
 	}
 
-	cmd := exec.Command(claudePath, "--version")
-	// Hide window on Windows
+	var cmd *exec.Cmd
 	if stdruntime.GOOS == "windows" {
-		cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+		cmd = exec.Command("cmd")
+		cmd.SysProcAttr = &syscall.SysProcAttr{
+			CmdLine:    fmt.Sprintf(`cmd /c ""%s" --version"`, claudePath),
+			HideWindow: true,
+		}
+	} else {
+		cmd = exec.Command(claudePath, "--version")
 	}
 	
 	out, err := cmd.Output()
@@ -1102,9 +1085,15 @@ func (a *App) getInstalledClaudeVersion(claudePath string) (string, error) {
 }
 
 func (a *App) getLatestClaudeVersion(npmPath string) (string, error) {
-	cmd := exec.Command(npmPath, "view", "@anthropic-ai/claude-code", "version")
+	var cmd *exec.Cmd
 	if stdruntime.GOOS == "windows" {
-		cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+		cmd = exec.Command("cmd")
+		cmd.SysProcAttr = &syscall.SysProcAttr{
+			CmdLine:    fmt.Sprintf(`cmd /c ""%s" view @anthropic-ai/claude-code version"`, npmPath),
+			HideWindow: true,
+		}
+	} else {
+		cmd = exec.Command(npmPath, "view", "@anthropic-ai/claude-code", "version")
 	}
 	out, err := cmd.Output()
 	if err != nil {

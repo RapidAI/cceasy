@@ -42,6 +42,8 @@ func (a *App) platformStartup() {
 func (a *App) updatePathForNode() {
 	nodePath := `C:\Program Files\nodejs`
 	npmPath := filepath.Join(os.Getenv("AppData"), "npm")
+	home, _ := os.UserHomeDir()
+	localToolPath := filepath.Join(home, ".cceasy", "node")
 
 	currentPath := os.Getenv("PATH")
 	newPath := currentPath
@@ -60,9 +62,16 @@ func (a *App) updatePathForNode() {
 		}
 	}
 
+	// Check and add local tool path
+	if _, err := os.Stat(localToolPath); err == nil {
+		if !strings.Contains(strings.ToLower(currentPath), strings.ToLower(localToolPath)) {
+			newPath = localToolPath + string(os.PathListSeparator) + newPath
+		}
+	}
+
 	if newPath != currentPath {
 		os.Setenv("PATH", newPath)
-		a.log("Updated PATH environment variable for the current process.")
+		a.log("Updated PATH environment variable: " + newPath)
 	}
 }
 
@@ -110,11 +119,6 @@ func (a *App) CheckEnvironment() {
 			}
 		} else {
 			a.log("Git is installed.")
-		}
-
-		npmPath := "npm"
-		if _, err := exec.LookPath("npm"); err != nil {
-			npmPath = `C:\Program Files\nodejs\npm.cmd`
 		}
 
 		// 5. Check and Install AI Tools
@@ -325,8 +329,12 @@ func (a *App) restartApp() {
 		return
 	}
 
-	cmd := exec.Command("cmd", "/c", "start", "", executable)
-	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+	cmdLine := fmt.Sprintf(`cmd /c start "" "%s"`, executable)
+	cmd := exec.Command("cmd")
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		CmdLine:    cmdLine,
+		HideWindow: true,
+	}
 	if err := cmd.Start(); err != nil {
 		a.log("Failed to restart: " + err.Error())
 	} else {
@@ -335,28 +343,59 @@ func (a *App) restartApp() {
 }
 
 func (a *App) platformLaunch(binaryName string, yoloMode bool, projectDir string, env map[string]string) {
-	binaryPath, _ := exec.LookPath(binaryName)
+	tm := NewToolManager(a)
+	status := tm.GetToolStatus(binaryName)
+	
+	binaryPath := ""
+	if status.Installed {
+		binaryPath = status.Path
+	}
+
 	if binaryPath == "" {
-		if binaryName == "claude" {
-			home, _ := os.UserHomeDir()
-			binaryPath = filepath.Join(home, ".cceasy", "node", "claude.cmd")
-		} else {
-			a.log(fmt.Sprintf("Tool %s not found in PATH", binaryName))
-			return
-		}
+		a.log(fmt.Sprintf("Tool %s not found. Please ensure it is installed.", binaryName))
+		return
 	}
 
 	for k, v := range env {
 		os.Setenv(k, v)
 	}
 
-	args := []string{"/c", "start", "cmd", "/k", fmt.Sprintf("cd /d %s && %s", projectDir, binaryPath)}
-	if binaryName == "claude" && yoloMode {
-		args = []string{"/c", "start", "cmd", "/k", fmt.Sprintf("cd /d %s && %s --yolo", projectDir, binaryPath)}
+	projectDir = filepath.Clean(projectDir)
+	binaryPath = filepath.Clean(binaryPath)
+
+	// Use SysProcAttr.CmdLine for raw control over quoting on Windows.
+	// This is necessary because paths with special characters like '&'
+	// require explicit quoting that Go's default escaping might not handle
+	// correctly when passed through 'cmd /c'.
+	var cmdLine string
+	if yoloMode {
+		var flag string
+		switch binaryName {
+		case "claude":
+			flag = "--dangerously-skip-permissions"
+		case "gemini":
+			flag = "--yolo"
+		case "codex":
+			flag = "--full-auto"
+		}
+		if flag != "" {
+			cmdLine = fmt.Sprintf(`cmd /c start "" cmd /k "%s" %s`, binaryPath, flag)
+		} else {
+			cmdLine = fmt.Sprintf(`cmd /c start "" cmd /k "%s"`, binaryPath)
+		}
+	} else {
+		cmdLine = fmt.Sprintf(`cmd /c start "" cmd /k "%s"`, binaryPath)
 	}
 
-	cmd := exec.Command("cmd", args...)
-	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+	cmd := exec.Command("cmd")
+	cmd.Dir = projectDir
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		CmdLine:    cmdLine,
+		HideWindow: true,
+	}
+
+	a.log(fmt.Sprintf("Executing: %s (Dir: %s)", cmdLine, projectDir))
+
 	err := cmd.Run()
 	if err != nil {
 		a.log("Error launching tool: " + err.Error())
@@ -364,9 +403,30 @@ func (a *App) platformLaunch(binaryName string, yoloMode bool, projectDir string
 }
 
 func (a *App) syncToSystemEnv(config AppConfig) {
+	toolName := strings.ToLower(config.ActiveTool)
+	var toolCfg ToolConfig
+	var envKey, envBaseUrl string
+
+	switch toolName {
+	case "claude":
+		toolCfg = config.Claude
+		envKey = "ANTHROPIC_AUTH_TOKEN"
+		envBaseUrl = "ANTHROPIC_BASE_URL"
+	case "gemini":
+		toolCfg = config.Gemini
+		envKey = "GEMINI_API_KEY"
+		envBaseUrl = "GOOGLE_GEMINI_BASE_URL"
+	case "codex":
+		toolCfg = config.Codex
+		envKey = "OPENAI_API_KEY"
+		envBaseUrl = "OPENAI_BASE_URL"
+	default:
+		return
+	}
+
 	var selectedModel *ModelConfig
-	for _, m := range config.Claude.Models {
-		if m.ModelName == config.Claude.CurrentModel {
+	for _, m := range toolCfg.Models {
+		if m.ModelName == toolCfg.CurrentModel {
 			selectedModel = &m
 			break
 		}
@@ -376,25 +436,75 @@ func (a *App) syncToSystemEnv(config AppConfig) {
 		return
 	}
 
-	baseUrl := getBaseUrl(selectedModel)
+	if strings.ToLower(selectedModel.ModelName) == "original" {
+		// Clear environment variables for the current process
+		os.Unsetenv(envKey)
+		os.Unsetenv(envBaseUrl)
+		if toolName == "codex" {
+			os.Unsetenv("WIRE_API")
+		}
+
+		// Clear persistent environment variables on Windows
+		go func() {
+			cmd1 := exec.Command("setx", envKey, "")
+			cmd1.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+			cmd1.Run()
+
+			cmd2 := exec.Command("setx", envBaseUrl, "")
+			cmd2.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+			cmd2.Run()
+
+			if toolName == "claude" {
+				cmd3 := exec.Command("setx", "ANTHROPIC_API_KEY", "")
+				cmd3.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+				cmd3.Run()
+			}
+			if toolName == "codex" {
+				cmd4 := exec.Command("setx", "WIRE_API", "")
+				cmd4.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+				cmd4.Run()
+			}
+		}()
+		return
+	}
+
+	baseUrl := selectedModel.ModelUrl
+	if toolName == "claude" {
+		baseUrl = getBaseUrl(selectedModel)
+	}
 
 	// Set environment variables for the current process immediately
-	os.Setenv("ANTHROPIC_AUTH_TOKEN", selectedModel.ApiKey)
-	os.Setenv("ANTHROPIC_API_KEY", selectedModel.ApiKey)
-	os.Setenv("ANTHROPIC_BASE_URL", baseUrl)
+	os.Setenv(envKey, selectedModel.ApiKey)
+	if baseUrl != "" {
+		os.Setenv(envBaseUrl, baseUrl)
+	}
 
-	// Set persistent environment variables on Windows in a goroutine because setx is slow
+
+	if toolName == "codex" {
+		os.Setenv("WIRE_API", "responses")
+	}
+
+	// Set persistent environment variables on Windows in a goroutine
 	go func() {
-		cmd1 := exec.Command("setx", "ANTHROPIC_AUTH_TOKEN", selectedModel.ApiKey)
+		cmd1 := exec.Command("setx", envKey, selectedModel.ApiKey)
 		cmd1.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 		cmd1.Run()
 
-		cmdAuth := exec.Command("setx", "ANTHROPIC_API_KEY", selectedModel.ApiKey)
-		cmdAuth.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
-		cmdAuth.Run()
-
-		cmd2 := exec.Command("setx", "ANTHROPIC_BASE_URL", baseUrl)
-		cmd2.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
-		cmd2.Run()
+		if baseUrl != "" {
+			cmd2 := exec.Command("setx", envBaseUrl, baseUrl)
+			cmd2.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+			cmd2.Run()
+		}
+		if toolName == "claude" {
+			// Explicitly clear API_KEY in system to avoid conflict with AUTH_TOKEN
+			cmd3 := exec.Command("setx", "ANTHROPIC_API_KEY", "")
+			cmd3.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+			cmd3.Run()
+		}
+		if toolName == "codex" {
+			cmd4 := exec.Command("setx", "WIRE_API", "responses")
+			cmd4.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+			cmd4.Run()
+		}
 	}()
 }

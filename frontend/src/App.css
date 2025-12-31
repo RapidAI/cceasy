@@ -28,9 +28,9 @@ body {
 }
 
 #App {
-    height: calc(100vh - 10px);
-    width: calc(100vw - 10px);
-    margin: 5px;
+    height: calc(100vh);
+    width: calc(100vw);
+    margin: 0;
     display: flex;
     flex-direction: row; /* Changed to row for sidebar */
     overflow: hidden;
@@ -125,22 +125,21 @@ body {
 }
 
 .main-content {
-    flex: 6.5; /* 65% of remaining space */
+    flex: 1;
     padding: 15px 15px 0 15px;
     overflow-y: auto;
     background: linear-gradient(to bottom, #ffffff, #f8faff);
 }
 
 .global-action-bar {
-    flex: 3.5; /* 35% of remaining space */
+    flex: 0 0 auto;
     width: 100%;
     background-color: var(--surface-color);
     border-top: 1px solid var(--border-color);
-    padding: 15px 20px;
+    padding: 10px 20px;
     display: flex;
-    flex-direction: column;
+    align-items: center;
     justify-content: center;
-    gap: 15px;
     box-sizing: border-box;
     box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.03);
 }
@@ -321,7 +320,7 @@ body {
 
 .model-btn {
     flex: 1;
-    padding: 15px 10px;
+    padding: 7.68px 10px;
     border: 1px solid var(--border-color);
     background-color: var(--surface-color);
     color: var(--text-secondary);
@@ -329,7 +328,7 @@ body {
     cursor: pointer;
     font-weight: 600;
     transition: all 0.2s;
-    text-align: left;
+    text-align: center;
     box-shadow: var(--shadow-sm);
     font-size: 0.9rem;
 }
@@ -352,20 +351,19 @@ body {
 .btn-launch {
     background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
     color: white;
-    padding: 16px 13px; /* Reduced by ~30% from 24px 18px */
+    padding: 10px 30px;
     border: none;
     border-radius: 8px;
-    font-size: 1.1rem; /* Slightly reduced */
+    font-size: 0.95rem;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.2s;
-    width: 70%; /* Reduced by 30% from 100% */
-    margin: 0 auto; /* Center the button */
     box-shadow: 0 4px 6px rgba(37, 99, 235, 0.25);
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 8px;
+    white-space: nowrap;
 }
 
 .btn-launch:hover {

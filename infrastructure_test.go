@@ -25,7 +25,7 @@ func TestCleanupFunctions(t *testing.T) {
 		os.Setenv("USERPROFILE", tmpHome)
 	}
 
-	app := &App{}
+	app := &App{testHomeDir: tmpHome}
 
 	// 1. Test Claude Cleanup
 	claudeDir := filepath.Join(tmpHome, ".claude")
@@ -71,15 +71,15 @@ func TestCleanupFunctions(t *testing.T) {
 	}
 
 	// 4. Test Env Vars Cleanup
-	os.Setenv("ANTHROPIC_API_KEY", "test")
+	os.Setenv("ANTHROPIC_AUTH_TOKEN", "test")
 	os.Setenv("OPENAI_API_KEY", "test")
 	os.Setenv("WIRE_API", "test")
 	os.Setenv("GEMINI_API_KEY", "test")
 
 	app.clearEnvVars()
 
-	if os.Getenv("ANTHROPIC_API_KEY") != "" {
-		t.Errorf("ANTHROPIC_API_KEY was not cleared")
+	if os.Getenv("ANTHROPIC_AUTH_TOKEN") != "" {
+		t.Errorf("ANTHROPIC_AUTH_TOKEN was not cleared")
 	}
 	if os.Getenv("OPENAI_API_KEY") != "" {
 		t.Errorf("OPENAI_API_KEY was not cleared")
@@ -101,7 +101,7 @@ func TestSyncToClaudeSettings_Original(t *testing.T) {
 		os.Setenv("USERPROFILE", tmpHome)
 	}
 
-	app := &App{}
+	app := &App{testHomeDir: tmpHome}
 	
 	// Create some files to be deleted
 	dir, settings, legacy := app.getClaudeConfigPaths()
@@ -140,7 +140,7 @@ func TestSyncToGeminiSettings_Original(t *testing.T) {
 		os.Setenv("USERPROFILE", tmpHome)
 	}
 
-	app := &App{}
+	app := &App{testHomeDir: tmpHome}
 	
 	// Create some files to be deleted
 	dir, configPath, legacy := app.getGeminiConfigPaths()
@@ -179,7 +179,7 @@ func TestSyncToCodexSettings_Original(t *testing.T) {
 		os.Setenv("USERPROFILE", tmpHome)
 	}
 
-	app := &App{}
+	app := &App{testHomeDir: tmpHome}
 	
 	// Create some files to be deleted
 	dir, auth := app.getCodexConfigPaths()

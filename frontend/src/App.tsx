@@ -2,7 +2,7 @@ import {useEffect, useState, useRef} from 'react';
 import './App.css';
 import {buildNumber} from './version';
 import appIcon from './assets/images/appicon.png';
-import {CheckToolsStatus, InstallTool, LoadConfig, SaveConfig, CheckEnvironment, ResizeWindow, LaunchTool, SelectProjectDir, SetLanguage, GetUserHomeDir, CheckUpdate, RecoverCC, ShowMessage} from "../wailsjs/go/main/App";
+import {CheckToolsStatus, InstallTool, LoadConfig, SaveConfig, CheckEnvironment, ResizeWindow, LaunchTool, SelectProjectDir, SetLanguage, GetUserHomeDir, CheckUpdate, ShowMessage, ReadBBS} from "../wailsjs/go/main/App";
 import {WindowHide, EventsOn, EventsOff, BrowserOpenURL, ClipboardGetText, Quit} from "../wailsjs/runtime";
 import {main} from "../wailsjs/go/models";
 
@@ -16,7 +16,7 @@ const subscriptionUrls: {[key: string]: string} = {
     "aicodemirror": "https://www.aicodemirror.com/register?invitecode=CZPPWZ"
 };
 
-const APP_VERSION = "1.3.2.1";
+const APP_VERSION = "2.0.0.1";
 
 const translations: any = {
     "en": {
@@ -24,7 +24,6 @@ const translations: any = {
         "about": "About",
         "manual": "Manual",
         "cs146s": "Online Course",
-        "recoverCC": "Recover CC",
         "hide": "Hide",
         "launch": "LAUNCH",
         "projectDir": "Project Directory",
@@ -42,13 +41,6 @@ const translations: any = {
         "saveChanges": "Save & Close",
         "saving": "Saving...",
         "saved": "Saved successfully!",
-        "recovering": "Recovering...",
-        "recoverSuccess": "Recovery successful!",
-        "recoverSuccessAlert": "Claude Code has been reset. Please DO NOT click 'Launch' here. Instead, open your terminal manually and run 'claude' to complete the native setup.",
-        "confirmRecover": "Are you sure you want to recover Claude Code to its initial state? This will clear all configurations.",
-        "recoverTitle": "Recover Claude Code",
-        "recoverWarning": "Warning: This will permanently delete your Claude Code configurations and authentication tokens. This action cannot be undone.",
-        "startRecover": "Start Recovery",
         "close": "Close",
         "manageProjects": "Manage Projects",
         "projectManagement": "Project Management",
@@ -76,19 +68,21 @@ const translations: any = {
         "globalSettings": "Global Settings",
         "language": "Language",
         "runnerStatus": "Runner Status",
-        "yoloModeLabel": "Yolo Mode",
+        "yoloModeLabel": "Yolo Mode (Skip Permissions)",
         "customProviderPlaceholder": "Custom Provider Name",
         "version": "Version",
         "author": "Author",
         "checkingUpdate": "Checking for updates...",
-        "bugReport": "Bug Report or Suggestion"
+        "bugReport": "Bug Report or Suggestion",
+        "original": "Original",
+        "message": "Message",
+        "danger": "DANGER"
     },
     "zh-Hans": {
         "title": "AICoder",
         "about": "关于",
         "manual": "使用说明",
         "cs146s": "在线课程",
-        "recoverCC": "恢复CC",
         "hide": "隐藏",
         "launch": "启动",
         "projectDir": "项目目录",
@@ -106,13 +100,6 @@ const translations: any = {
         "saveChanges": "保存并关闭",
         "saving": "保存中...",
         "saved": "保存成功！",
-        "recovering": "正在恢复...",
-        "recoverSuccess": "恢复成功！",
-        "recoverSuccessAlert": "Claude Code 已重置。请注意：不要点击本程序的“启动”按钮。请自行手动打开终端窗口并运行 'claude' 命令以恢复原厂设置。",
-        "confirmRecover": "确定要将 Claude Code 恢复到初始状态吗？这将清除所有配置。",
-        "recoverTitle": "恢复 Claude Code",
-        "recoverWarning": "警告：这将永久删除您的 Claude Code 配置和认证令牌。此操作无法撤销。",
-        "startRecover": "开始恢复",
         "close": "关闭",
         "manageProjects": "项目管理",
         "projectManagement": "项目管理",
@@ -145,14 +132,16 @@ const translations: any = {
         "version": "版本",
         "author": "作者",
         "checkingUpdate": "正在检查更新...",
-        "bugReport": "Bug 报告或建议"
+        "bugReport": "Bug 报告或建议",
+        "original": "原厂",
+        "message": "消息",
+        "danger": "危险"
     },
     "zh-Hant": {
         "title": "AICoder",
         "about": "關於",
         "manual": "使用說明",
         "cs146s": "線上課程",
-        "recoverCC": "恢復CC",
         "hide": "隱藏",
         "launch": "啟動",
         "projectDir": "專案目錄",
@@ -170,13 +159,6 @@ const translations: any = {
         "saveChanges": "儲存並關閉",
         "saving": "儲存中...",
         "saved": "儲存成功！",
-        "recovering": "正在恢復...",
-        "recoverSuccess": "恢復成功！",
-        "recoverSuccessAlert": "Claude Code 已重置。請注意：不要點擊本程序的“啟動”按鈕。請自行手動打開終端窗口並運行 'claude' 命令以恢復原廠設置。",
-        "confirmRecover": "確定要將 Claude Code 恢復到初始狀態嗎？這將清除所有配置。",
-        "recoverTitle": "恢復 Claude Code",
-        "recoverWarning": "警告：這將永久刪除您的 Claude Code 配置和認證令牌。此操作無法撤銷。",
-        "startRecover": "開始恢復",
         "close": "關閉",
         "manageProjects": "專案管理",
         "projectManagement": "專案管理",
@@ -206,7 +188,10 @@ const translations: any = {
         "customProviderPlaceholder": "自定義服務商名稱",
         "version": "版本",
         "author": "作者",
-        "checkingUpdate": "正在檢查更新..."
+        "checkingUpdate": "正在檢查更新...",
+        "original": "原廠",
+        "message": "消息",
+        "danger": "危險"
     }
 };
 
@@ -256,7 +241,7 @@ const ToolConfiguration = ({
                             borderBottom: (model.api_key && model.api_key.trim() !== "") ? '3px solid #60a5fa' : '1px solid var(--border-color)'
                         }}
                     >
-                        {model.model_name}
+                        {model.model_name === "Original" ? t("original") : model.model_name}
                     </button>
                 ))}
             </div>
@@ -267,6 +252,7 @@ const ToolConfiguration = ({
 function App() {
     const [config, setConfig] = useState<main.AppConfig | null>(null);
     const [navTab, setNavTab] = useState<string>("claude");
+    const [bbsContent, setBbsContent] = useState<string>("");
     const [activeTool, setActiveTool] = useState<string>("claude");
     const [status, setStatus] = useState("");
     const [activeTab, setActiveTab] = useState(0);
@@ -275,18 +261,13 @@ function App() {
     const [envLogs, setEnvLogs] = useState<string[]>(["Initializing..."]);
     const [showLogs, setShowLogs] = useState(false);
     const [yoloMode, setYoloMode] = useState(false);
+    const [selectedProjectForLaunch, setSelectedProjectForLaunch] = useState<string>("");
     const [showAbout, setShowAbout] = useState(false);
     const [showModelSettings, setShowModelSettings] = useState(false);
     const [showUpdateModal, setShowUpdateModal] = useState(false);
     const [updateResult, setUpdateResult] = useState<any>(null);
     const [projectOffset, setProjectOffset] = useState(0);
     const [lang, setLang] = useState("en");
-
-    // Recover Modal State
-    const [showRecoverModal, setShowRecoverModal] = useState(false);
-    const [recoverLogs, setRecoverLogs] = useState<string[]>([]);
-    const [recoverStatus, setRecoverStatus] = useState<"idle" | "recovering" | "success" | "error">("idle");
-    const recoverLogRef = useRef<HTMLDivElement>(null);
 
     const logEndRef = useRef<HTMLTextAreaElement>(null);
 
@@ -295,12 +276,6 @@ function App() {
             logEndRef.current.scrollTop = logEndRef.current.scrollHeight;
         }
     }, [envLogs]);
-
-    useEffect(() => {
-        if (recoverLogRef.current) {
-            recoverLogRef.current.scrollTop = recoverLogRef.current.scrollHeight;
-        }
-    }, [recoverLogs]);
 
     useEffect(() => {
         // Language detection
@@ -335,10 +310,21 @@ function App() {
         // Config Logic
         LoadConfig().then((cfg) => {
             setConfig(cfg);
+            if (cfg && cfg.current_project) {
+                setSelectedProjectForLaunch(cfg.current_project);
+            } else if (cfg && cfg.projects && cfg.projects.length > 0) {
+                setSelectedProjectForLaunch(cfg.projects[0].id);
+            }
             if (cfg) {
-                const tool = cfg.active_tool || "claude";
-                setActiveTool(tool);
+                const tool = cfg.active_tool || "message";
                 setNavTab(tool);
+                if (tool === 'claude' || tool === 'gemini' || tool === 'codex') {
+                    setActiveTool(tool);
+                }
+                
+                if (tool === 'message') {
+                    ReadBBS().then(content => setBbsContent(content)).catch(err => console.error(err));
+                }
                 
                 const toolCfg = (cfg as any)[tool];
                 if (toolCfg && toolCfg.models) {
@@ -346,9 +332,12 @@ function App() {
                     if (idx !== -1) setActiveTab(idx);
 
                     // Check if any model has an API key configured for the active tool
-                    const hasAnyApiKey = toolCfg.models.some((m: any) => m.api_key && m.api_key.trim() !== "");
-                    if (!hasAnyApiKey) {
-                        setShowModelSettings(true);
+                    // Only for tools (claude, gemini, codex)
+                    if (tool === 'claude' || tool === 'gemini' || tool === 'codex') {
+                        const hasAnyApiKey = toolCfg.models.some((m: any) => m.api_key && m.api_key.trim() !== "");
+                        if (!hasAnyApiKey) {
+                            setShowModelSettings(true);
+                        }
                     }
                 }
             }
@@ -359,6 +348,17 @@ function App() {
         // Listen for external config changes (e.g. from Tray)
         const handleConfigChange = (cfg: main.AppConfig) => {
             setConfig(cfg);
+            // Sync with tray menu changes
+            const tool = cfg.active_tool || "message";
+            setNavTab(tool);
+            if (tool === 'claude' || tool === 'gemini' || tool === 'codex') {
+                setActiveTool(tool);
+                const toolCfg = (cfg as any)[tool];
+                if (toolCfg && toolCfg.models) {
+                    const idx = toolCfg.models.findIndex((m: any) => m.model_name === toolCfg.current_model);
+                    if (idx !== -1) setActiveTab(idx);
+                }
+            }
         };
         EventsOn("config-changed", handleConfigChange);
 
@@ -388,7 +388,16 @@ function App() {
             setActiveTool(tool);
         }
         
+        if (tool === 'message') {
+            setShowModelSettings(false);
+            ReadBBS().then(content => setBbsContent(content)).catch(err => console.error(err));
+        }
+
         if (config) {
+            const newConfig = new main.AppConfig({...config, active_tool: tool});
+            setConfig(newConfig);
+            SaveConfig(newConfig);
+
             const toolCfg = (config as any)[tool];
             if (toolCfg && toolCfg.models) {
                 const idx = toolCfg.models.findIndex((m: any) => m.model_name === toolCfg.current_model);
@@ -436,7 +445,7 @@ function App() {
         
         const toolCfg = (config as any)[activeTool];
         const targetModel = toolCfg.models.find((m: any) => m.model_name === modelName);
-        if (!targetModel || !targetModel.api_key || targetModel.api_key.trim() === "") {
+        if (modelName !== "Original" && (!targetModel || !targetModel.api_key || targetModel.api_key.trim() === "")) {
             setStatus("Please configure API Key first!");
             const idx = toolCfg.models.findIndex((m: any) => m.model_name === modelName);
             if (idx !== -1) setActiveTab(idx);
@@ -467,6 +476,7 @@ function App() {
         if (!config) return;
         const newConfig = new main.AppConfig({...config, current_project: projectId});
         setConfig(newConfig);
+        setSelectedProjectForLaunch(projectId);
         setStatus(t("projectSwitched"));
         setTimeout(() => setStatus(""), 1500);
         SaveConfig(newConfig);
@@ -555,25 +565,6 @@ function App() {
             }, 1000);
         }).catch(err => {
             setStatus("Error saving: " + err);
-        });
-    };
-
-    const handleStartRecover = () => {
-        setRecoverStatus("recovering");
-        setRecoverLogs([]);
-        EventsOn("recover-log", (msg: string) => {
-            setRecoverLogs(prev => [...prev, msg]);
-        });
-
-        RecoverCC().then(() => {
-            setRecoverStatus("success");
-            setRecoverLogs(prev => [...prev, "DONE!"]);
-            EventsOff("recover-log");
-            ShowMessage(t("recoverTitle"), t("recoverSuccessAlert"));
-        }).catch((err) => {
-            setRecoverStatus("error");
-            setRecoverLogs(prev => [...prev, "Error: " + err]);
-            EventsOff("recover-log");
         });
     };
 
@@ -681,6 +672,9 @@ function App() {
                     <img src={appIcon} alt="Logo" className="sidebar-logo" />
                     <span className="sidebar-title">AICoder</span>
                 </div>
+                <div className={`sidebar-item ${navTab === 'message' ? 'active' : ''}`} onClick={() => switchTool('message')}>
+                    <span className="sidebar-icon">💬</span> {t("message")}
+                </div>
                 <div className={`sidebar-item ${navTab === 'claude' ? 'active' : ''}`} onClick={() => switchTool('claude')}>
                     <span className="sidebar-icon">🤖</span> Claude
                 </div>
@@ -706,7 +700,8 @@ function App() {
                 <div className="top-header" style={{'--wails-draggable': 'drag'} as any}>
                     <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%'}}>
                         <h2 style={{margin: 0, fontSize: '1.1rem', color: '#60a5fa', fontWeight: 'bold', marginLeft: '20px'}}>
-                            {navTab === 'claude' ? 'Claude Code' : 
+                            {navTab === 'message' ? t("message") :
+                             navTab === 'claude' ? 'Claude Code' : 
                              navTab === 'gemini' ? 'Gemini CLI' : 
                              navTab === 'codex' ? 'OpenAI Codex' : 
                              navTab === 'projects' ? t("projectManagement") : 
@@ -721,6 +716,29 @@ function App() {
                 </div>
 
                 <div className="main-content" style={{overflowY: 'auto', paddingBottom: '20px'}}>
+                    {navTab === 'message' && (
+                        <div style={{
+                            width: '100%', 
+                            height: 'calc(100vh - 100px)', 
+                            padding: '0 15px', 
+                            overflowY: 'auto',
+                            boxSizing: 'border-box'
+                        }}>
+                            <div style={{
+                                backgroundColor: '#fff',
+                                padding: '20px',
+                                borderRadius: '8px',
+                                border: '1px solid var(--border-color)',
+                                whiteSpace: 'pre-wrap',
+                                wordBreak: 'break-word',
+                                fontFamily: 'inherit',
+                                lineHeight: '1.6',
+                                color: '#374151'
+                            }}>
+                                {bbsContent}
+                            </div>
+                        </div>
+                    )}
                     {(navTab === 'claude' || navTab === 'gemini' || navTab === 'codex') && (
                         <ToolConfiguration 
                             toolName={navTab === 'claude' ? 'Claude' : navTab === 'gemini' ? 'Gemini' : 'Codex'}
@@ -747,25 +765,42 @@ function App() {
                                         borderRadius: '8px', 
                                         border: '1px solid var(--border-color)',
                                         display: 'flex',
-                                        flexDirection: 'column',
-                                        gap: '10px'
+                                        flexDirection: 'row',
+                                        alignItems: 'center',
+                                        gap: '15px'
                                     }}>
-                                        <div style={{display: 'flex', justifyContent: 'space-between'}}>
-                                            <input 
-                                                type="text" 
-                                                className="form-input" 
-                                                value={proj.name}
-                                                onChange={(e) => {
-                                                    const newList = config.projects.map((p: any) => p.id === proj.id ? {...p, name: e.target.value} : p);
-                                                    setConfig(new main.AppConfig({...config, projects: newList}));
-                                                }}
-                                                onBlur={() => {
-                                                    if (config) SaveConfig(config);
-                                                }}
-                                                style={{fontWeight: 'bold', border: 'none', padding: 0, fontSize: '1rem'}}
-                                            />
+                                        <input 
+                                            type="text" 
+                                            className="form-input" 
+                                            value={proj.name}
+                                            onChange={(e) => {
+                                                const newList = config.projects.map((p: any) => p.id === proj.id ? {...p, name: e.target.value} : p);
+                                                setConfig(new main.AppConfig({...config, projects: newList}));
+                                            }}
+                                            onBlur={() => {
+                                                if (config) SaveConfig(config);
+                                            }}
+                                            style={{fontWeight: 'bold', border: 'none', padding: 0, fontSize: '1rem', width: '120px', flexShrink: 0}}
+                                        />
+                                        
+                                        <div style={{flex: 1, fontSize: '0.85rem', color: '#6b7280', backgroundColor: '#f9fafb', padding: '8px', borderRadius: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>
+                                            {proj.path}
+                                        </div>
+
+                                        <div style={{display: 'flex', gap: '10px', alignItems: 'center', flexShrink: 0}}>
+                                            <button className="btn-link" onClick={() => {
+                                                SelectProjectDir().then(dir => {
+                                                    if (dir) {
+                                                        const newList = config.projects.map((p: any) => p.id === proj.id ? {...p, path: dir} : p);
+                                                        const newConfig = new main.AppConfig({...config, projects: newList});
+                                                        setConfig(newConfig);
+                                                        SaveConfig(newConfig);
+                                                    }
+                                                });
+                                            }}>{t("change")}</button>
+                                            
                                             <button 
-                                                style={{color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer'}}
+                                                style={{color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.85rem'}}
                                                 onClick={() => {
                                                     if (config.projects.length > 1) {
                                                         const newList = config.projects.filter((p: any) => p.id !== proj.id);
@@ -778,21 +813,6 @@ function App() {
                                             >
                                                 {t("delete")}
                                             </button>
-                                        </div>
-                                        <div style={{display: 'flex', gap: '10px', alignItems: 'center'}}>
-                                            <div style={{flex: 1, fontSize: '0.85rem', color: '#6b7280', backgroundColor: '#f9fafb', padding: '8px', borderRadius: '4px', overflow: 'hidden', textOverflow: 'ellipsis'}}>
-                                                {proj.path}
-                                            </div>
-                                            <button className="btn-link" onClick={() => {
-                                                SelectProjectDir().then(dir => {
-                                                    if (dir) {
-                                                        const newList = config.projects.map((p: any) => p.id === proj.id ? {...p, path: dir} : p);
-                                                        const newConfig = new main.AppConfig({...config, projects: newList});
-                                                        setConfig(newConfig);
-                                                        SaveConfig(newConfig);
-                                                    }
-                                                });
-                                            }}>{t("change")}</button>
                                         </div>
                                     </div>
                                 ))}
@@ -811,12 +831,7 @@ function App() {
                                     <option value="zh-Hant">繁體中文</option>
                                 </select>
                             </div>
-                            
-                            <div style={{marginTop: '30px', borderTop: '1px solid var(--border-color)', paddingTop: '20px'}}>
-                                <button className="btn-link" style={{marginBottom: '10px', color: '#ef4444', borderColor: '#ef4444'}} onClick={() => setShowRecoverModal(true)}>
-                                    {t("recoverCC")}
-                                </button>
-                            </div>
+
                         </div>
                     )}
 
@@ -858,41 +873,117 @@ function App() {
                 {/* Global Action Bar (Footer) */}
                 {config && (navTab === 'claude' || navTab === 'gemini' || navTab === 'codex') && (
                     <div className="global-action-bar">
-                        <div className="action-bar-row">
-                            <div style={{display: 'flex', flexDirection: 'column', gap: '4px'}}>
-                                <div style={{fontSize: '0.7rem', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em'}}>{t("runnerStatus")}</div>
-                                <div style={{fontSize: '0.9rem', fontWeight: 600, color: '#374151'}}>
-                                    <span style={{color: '#60a5fa', textTransform: 'capitalize'}}>{activeTool}</span>
-                                    <span style={{margin: '0 8px', color: '#d1d5db'}}>|</span>
-                                    <span>{(config as any)[activeTool].current_model}</span>
+                        <div style={{display: 'flex', flexDirection: 'column', gap: '8px', width: '100%', padding: '8px 0'}}>
+                            <div style={{display: 'flex', alignItems: 'center', gap: '20px', justifyContent: 'center'}}>
+                                <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+                                    <span style={{fontSize: '0.75rem', color: '#9ca3af'}}>{t("runnerStatus")}:</span>
+                                    <span style={{fontSize: '0.85rem', fontWeight: 600, color: '#60a5fa', textTransform: 'capitalize'}}>{activeTool}</span>
+                                    <span style={{color: '#d1d5db'}}>|</span>
+                                    <span style={{fontSize: '0.85rem', fontWeight: 600, color: '#374151'}}>
+                                        {(config as any)[activeTool].current_model === "Original" ? t("original") : (config as any)[activeTool].current_model}
+                                    </span>
                                 </div>
+                                <label style={{display:'flex', alignItems:'center', cursor:'pointer', fontSize: '0.8rem', color: '#6b7280'}}>
+                                    <input
+                                        type="checkbox"
+                                        checked={config?.projects?.find((p: any) => p.id === selectedProjectForLaunch)?.yolo_mode || false}
+                                        onChange={(e) => {
+                                            const proj = config?.projects?.find((p: any) => p.id === selectedProjectForLaunch);
+                                            if (proj) {
+                                                const newProjects = config.projects.map((p: any) =>
+                                                    p.id === proj.id ? { ...p, yolo_mode: e.target.checked } : p
+                                                );
+                                                const newConfig = new main.AppConfig({...config, projects: newProjects});
+                                                setConfig(newConfig);
+                                                SaveConfig(newConfig);
+                                            }
+                                        }}
+                                        style={{marginRight: '6px'}}
+                                    />
+                                    <span>{t("yoloModeLabel")}</span>
+                                    {config?.projects?.find((p: any) => p.id === selectedProjectForLaunch)?.yolo_mode && (
+                                        <span style={{
+                                            marginLeft: '5px',
+                                            backgroundColor: '#fee2e2',
+                                            color: '#ef4444',
+                                            padding: '0 6px',
+                                            borderRadius: '4px',
+                                            fontSize: '0.7rem',
+                                            fontWeight: 'bold'
+                                        }}>
+                                            {t("danger")}
+                                        </span>
+                                    )}
+                                </label>
                             </div>
-
-                            <label style={{display:'flex', alignItems:'center', cursor:'pointer', fontSize: '0.85rem'}}>
-                                <input 
-                                    type="checkbox" 
-                                    checked={getCurrentProject()?.yolo_mode || false}
-                                    onChange={(e) => handleYoloChange(e.target.checked)}
-                                    style={{marginRight: '8px'}}
-                                />
-                                <span>{t("yoloModeLabel")}</span>
-                            </label>
-                        </div>
-                        
-                        <div className="action-bar-row">
-                            <button 
-                                className="btn-launch" 
-                                onClick={() => {
-                                    const currProj = getCurrentProject();
-                                    if (currProj) {
-                                        LaunchTool(activeTool, currProj.yolo_mode, currProj.path || "");
-                                    } else {
-                                        setStatus(t("projectDirError"));
-                                    }
-                                }}
-                            >
-                                {t("launchBtn")}
-                            </button>
+                            <div style={{display: 'flex', alignItems: 'center', gap: '15px', justifyContent: 'center'}}>
+                                <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+                                    <span style={{fontSize: '0.8rem', color: '#6b7280'}}>项目:</span>
+                                    <select
+                                        value={selectedProjectForLaunch}
+                                        onChange={(e) => setSelectedProjectForLaunch(e.target.value)}
+                                        style={{
+                                            padding: '5px 8px',
+                                            borderRadius: '4px',
+                                            border: '1px solid #d1d5db',
+                                            backgroundColor: '#ffffff',
+                                            fontSize: '0.85rem',
+                                            color: '#374151',
+                                            cursor: 'pointer',
+                                            maxWidth: '200px'
+                                        }}
+                                    >
+                                        {config?.projects?.map((proj: any) => (
+                                            <option key={proj.id} value={proj.id}>
+                                                {proj.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <button
+                                    onClick={() => switchTool('projects')}
+                                    style={{
+                                        padding: '6px 14px',
+                                        borderRadius: '6px',
+                                        border: '1px solid #d1d5db',
+                                        backgroundColor: '#f3f4f6',
+                                        color: '#6b7280',
+                                        fontSize: '0.85rem',
+                                        fontWeight: '500',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s',
+                                        whiteSpace: 'nowrap'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        e.currentTarget.style.backgroundColor = '#e5e7eb';
+                                        e.currentTarget.style.color = '#4b5563';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.backgroundColor = '#f3f4f6';
+                                        e.currentTarget.style.color = '#6b7280';
+                                    }}
+                                >
+                                    项目管理
+                                </button>
+                                <button
+                                    className="btn-launch"
+                                    style={{padding: '7.5px 30px', textAlign: 'center'}}
+                                    onClick={() => {
+                                        const selectedProj = config?.projects?.find((p: any) => p.id === selectedProjectForLaunch);
+                                        if (selectedProj) {
+                                            LaunchTool(activeTool, selectedProj.yolo_mode, selectedProj.path || "");
+                                            // Update current project if different
+                                            if (selectedProjectForLaunch !== config?.current_project) {
+                                                handleProjectSwitch(selectedProjectForLaunch);
+                                            }
+                                        } else {
+                                            setStatus(t("projectDirError"));
+                                        }
+                                    }}
+                                >
+                                    开始编程
+                                </button>
+                            </div>
                         </div>
                     </div>
                 )}
@@ -916,15 +1007,23 @@ function App() {
                     </div>
                 </div>
             )}
-            
-            {showRecoverModal && (
+
+            {showUpdateModal && updateResult && (
                 <div className="modal-overlay">
                     <div className="modal-content" style={{width: '400px', textAlign: 'left'}}>
-                        <h3>{t("recoverTitle")}</h3>
-                        <p style={{color: '#ef4444'}}>{t("recoverWarning")}</p>
+                        <h3>{t("foundNewVersion")}</h3>
+                        {updateResult.HasUpdate ? (
+                            <>
+                                <p>{t("updateAvailable")} {updateResult.LatestVersion}</p>
+                                <a href={updateResult.ReleaseUrl} target="_blank" rel="noopener noreferrer" style={{color: '#60a5fa', cursor: 'pointer', fontSize: '0.9rem', display: 'inline-block', marginTop: '10px'}}>
+                                    {t("downloadNow")}
+                                </a>
+                            </>
+                        ) : (
+                            <p>{t("noUpdate")}</p>
+                        )}
                         <div style={{display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '20px'}}>
-                            <button className="btn-hide" onClick={() => setShowRecoverModal(false)}>{t("close")}</button>
-                            <button className="btn-primary" style={{backgroundColor: '#ef4444'}} onClick={handleStartRecover}>{t("startRecover")}</button>
+                            <button className="btn-primary" onClick={() => setShowUpdateModal(false)}>{t("close")}</button>
                         </div>
                     </div>
                 </div>
@@ -945,7 +1044,7 @@ function App() {
                                     className={`tab-button ${activeTab === index ? 'active' : ''}`}
                                     onClick={() => setActiveTab(index)}
                                 >
-                                    {model.model_name}
+                                    {model.model_name === "Original" ? t("original") : model.model_name}
                                 </button>
                             ))}
                         </div>
@@ -963,44 +1062,48 @@ function App() {
                             </div>
                         )}
 
-                        <div className="form-group">
-                            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px'}}>
-                                <label className="form-label" style={{margin: 0}}>{t("apiKey")}</label>
-                                {!(config as any)[activeTool].models[activeTab].is_custom && (
-                                    <button 
-                                        className="btn-link" 
-                                        style={{fontSize: '0.75rem', padding: '2px 8px'}}
-                                        onClick={() => handleOpenSubscribe((config as any)[activeTool].models[activeTab].model_name)}
-                                    >
-                                        {t("getKey")}
-                                    </button>
-                                )}
-                            </div>
-                            <div style={{display: 'flex', gap: '10px'}}>
-                                <input 
-                                    type="password" 
-                                    className="form-input"
-                                    value={(config as any)[activeTool].models[activeTab].api_key} 
-                                    onChange={(e) => handleApiKeyChange(e.target.value)}
-                                    placeholder={t("enterKey")}
-                                />
-                                <button className="btn-subscribe" onClick={async () => {
-                                    const text = await ClipboardGetText();
-                                    if (text) handleApiKeyChange(text);
-                                }}>{t("paste")}</button>
-                            </div>
-                        </div>
+                        {(config as any)[activeTool].models[activeTab].model_name !== "Original" && (
+                            <>
+                                <div className="form-group">
+                                    <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px'}}>
+                                        <label className="form-label" style={{margin: 0}}>{t("apiKey")}</label>
+                                        {!(config as any)[activeTool].models[activeTab].is_custom && (
+                                            <button 
+                                                className="btn-link" 
+                                                style={{fontSize: '0.75rem', padding: '2px 8px'}}
+                                                onClick={() => handleOpenSubscribe((config as any)[activeTool].models[activeTab].model_name)}
+                                            >
+                                                {t("getKey")}
+                                            </button>
+                                        )}
+                                    </div>
+                                    <div style={{display: 'flex', gap: '10px'}}>
+                                        <input 
+                                            type="password" 
+                                            className="form-input"
+                                            value={(config as any)[activeTool].models[activeTab].api_key} 
+                                            onChange={(e) => handleApiKeyChange(e.target.value)}
+                                            placeholder={t("enterKey")}
+                                        />
+                                        <button className="btn-subscribe" onClick={async () => {
+                                            const text = await ClipboardGetText();
+                                            if (text) handleApiKeyChange(text);
+                                        }}>{t("paste")}</button>
+                                    </div>
+                                </div>
 
-                        <div className="form-group">
-                            <label className="form-label">{t("apiEndpoint")}</label>
-                            <input 
-                                type="text" 
-                                className="form-input"
-                                value={(config as any)[activeTool].models[activeTab].model_url} 
-                                onChange={(e) => handleModelUrlChange(e.target.value)}
-                                placeholder="https://api.example.com/v1"
-                            />
-                        </div>
+                                <div className="form-group">
+                                    <label className="form-label">{t("apiEndpoint")}</label>
+                                    <input 
+                                        type="text" 
+                                        className="form-input"
+                                        value={(config as any)[activeTool].models[activeTab].model_url} 
+                                        onChange={(e) => handleModelUrlChange(e.target.value)}
+                                        placeholder="https://api.example.com/v1"
+                                    />
+                                </div>
+                            </>
+                        )}
 
                         <div style={{display: 'flex', gap: '10px', marginTop: '30px'}}>
                             <button className="btn-primary" style={{flex: 1}} onClick={save}>{t("saveChanges")}</button>

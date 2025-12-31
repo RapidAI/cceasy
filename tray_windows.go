@@ -33,18 +33,21 @@ func setupTray(app *App, appOptions *options.App) {
 				})
 
 			mShow := systray.AddMenuItem("Show", "Show Main Window")
-			mLaunch := systray.AddMenuItem("Launch Claude Code", "Launch Claude Code in Terminal")
+			mLaunch := systray.AddMenuItem("开始编程", "Start Coding")
 			systray.AddSeparator()
 
-			// Model menu items map
-			modelItems := make(map[string]*systray.MenuItem)
+			// Tool menu items map
+			toolItems := make(map[string]*systray.MenuItem)
 
 			// Load config to populate tray
 			config, _ := app.LoadConfig()
+
+			// Claude Code menu items
 			for _, model := range config.Claude.Models {
-				m := systray.AddMenuItemCheckbox(model.ModelName, "Switch to "+model.ModelName, model.ModelName == config.Claude.CurrentModel)
-				modelItems[model.ModelName] = m
-				
+				displayName := "Claude Code - " + model.ModelName
+				m := systray.AddMenuItemCheckbox(displayName, "Switch to "+model.ModelName, model.ModelName == config.Claude.CurrentModel && config.ActiveTool == "claude")
+				toolItems["claude-"+model.ModelName] = m
+
 				modelName := model.ModelName
 				m.Click(func() {
 					go func() {
@@ -60,6 +63,61 @@ func setupTray(app *App, appOptions *options.App) {
 							}
 						}
 						currentConfig.Claude.CurrentModel = modelName
+						currentConfig.ActiveTool = "claude"
+						app.SaveConfig(currentConfig)
+					}()
+				})
+			}
+
+			// Gemini CLI menu items
+			for _, model := range config.Gemini.Models {
+				displayName := "Gemini CLI - " + model.ModelName
+				m := systray.AddMenuItemCheckbox(displayName, "Switch to "+model.ModelName, model.ModelName == config.Gemini.CurrentModel && config.ActiveTool == "gemini")
+				toolItems["gemini-"+model.ModelName] = m
+
+				modelName := model.ModelName
+				m.Click(func() {
+					go func() {
+						currentConfig, _ := app.LoadConfig()
+						// Check if target model has API key
+						for _, m := range currentConfig.Gemini.Models {
+							if m.ModelName == modelName {
+								if m.ApiKey == "" {
+									runtime.WindowShow(app.ctx)
+									return
+								}
+								break
+							}
+						}
+						currentConfig.Gemini.CurrentModel = modelName
+						currentConfig.ActiveTool = "gemini"
+						app.SaveConfig(currentConfig)
+					}()
+				})
+			}
+
+			// Codex menu items
+			for _, model := range config.Codex.Models {
+				displayName := "Codex - " + model.ModelName
+				m := systray.AddMenuItemCheckbox(displayName, "Switch to "+model.ModelName, model.ModelName == config.Codex.CurrentModel && config.ActiveTool == "codex")
+				toolItems["codex-"+model.ModelName] = m
+
+				modelName := model.ModelName
+				m.Click(func() {
+					go func() {
+						currentConfig, _ := app.LoadConfig()
+						// Check if target model has API key
+						for _, m := range currentConfig.Codex.Models {
+							if m.ModelName == modelName {
+								if m.ApiKey == "" {
+									runtime.WindowShow(app.ctx)
+									return
+								}
+								break
+							}
+						}
+						currentConfig.Codex.CurrentModel = modelName
+						currentConfig.ActiveTool = "codex"
 						app.SaveConfig(currentConfig)
 					}()
 				})
@@ -83,11 +141,14 @@ func setupTray(app *App, appOptions *options.App) {
 
 			// Register config change listener
 			OnConfigChanged = func(cfg AppConfig) {
-				if modelItems == nil {
+				if toolItems == nil {
 					return
 				}
-				for name, item := range modelItems {
-					if name == cfg.Claude.CurrentModel {
+				for key, item := range toolItems {
+					// Only check the currently active tool's current model
+					if (cfg.ActiveTool == "claude" && key == "claude-"+cfg.Claude.CurrentModel) ||
+						(cfg.ActiveTool == "gemini" && key == "gemini-"+cfg.Gemini.CurrentModel) ||
+						(cfg.ActiveTool == "codex" && key == "codex-"+cfg.Codex.CurrentModel) {
 						item.Check()
 					} else {
 						item.Uncheck()

@@ -5,9 +5,9 @@ APP_NAME="AICoder"
 # Read version from build_number if exists, else default
 if [ -f "build_number" ]; then
     BUILD_NUM=$(cat build_number)
-    VERSION="1.3.2.${BUILD_NUM}"
+    VERSION="2.0.0.${BUILD_NUM}"
 else
-    VERSION="1.3.2.0"
+    VERSION="2.0.0.1"
 fi
 
 IDENTIFIER="com.wails.AICoder"

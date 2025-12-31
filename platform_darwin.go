@@ -252,16 +252,17 @@ func (a *App) restartApp() {
 func (a *App) platformLaunch(binaryName string, yoloMode bool, projectDir string, env map[string]string) {
 	a.log(fmt.Sprintf("Launching %s...", binaryName))
 
-	binaryPath, _ := exec.LookPath(binaryName)
+	tm := NewToolManager(a)
+	status := tm.GetToolStatus(binaryName)
+	
+	binaryPath := ""
+	if status.Installed {
+		binaryPath = status.Path
+	}
+
 	if binaryPath == "" {
-		// Try fallback to local bin if it's claude (existing pattern)
-		if binaryName == "claude" {
-			home, _ := os.UserHomeDir()
-			binaryPath = filepath.Join(home, ".cceasy", "node", "bin", "claude")
-		} else {
-			a.log(fmt.Sprintf("Tool %s not found in PATH", binaryName))
-			return
-		}
+		a.log(fmt.Sprintf("Tool %s not found. Please ensure it is installed.", binaryName))
+		return
 	}
 	a.log("Using binary at: " + binaryPath)
 
@@ -292,10 +293,19 @@ func (a *App) platformLaunch(binaryName string, yoloMode bool, projectDir string
 	}
 
 	sb.WriteString("clear\n")
-	sb.WriteString(fmt.Sprintf("exec \"%s\"", binaryPath))
-	if binaryName == "claude" && yoloMode {
-		sb.WriteString(" --dangerously-skip-permissions")
+	
+	finalCmd := fmt.Sprintf("\"%s\"", binaryPath)
+	if yoloMode {
+		switch binaryName {
+		case "claude":
+			finalCmd += " --dangerously-skip-permissions"
+		case "gemini":
+			finalCmd += " --yolo"
+		case "codex":
+			finalCmd += " --full-auto"
+		}
 	}
+	sb.WriteString(fmt.Sprintf("exec %s", finalCmd))
 	sb.WriteString("\n")
 
 	if err := os.WriteFile(launchScriptPath, []byte(sb.String()), 0700); err != nil {

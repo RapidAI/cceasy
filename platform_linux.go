@@ -223,15 +223,17 @@ func contains(slice []string, item string) bool {
 func (a *App) platformLaunch(binaryName string, yoloMode bool, projectDir string, env map[string]string) {
 	a.log(fmt.Sprintf("Launching %s...", binaryName))
 	
-	binaryPath, _ := exec.LookPath(binaryName)
+	tm := NewToolManager(a)
+	status := tm.GetToolStatus(binaryName)
+	
+	binaryPath := ""
+	if status.Installed {
+		binaryPath = status.Path
+	}
+
 	if binaryPath == "" {
-		if binaryName == "claude" {
-			home, _ := os.UserHomeDir()
-			binaryPath = filepath.Join(home, ".cceasy", "node", "bin", "claude")
-		} else {
-			a.log(fmt.Sprintf("Tool %s not found in PATH", binaryName))
-			return
-		}
+		a.log(fmt.Sprintf("Tool %s not found. Please ensure it is installed.", binaryName))
+		return
 	}
 
 	// Try common terminals
@@ -254,10 +256,19 @@ func (a *App) platformLaunch(binaryName string, yoloMode bool, projectDir string
 		exports += fmt.Sprintf("export %s=\"%s\"; ", k, v)
 	}
 
-	cmdStr := fmt.Sprintf("cd %s && %s%s", projectDir, exports, binaryPath)
-	if binaryName == "claude" && yoloMode {
-		cmdStr = fmt.Sprintf("cd %s && %s%s --yolo", projectDir, exports, binaryPath)
+	finalCmd := fmt.Sprintf("\"%s\"", binaryPath)
+	if yoloMode {
+		switch binaryName {
+		case "claude":
+			finalCmd += " --dangerously-skip-permissions"
+		case "gemini":
+			finalCmd += " --yolo"
+		case "codex":
+			finalCmd += " --full-auto"
+		}
 	}
+
+	cmdStr := fmt.Sprintf("cd \"%s\" && %s%s", projectDir, exports, finalCmd)
 	cmdStr += "; echo 'Press any key to exit...'; read -n 1"
 
 	var cmd *exec.Cmd
