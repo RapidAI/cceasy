@@ -72,6 +72,15 @@ const translations: any = {
         "paste": "Paste",
         "hideConfig": "Configure",
         "editConfig": "Configure",
+        "settings": "Settings",
+        "globalSettings": "Global Settings",
+        "language": "Language",
+        "runnerStatus": "Runner Status",
+        "yoloModeLabel": "Yolo Mode",
+        "customProviderPlaceholder": "Custom Provider Name",
+        "version": "Version",
+        "author": "Author",
+        "checkingUpdate": "Checking for updates...",
         "bugReport": "Bug Report or Suggestion"
     },
     "zh-Hans": {
@@ -127,6 +136,15 @@ const translations: any = {
         "paste": "粘贴",
         "hideConfig": "配置",
         "editConfig": "配置",
+        "settings": "设置",
+        "globalSettings": "全局设置",
+        "language": "界面语言",
+        "runnerStatus": "运行状态",
+        "yoloModeLabel": "Yolo 模式",
+        "customProviderPlaceholder": "自定义服务商名称",
+        "version": "版本",
+        "author": "作者",
+        "checkingUpdate": "正在检查更新...",
         "bugReport": "Bug 报告或建议"
     },
     "zh-Hant": {
@@ -179,7 +197,16 @@ const translations: any = {
         "downloadNow": "立即下載",
         "paste": "貼上",
         "hideConfig": "配置",
-        "editConfig": "配置"
+        "editConfig": "配置",
+        "settings": "設置",
+        "globalSettings": "全局設置",
+        "language": "界面語言",
+        "runnerStatus": "運行狀態",
+        "yoloModeLabel": "Yolo 模式",
+        "customProviderPlaceholder": "自定義服務商名稱",
+        "version": "版本",
+        "author": "作者",
+        "checkingUpdate": "正在檢查更新..."
     }
 };
 
@@ -668,7 +695,7 @@ function App() {
                     <span className="sidebar-icon">📂</span> {t("manageProjects")}
                 </div>
                 <div className={`sidebar-item ${navTab === 'settings' ? 'active' : ''}`} onClick={() => switchTool('settings')}>
-                    <span className="sidebar-icon">⚙️</span> Settings
+                    <span className="sidebar-icon">⚙️</span> {t("settings")}
                 </div>
                 <div className={`sidebar-item ${navTab === 'about' ? 'active' : ''}`} onClick={() => switchTool('about')}>
                     <span className="sidebar-icon">ℹ️</span> {t("about")}
@@ -683,7 +710,7 @@ function App() {
                              navTab === 'gemini' ? 'Gemini CLI' : 
                              navTab === 'codex' ? 'OpenAI Codex' : 
                              navTab === 'projects' ? t("projectManagement") : 
-                             navTab === 'settings' ? 'Global Settings' : t("about")}
+                             navTab === 'settings' ? t("globalSettings") : t("about")}
                         </h2>
                         <div style={{display: 'flex', gap: '10px', '--wails-draggable': 'no-drag', marginRight: '5px'} as any}>
                             <button onClick={WindowHide} className="btn-hide">
@@ -775,9 +802,9 @@ function App() {
 
                     {navTab === 'settings' && (
                         <div style={{padding: '10px'}}>
-                            <h3>Global Settings</h3>
+                            <h3>{t("globalSettings")}</h3>
                             <div className="form-group">
-                                <label className="form-label">Language</label>
+                                <label className="form-label">{t("language")}</label>
                                 <select value={lang} onChange={handleLangChange} className="form-input">
                                     <option value="en">English</option>
                                     <option value="zh-Hans">简体中文</option>
@@ -803,8 +830,8 @@ function App() {
                         }}>
                             <img src={appIcon} alt="Logo" style={{width: '80px', height: '80px', marginBottom: '20px'}} />
                             <h2 style={{color: '#60a5fa', margin: '0 0 10px 0'}}>AICoder</h2>
-                            <div style={{fontSize: '1rem', color: '#374151', marginBottom: '5px'}}>Version {APP_VERSION}</div>
-                            <div style={{fontSize: '0.9rem', color: '#6b7280', marginBottom: '30px'}}>Author: Dr. Daniel</div>
+                            <div style={{fontSize: '1rem', color: '#374151', marginBottom: '5px'}}>{t("version")} {APP_VERSION}</div>
+                            <div style={{fontSize: '0.9rem', color: '#6b7280', marginBottom: '30px'}}>{t("author")}: Dr. Daniel</div>
                             
                             <div style={{display: 'flex', gap: '15px'}}>
                                 <button 
@@ -833,7 +860,7 @@ function App() {
                     <div className="global-action-bar">
                         <div className="action-bar-row">
                             <div style={{display: 'flex', flexDirection: 'column', gap: '4px'}}>
-                                <div style={{fontSize: '0.7rem', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em'}}>Runner Status</div>
+                                <div style={{fontSize: '0.7rem', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em'}}>{t("runnerStatus")}</div>
                                 <div style={{fontSize: '0.9rem', fontWeight: 600, color: '#374151'}}>
                                     <span style={{color: '#60a5fa', textTransform: 'capitalize'}}>{activeTool}</span>
                                     <span style={{margin: '0 8px', color: '#d1d5db'}}>|</span>
@@ -848,7 +875,7 @@ function App() {
                                     onChange={(e) => handleYoloChange(e.target.checked)}
                                     style={{marginRight: '8px'}}
                                 />
-                                <span>Yolo Mode</span>
+                                <span>{t("yoloModeLabel")}</span>
                             </label>
                         </div>
                         
@@ -931,7 +958,7 @@ function App() {
                                     className="form-input"
                                     value={(config as any)[activeTool].models[activeTab].model_name} 
                                     onChange={(e) => handleModelNameChange(e.target.value)}
-                                    placeholder="Custom Provider Name"
+                                    placeholder={t("customProviderPlaceholder")}
                                 />
                             </div>
                         )}
