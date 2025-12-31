@@ -322,7 +322,7 @@ function App() {
             }
         };
         const doneHandler = () => {
-            ResizeWindow(760, 520);
+            ResizeWindow(760, 440);
             setIsLoading(false);
         };
 
@@ -690,7 +690,7 @@ function App() {
                 <div className={`sidebar-item ${navTab === 'codex' ? 'active' : ''}`} onClick={() => switchTool('codex')}>
                     <span className="sidebar-icon">💻</span> Codex
                 </div>
-                <div style={{flex: 1}}></div>
+                <div style={{height: '20px'}}></div>
                 <div className={`sidebar-item ${navTab === 'projects' ? 'active' : ''}`} onClick={() => switchTool('projects')}>
                     <span className="sidebar-icon">📂</span> {t("manageProjects")}
                 </div>
@@ -857,7 +857,7 @@ function App() {
 
                 {/* Global Action Bar (Footer) */}
                 {config && (navTab === 'claude' || navTab === 'gemini' || navTab === 'codex') && (
-                    <div className="global-action-bar">
+                    <div className="global-action-bar" style={{marginBottom: '50px'}}>
                         <div className="action-bar-row">
                             <div style={{display: 'flex', flexDirection: 'column', gap: '4px'}}>
                                 <div style={{fontSize: '0.7rem', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em'}}>{t("runnerStatus")}</div>
