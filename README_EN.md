@@ -41,7 +41,7 @@ Enter your API Key in the configuration panel for each tool.
 
 ## About
 
-*   **Version**: V1.4.0
+*   **Version**: V2.0.0.2
 *   **Author**: Dr. Daniel
 *   **GitHub**: [RapidAI/cceasy](https://github.com/RapidAI/cceasy)
 *   **Resources**: [CS146s Chinese Version](https://github.com/BIT-ENGD/cs146s_cn)

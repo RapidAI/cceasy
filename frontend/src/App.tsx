@@ -16,7 +16,7 @@ const subscriptionUrls: {[key: string]: string} = {
     "aicodemirror": "https://www.aicodemirror.com/register?invitecode=CZPPWZ"
 };
 
-const APP_VERSION = "2.0.0.1";
+const APP_VERSION = "2.0.0.2";
 
 const translations: any = {
     "en": {
