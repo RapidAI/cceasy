@@ -9,10 +9,10 @@ This plan outlines the steps to fix the environment configuration logic, ensurin
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Core Infrastructure' (Protocol in workflow.md) [checkpoint: 505f065]
 
 ## Phase 2: Claude Code Configuration Fixes
-- [ ] Task: Update `syncToClaudeSettings` to handle the "Original" provider by strictly deleting files and returning early.
-- [ ] Task: Refactor `LaunchTool` for Claude to ensure environment variables are unset before launch in "Original" mode.
-- [ ] Task: Write unit tests to verify Claude config file deletion and variable unsetting.
-- [ ] Task: Conductor - User Manual Verification 'Phase 2: Claude Code' (Protocol in workflow.md)
+- [x] Task: Update `syncToClaudeSettings` to handle the "Original" provider by strictly deleting files and returning early.
+- [x] Task: Refactor `LaunchTool` for Claude to ensure environment variables are unset before launch in "Original" mode.
+- [x] Task: Write unit tests to verify Claude config file deletion and variable unsetting.
+- [x] Task: Conductor - User Manual Verification 'Phase 2: Claude Code' (Protocol in workflow.md) [checkpoint: ]
 
 ## Phase 3: Gemini CLI Configuration Fixes
 - [ ] Task: Update `syncToGeminiSettings` to handle the "Original" provider by deleting relevant config files (e.g., `~/.gemini/config.json`).
