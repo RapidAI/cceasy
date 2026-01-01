@@ -83,6 +83,14 @@ func TestSyncToClaudeSettings(t *testing.T) {
 		t.Errorf("Expected CLAUDE_CODE_USE_COLORS to be 'true', got '%v'", env["CLAUDE_CODE_USE_COLORS"])
 	}
 
+	if env["CLAUDE_CODE_MAX_OUTPUT_TOKENS"] != "64000" {
+		t.Errorf("Expected CLAUDE_CODE_MAX_OUTPUT_TOKENS to be '64000', got '%v'", env["CLAUDE_CODE_MAX_OUTPUT_TOKENS"])
+	}
+
+	if env["MAX_THINKING_TOKENS"] != "31999" {
+		t.Errorf("Expected MAX_THINKING_TOKENS to be '31999', got '%v'", env["MAX_THINKING_TOKENS"])
+	}
+
 	// 2. Verify .claude.json
 	claudeJsonPath := filepath.Join(tmpHome, ".claude.json")
 	if _, err := os.Stat(claudeJsonPath); os.IsNotExist(err) {

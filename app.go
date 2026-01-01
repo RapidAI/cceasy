@@ -265,6 +265,8 @@ func (a *App) syncToClaudeSettings(config AppConfig) error {
 	// Exclusively use AUTH_TOKEN for custom providers
 	env["ANTHROPIC_AUTH_TOKEN"] = selectedModel.ApiKey
 	env["CLAUDE_CODE_USE_COLORS"] = "true"
+	env["CLAUDE_CODE_MAX_OUTPUT_TOKENS"] = "64000"
+	env["MAX_THINKING_TOKENS"] = "31999"
 
 	switch strings.ToLower(selectedModel.ModelName) {
 	case "kimi":
