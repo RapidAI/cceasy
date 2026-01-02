@@ -78,6 +78,7 @@ body {
     gap: 12px;
     color: var(--text-secondary);
     font-weight: 500;
+    font-size: 0.85rem;
     transition: all 0.2s;
     border-left: 3px solid transparent;
     white-space: normal;
@@ -127,7 +128,7 @@ body {
 .top-header h2 {
     margin: 0;
     font-weight: 600;
-    font-size: 1.2rem;
+    font-size: 1.1rem;
     color: var(--text-color);
     letter-spacing: -0.025em;
 }
@@ -177,7 +178,7 @@ body {
     border-bottom: none;
     color: var(--text-secondary);
     font-weight: 500;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     transition: all 0.2s ease;
     border-radius: 8px 8px 0 0;
     margin-bottom: -1px;

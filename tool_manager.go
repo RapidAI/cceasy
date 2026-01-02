@@ -132,6 +132,8 @@ func (tm *ToolManager) InstallTool(name string) error {
 		packageName = "@google/gemini-cli"
 	case "codex":
 		packageName = "@openai/codex"
+	case "opencode":
+		packageName = "opencode-ai"
 	default:
 		return fmt.Errorf("unknown tool: %s", name)
 	}
@@ -206,7 +208,7 @@ func (a *App) InstallTool(name string) error {
 
 func (a *App) CheckToolsStatus() []ToolStatus {
 	tm := NewToolManager(a)
-	tools := []string{"claude", "gemini", "codex"}
+	tools := []string{"claude", "gemini", "codex", "opencode"}
 	statuses := make([]ToolStatus, len(tools))
 	for i, name := range tools {
 		statuses[i] = tm.GetToolStatus(name)

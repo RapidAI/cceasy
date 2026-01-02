@@ -33,6 +33,7 @@ type ModelConfig struct {
 	ModelId   string `json:"model_id"`
 	ModelUrl  string `json:"model_url"`
 	ApiKey    string `json:"api_key"`
+	WireApi   string `json:"wire_api"`
 	IsCustom  bool   `json:"is_custom"`
 }
 
@@ -52,6 +53,7 @@ type AppConfig struct {
 	Claude             ToolConfig      `json:"claude"`
 	Gemini             ToolConfig      `json:"gemini"`
 	Codex              ToolConfig      `json:"codex"`
+	Opencode           ToolConfig      `json:"opencode"`
 	Projects           []ProjectConfig `json:"projects"`
 	CurrentProject     string          `json:"current_project"` // ID of the current project
 	ActiveTool         string          `json:"active_tool"`     // "claude", "gemini", or "codex"
@@ -203,6 +205,13 @@ func (a *App) getCodexConfigPaths() (string, string) {
 	return dir, auth
 }
 
+func (a *App) getOpencodeConfigPaths() (string, string) {
+	home, _ := os.UserHomeDir()
+	dir := filepath.Join(home, ".config", "opencode")
+	config := filepath.Join(dir, "opencode.json")
+	return dir, config
+}
+
 func (a *App) clearClaudeConfig() {
 	dir, _, legacy := a.getClaudeConfigPaths()
 	home, _ := os.UserHomeDir()
@@ -226,11 +235,18 @@ func (a *App) clearCodexConfig() {
 	a.log("Cleared Codex configuration directory")
 }
 
+func (a *App) clearOpencodeConfig() {
+	dir, _ := a.getOpencodeConfigPaths()
+	os.RemoveAll(dir)
+	a.log("Cleared Opencode configuration directory")
+}
+
 func (a *App) clearEnvVars() {
 	vars := []string{
 		"ANTHROPIC_API_KEY", "ANTHROPIC_BASE_URL", "ANTHROPIC_AUTH_TOKEN",
 		"OPENAI_API_KEY", "OPENAI_BASE_URL", "WIRE_API",
 		"GEMINI_API_KEY", "GOOGLE_GEMINI_BASE_URL",
+		"OPENCODE_API_KEY", "OPENCODE_BASE_URL",
 	}
 	for _, v := range vars {
 		os.Unsetenv(v)
@@ -299,6 +315,16 @@ func (a *App) syncToClaudeSettings(config AppConfig) error {
 		env["ANTHROPIC_SMALL_FAST_MODEL"] = selectedModel.ModelId
 		env["API_TIMEOUT_MS"] = "3000000"
 		env["CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC"] = "1"
+	case "deepseek":
+		env["ANTHROPIC_BASE_URL"] = "https://api.deepseek.com/anthropic"
+		modelId := selectedModel.ModelId
+		if modelId == "" {
+			modelId = "deepseek-chat"
+		}
+		env["ANTHROPIC_DEFAULT_HAIKU_MODEL"] = modelId
+		env["ANTHROPIC_DEFAULT_OPUS_MODEL"] = modelId
+		env["ANTHROPIC_DEFAULT_SONNET_MODEL"] = modelId
+		env["ANTHROPIC_MODEL"] = modelId
 	default:
 		env["ANTHROPIC_BASE_URL"] = selectedModel.ModelUrl
 		env["ANTHROPIC_MODEL"] = selectedModel.ModelId
@@ -412,7 +438,7 @@ writeConfigToml:
 		}
 		modelId := selectedModel.ModelId
 		if modelId == "" {
-			modelId = "gpt-5-codex"
+			modelId = "gpt-5.2-codex"
 		}
 		configToml = fmt.Sprintf(`model_provider = "aigocode"
 model = "%s"
@@ -426,9 +452,123 @@ base_url = "%s"
 wire_api = "responses"
 requires_openai_auth = true
 `, modelId, baseUrl)
+	} else if strings.ToLower(selectedModel.ModelName) == "deepseek" {
+		if baseUrl == "" {
+			baseUrl = "https://api.deepseek.com/v1"
+		}
+		modelId := selectedModel.ModelId
+		if modelId == "" {
+			modelId = "deepseek-chat"
+		}
+		configToml = fmt.Sprintf(`model_provider = "deepseek"
+model = "%s"
+model_reasoning_effort = "xhigh"
+disable_response_storage = true
+preferred_auth_method = "apikey"
+
+[model_providers.deepseek]
+name = "deepseek"
+base_url = "%s"
+wire_api = "chat"
+request_max_retries = 4
+stream_max_retries = 8
+stream_idle_timeout_ms = 120000
+`, modelId, baseUrl)
+	} else if strings.ToLower(selectedModel.ModelName) == "glm" {
+		if baseUrl == "" {
+			baseUrl = "https://open.bigmodel.cn/api/paas/v4"
+		}
+		modelId := selectedModel.ModelId
+		if modelId == "" {
+			modelId = "glm-4.7"
+		}
+		configToml = fmt.Sprintf(`model_provider = "glm"
+model = "%s"
+model_reasoning_effort = "xhigh"
+disable_response_storage = true
+preferred_auth_method = "apikey"
+
+[model_providers.glm]
+name = "glm"
+base_url = "%s"
+wire_api = "chat"
+request_max_retries = 4
+stream_max_retries = 8
+stream_idle_timeout_ms = 120000
+`, modelId, baseUrl)
+	} else if strings.ToLower(selectedModel.ModelName) == "doubao" {
+		if baseUrl == "" {
+			baseUrl = "https://ark.cn-beijing.volces.com/api/coding/v3"
+		}
+		modelId := selectedModel.ModelId
+		if modelId == "" {
+			modelId = "doubao-seed-code-preview-latest"
+		}
+		configToml = fmt.Sprintf(`model_provider = "doubao"
+model = "%s"
+model_reasoning_effort = "xhigh"
+disable_response_storage = true
+preferred_auth_method = "apikey"
+
+[model_providers.doubao]
+name = "doubao"
+base_url = "%s"
+wire_api = "chat"
+request_max_retries = 4
+stream_max_retries = 8
+stream_idle_timeout_ms = 120000
+`, modelId, baseUrl)
+	} else if strings.ToLower(selectedModel.ModelName) == "kimi" {
+		if baseUrl == "" {
+			baseUrl = "https://api.kimi.com/coding/v1"
+		}
+		modelId := selectedModel.ModelId
+		if modelId == "" {
+			modelId = "kimi-for-coding"
+		}
+		configToml = fmt.Sprintf(`model_provider = "kimi"
+model = "%s"
+model_reasoning_effort = "xhigh"
+disable_response_storage = true
+preferred_auth_method = "apikey"
+
+[model_providers.kimi]
+name = "kimi"
+base_url = "%s"
+wire_api = "chat"
+request_max_retries = 4
+stream_max_retries = 8
+stream_idle_timeout_ms = 120000
+`, modelId, baseUrl)
+	} else if strings.ToLower(selectedModel.ModelName) == "minimax" {
+		if baseUrl == "" {
+			baseUrl = "https://api.minimaxi.com/v1"
+		}
+		modelId := selectedModel.ModelId
+		if modelId == "" {
+			modelId = "MiniMax-M2.1"
+		}
+		configToml = fmt.Sprintf(`model_provider = "minimax"
+model = "%s"
+model_reasoning_effort = "xhigh"
+disable_response_storage = true
+preferred_auth_method = "apikey"
+
+[model_providers.minimax]
+name = "minimax"
+base_url = "%s"
+wire_api = "chat"
+request_max_retries = 4
+stream_max_retries = 8
+stream_idle_timeout_ms = 120000
+`, modelId, baseUrl)
 	} else {
 		if baseUrl == "" {
 			baseUrl = "https://api.aicodemirror.com/api/codex/backend-api/codex"
+		}
+		modelId := selectedModel.ModelId
+		if modelId == "" {
+			modelId = "gpt-5.2-codex"
 		}
 		configToml = fmt.Sprintf(`model_provider = "aicodemirror"
 model = "%s"
@@ -440,7 +580,43 @@ preferred_auth_method = "apikey"
 name = "aicodemirror"
 base_url = "%s"
 wire_api = "responses"
-`, selectedModel.ModelId, baseUrl)
+`, modelId, baseUrl)
+	}
+
+	if selectedModel.IsCustom || (strings.ToLower(selectedModel.ModelName) != "aigocode" && 
+		strings.ToLower(selectedModel.ModelName) != "deepseek" && 
+		strings.ToLower(selectedModel.ModelName) != "glm" && 
+		strings.ToLower(selectedModel.ModelName) != "doubao" && 
+		strings.ToLower(selectedModel.ModelName) != "kimi" && 
+		strings.ToLower(selectedModel.ModelName) != "minimax" && 
+		strings.ToLower(selectedModel.ModelName) != "aicodemirror") {
+		// --- CUSTOM OR OTHER PROVIDERS ---
+		wireApi := selectedModel.WireApi
+		if wireApi == "" {
+			wireApi = "chat"
+		}
+		
+		providerName := strings.ToLower(selectedModel.ModelName)
+		if providerName == "" || providerName == "custom" {
+			providerName = "custom"
+		}
+
+		modelId := selectedModel.ModelId
+		if modelId == "" {
+			modelId = "gpt-5.2-codex"
+		}
+
+		configToml = fmt.Sprintf(`model_provider = "%s"
+model = "%s"
+model_reasoning_effort = "high"
+disable_response_storage = true
+preferred_auth_method = "apikey"
+
+[model_providers.%s]
+name = "%s"
+base_url = "%s"
+wire_api = "%s"
+`, providerName, modelId, providerName, providerName, baseUrl, wireApi)
 	}
 
 	configBytes := []byte(configToml)
@@ -453,6 +629,91 @@ wire_api = "responses"
 	}
 
 	return os.WriteFile(configPath, configBytes, 0644)
+}
+
+func (a *App) syncToOpencodeSettings(config AppConfig) error {
+	var selectedModel *ModelConfig
+	for _, m := range config.Opencode.Models {
+		if m.ModelName == config.Opencode.CurrentModel {
+			selectedModel = &m
+			break
+		}
+	}
+
+	if selectedModel == nil {
+		return fmt.Errorf("selected opencode model not found")
+	}
+
+	dir, configPath := a.getOpencodeConfigPaths()
+
+	if strings.ToLower(selectedModel.ModelName) == "original" {
+		a.clearOpencodeConfig()
+		return nil
+	}
+
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return err
+	}
+
+	baseUrl := selectedModel.ModelUrl
+	modelId := selectedModel.ModelId
+	providerName := selectedModel.ModelName
+
+	// Fallback logic for Opencode (align with Codex providers)
+	if modelId == "" {
+		switch strings.ToLower(providerName) {
+		case "deepseek":
+			modelId = "deepseek-chat"
+			if baseUrl == "" { baseUrl = "https://api.deepseek.com/v1" }
+		case "glm":
+			modelId = "glm-4.7"
+			if baseUrl == "" { baseUrl = "https://open.bigmodel.cn/api/paas/v4" }
+		case "doubao":
+			modelId = "doubao-seed-code-preview-latest"
+			if baseUrl == "" { baseUrl = "https://ark.cn-beijing.volces.com/api/coding/v3" }
+		case "kimi":
+			modelId = "kimi-for-coding"
+			if baseUrl == "" { baseUrl = "https://api.kimi.com/coding/v1" }
+		case "minimax":
+			modelId = "MiniMax-M2.1"
+			if baseUrl == "" { baseUrl = "https://api.minimaxi.com/v1" }
+		default:
+			modelId = "opencode-1.0"
+			if baseUrl == "" { baseUrl = "https://api.aicodemirror.com/api/opencode/v1" }
+		}
+	}
+
+	// Build the JSON structure
+	opencodeJson := map[string]interface{}{
+		"$schema": "https://opencode.ai/config.json",
+		"provider": map[string]interface{}{
+			"myprovider": map[string]interface{}{
+				"npm": "@ai-sdk/openai-compatible",
+				"name": providerName,
+				"options": map[string]interface{}{
+					"baseURL": baseUrl,
+					"apiKey": selectedModel.ApiKey,
+					"maxTokens": 8192,
+				},
+				"models": map[string]interface{}{
+					modelId: map[string]interface{}{
+						"name": modelId,
+						"limit": map[string]interface{}{
+							"context": 8192,
+							"output":  5000,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	data, err := json.MarshalIndent(opencodeJson, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(configPath, data, 0644)
 }
 
 func (a *App) syncToGeminiSettings(config AppConfig) error {
@@ -519,6 +780,8 @@ func getBaseUrl(selectedModel *ModelConfig) string {
 		baseUrl = "https://ark.cn-beijing.volces.com/api/coding"
 	case "minimax":
 		baseUrl = "https://api.minimaxi.com/anthropic"
+	case "deepseek":
+		baseUrl = "https://api.deepseek.com/anthropic"
 	}
 	return baseUrl
 }
@@ -552,6 +815,11 @@ func (a *App) LaunchTool(toolName string, yoloMode bool, projectDir string) {
 		envKey = "OPENAI_API_KEY"
 		envBaseUrl = "OPENAI_BASE_URL"
 		binaryName = "codex"
+	case "opencode":
+		toolCfg = config.Opencode
+		envKey = "OPENCODE_API_KEY"
+		envBaseUrl = "OPENCODE_BASE_URL"
+		binaryName = "opencode"
 	default:
 		a.log("Unknown tool: " + toolName)
 		return
@@ -565,8 +833,14 @@ func (a *App) LaunchTool(toolName string, yoloMode bool, projectDir string) {
 		}
 	}
 
-		if selectedModel == nil {
-		a.log("No model selected.")
+	if selectedModel == nil || toolCfg.CurrentModel == "" {
+		title := "提示"
+		message := "请先选择一个服务商。"
+		if a.CurrentLanguage == "en" {
+			title = "Notice"
+			message = "Please select a provider first."
+		}
+		a.ShowMessage(title, message)
 		return
 	}
 
@@ -601,6 +875,9 @@ func (a *App) LaunchTool(toolName string, yoloMode bool, projectDir string) {
 			case "codex":
 				os.Setenv("OPENAI_MODEL", selectedModel.ModelId)
 				env["OPENAI_MODEL"] = selectedModel.ModelId
+			case "opencode":
+				os.Setenv("OPENCODE_MODEL", selectedModel.ModelId)
+				env["OPENCODE_MODEL"] = selectedModel.ModelId
 			}
 		}
 
@@ -622,6 +899,9 @@ func (a *App) LaunchTool(toolName string, yoloMode bool, projectDir string) {
 				env["OPENAI_BASE_URL"] = selectedModel.ModelUrl
 			}
 			a.syncToCodexSettings(config)
+		case "opencode":
+			// Opencode might use similar settings to Codex or its own
+			a.syncToOpencodeSettings(config)
 		}
 	} else {
 		// --- ORIGINAL MODE: CLEANUP SPECIFIC TOOL ONLY ---
@@ -639,6 +919,10 @@ func (a *App) LaunchTool(toolName string, yoloMode bool, projectDir string) {
 			os.Unsetenv("OPENAI_API_KEY")
 			os.Unsetenv("OPENAI_BASE_URL")
 			a.clearCodexConfig()
+		} else if strings.ToLower(toolName) == "opencode" {
+			os.Unsetenv("OPENCODE_API_KEY")
+			os.Unsetenv("OPENCODE_BASE_URL")
+			a.clearOpencodeConfig()
 		}
 		
 		a.log(fmt.Sprintf("Running %s in Original mode: Custom configurations cleared.", toolName))
@@ -680,8 +964,9 @@ func (a *App) LoadConfig() (AppConfig, error) {
 		{ModelName: "kimi", ModelId: "kimi-k2-thinking", ModelUrl: "https://api.kimi.com/coding", ApiKey: ""},
 		{ModelName: "doubao", ModelId: "doubao-seed-code-preview-latest", ModelUrl: "https://ark.cn-beijing.volces.com/api/coding", ApiKey: ""},
 		{ModelName: "MiniMax", ModelId: "MiniMax-M2.1", ModelUrl: "https://api.minimaxi.com/anthropic", ApiKey: ""},
+		{ModelName: "DeepSeek", ModelId: "deepseek-chat", ModelUrl: "https://api.deepseek.com/anthropic", ApiKey: ""},
 		{ModelName: "AIgoCode", ModelId: "claude-3-5-sonnet-20241022", ModelUrl: "https://api.aigocode.com/api", ApiKey: ""},
-		{ModelName: "AICodeMirror", ModelId: "Haiku", ModelUrl: "https://api.aicodemirror.com/api/claudecode", ApiKey: ""},
+		{ModelName: "AiCodeMirror", ModelId: "Haiku", ModelUrl: "https://api.aicodemirror.com/api/claudecode", ApiKey: ""},
 		{ModelName: "Custom", ModelId: "", ModelUrl: "", ApiKey: "", IsCustom: true},
 	}
 	defaultGeminiModels := []ModelConfig{
@@ -692,8 +977,22 @@ func (a *App) LoadConfig() (AppConfig, error) {
 	}
 	defaultCodexModels := []ModelConfig{
 		{ModelName: "Original", ModelId: "", ModelUrl: "", ApiKey: ""},
-		{ModelName: "AIgoCode", ModelId: "gpt-5-codex", ModelUrl: "https://api.aigocode.com/openai", ApiKey: ""},
+		{ModelName: "AIgoCode", ModelId: "gpt-5.2-codex", ModelUrl: "https://api.aigocode.com/openai", ApiKey: ""},
 		{ModelName: "AiCodeMirror", ModelId: "gpt-5.2-codex", ModelUrl: "https://api.aicodemirror.com/api/codex/backend-api/codex", ApiKey: ""},
+		{ModelName: "DeepSeek", ModelId: "deepseek-chat", ModelUrl: "https://api.deepseek.com/v1", ApiKey: ""},
+		{ModelName: "GLM", ModelId: "glm-4.7", ModelUrl: "https://open.bigmodel.cn/api/paas/v4", ApiKey: ""},
+		{ModelName: "Doubao", ModelId: "doubao-seed-code-preview-latest", ModelUrl: "https://ark.cn-beijing.volces.com/api/coding/v3", ApiKey: ""},
+		{ModelName: "Kimi", ModelId: "kimi-for-coding", ModelUrl: "https://api.kimi.com/coding/v1", ApiKey: ""},
+		{ModelName: "MiniMax", ModelId: "MiniMax-M2.1", ModelUrl: "https://api.minimaxi.com/v1", ApiKey: ""},
+		{ModelName: "Custom", ModelId: "", ModelUrl: "", ApiKey: "", IsCustom: true},
+	}
+	defaultOpencodeModels := []ModelConfig{
+		{ModelName: "Original", ModelId: "", ModelUrl: "", ApiKey: ""},
+		{ModelName: "DeepSeek", ModelId: "deepseek-chat", ModelUrl: "https://api.deepseek.com/v1", ApiKey: ""},
+		{ModelName: "GLM", ModelId: "glm-4.7", ModelUrl: "https://open.bigmodel.cn/api/paas/v4", ApiKey: ""},
+		{ModelName: "Doubao", ModelId: "doubao-seed-code-preview-latest", ModelUrl: "https://ark.cn-beijing.volces.com/api/coding/v3", ApiKey: ""},
+		{ModelName: "Kimi", ModelId: "kimi-for-coding", ModelUrl: "https://api.kimi.com/coding/v1", ApiKey: ""},
+		{ModelName: "MiniMax", ModelId: "MiniMax-M2.1", ModelUrl: "https://api.minimaxi.com/v1", ApiKey: ""},
 		{ModelName: "Custom", ModelId: "", ModelUrl: "", ApiKey: "", IsCustom: true},
 	}
 
@@ -725,6 +1024,10 @@ func (a *App) LoadConfig() (AppConfig, error) {
 							CurrentModel: "Codex",
 							Models:       defaultCodexModels,
 						},
+						Opencode: ToolConfig{
+							CurrentModel: "AiCodeMirror",
+							Models:       defaultOpencodeModels,
+						},
 						Projects:       oldConfig.Projects,
 						CurrentProject: oldConfig.CurrentProj,
 						ActiveTool:     "message",
@@ -749,6 +1052,10 @@ func (a *App) LoadConfig() (AppConfig, error) {
 			Codex: ToolConfig{
 				CurrentModel: "Codex",
 				Models:       defaultCodexModels,
+			},
+			Opencode: ToolConfig{
+				CurrentModel: "AiCodeMirror",
+				Models:       defaultOpencodeModels,
 			},
 			Projects: []ProjectConfig{
 				{
@@ -804,14 +1111,46 @@ func (a *App) LoadConfig() (AppConfig, error) {
 		config.Codex.Models = defaultCodexModels
 		config.Codex.CurrentModel = "AiCodeMirror"
 	}
+	if config.Opencode.Models == nil || len(config.Opencode.Models) == 0 {
+		config.Opencode.Models = defaultOpencodeModels
+		config.Opencode.CurrentModel = "AiCodeMirror"
+	}
 
 	ensureModel(&config.Claude.Models, "AiCodeMirror", "https://api.aicodemirror.com/api/claudecode")
+	ensureModel(&config.Claude.Models, "DeepSeek", "https://api.deepseek.com/anthropic")
+	
+	// Deduplicate AiCodeMirror for Claude if both AICodeMirror and AiCodeMirror exist
+	dedupeAiCodeMirror := func(models *[]ModelConfig) {
+		var newModels []ModelConfig
+		foundAi := false
+		for _, m := range *models {
+			if strings.EqualFold(m.ModelName, "AiCodeMirror") {
+				if !foundAi {
+					m.ModelName = "AiCodeMirror" // Standardize
+					newModels = append(newModels, m)
+					foundAi = true
+				}
+			} else {
+				newModels = append(newModels, m)
+			}
+		}
+		*models = newModels
+	}
+	dedupeAiCodeMirror(&config.Claude.Models)
+
 	ensureModel(&config.Gemini.Models, "AiCodeMirror", "https://api.aicodemirror.com/api/gemini")
 	ensureModel(&config.Codex.Models, "AiCodeMirror", "https://api.aicodemirror.com/api/codex/backend-api/codex")
+	ensureModel(&config.Codex.Models, "DeepSeek", "https://api.deepseek.com/v1")
+	ensureModel(&config.Codex.Models, "GLM", "https://open.bigmodel.cn/api/paas/v4")
+	ensureModel(&config.Codex.Models, "Doubao", "https://ark.cn-beijing.volces.com/api/coding/v3")
+	ensureModel(&config.Codex.Models, "Kimi", "https://api.kimi.com/coding/v1")
+	ensureModel(&config.Codex.Models, "MiniMax", "https://api.minimaxi.com/v1")
 
-	ensureModel(&config.Claude.Models, "AIgoCode", "https://api.aigocode.com/api")
-	ensureModel(&config.Gemini.Models, "AIgoCode", "https://api.aigocode.com/gemini")
-	ensureModel(&config.Codex.Models, "AIgoCode", "https://api.aigocode.com/openai")
+	ensureModel(&config.Opencode.Models, "DeepSeek", "https://api.deepseek.com/v1")
+	ensureModel(&config.Opencode.Models, "GLM", "https://open.bigmodel.cn/api/paas/v4")
+	ensureModel(&config.Opencode.Models, "Doubao", "https://ark.cn-beijing.volces.com/api/coding/v3")
+	ensureModel(&config.Opencode.Models, "Kimi", "https://api.kimi.com/coding/v1")
+	ensureModel(&config.Opencode.Models, "MiniMax", "https://api.minimaxi.com/v1")
 
 	// Ensure 'Original' is always present and first
 	ensureOriginal := func(models *[]ModelConfig) {
@@ -826,9 +1165,24 @@ func (a *App) LoadConfig() (AppConfig, error) {
 			*models = append([]ModelConfig{{ModelName: "Original", ModelUrl: "", ApiKey: ""}}, *models...)
 		}
 	}
+	
+	// Opencode does NOT use common relay providers
+	cleanOpencodeModels := func(models *[]ModelConfig) {
+		var newModels []ModelConfig
+		for _, m := range *models {
+			name := strings.ToLower(m.ModelName)
+			if name != "aigocode" && name != "aicodemirror" {
+				newModels = append(newModels, m)
+			}
+		}
+		*models = newModels
+	}
+
 	ensureOriginal(&config.Claude.Models)
 	ensureOriginal(&config.Gemini.Models)
 	ensureOriginal(&config.Codex.Models)
+	ensureOriginal(&config.Opencode.Models)
+	cleanOpencodeModels(&config.Opencode.Models)
 
 	// Ensure 'Custom' is always present
 	ensureCustom := func(models *[]ModelConfig) {
@@ -846,6 +1200,7 @@ func (a *App) LoadConfig() (AppConfig, error) {
 	ensureCustom(&config.Claude.Models)
 	ensureCustom(&config.Gemini.Models)
 	ensureCustom(&config.Codex.Models)
+	ensureCustom(&config.Opencode.Models)
 
 	// Ensure 'Custom' is always last for all tools
 	moveCustomToLast := func(models *[]ModelConfig) {
@@ -885,10 +1240,12 @@ func (a *App) LoadConfig() (AppConfig, error) {
 	moveCustomToLast(&config.Claude.Models)
 	moveCustomToLast(&config.Gemini.Models)
 	moveCustomToLast(&config.Codex.Models)
+	moveCustomToLast(&config.Opencode.Models)
 
 	ensureOriginalFirst(&config.Claude.Models)
 	ensureOriginalFirst(&config.Gemini.Models)
 	ensureOriginalFirst(&config.Codex.Models)
+	ensureOriginalFirst(&config.Opencode.Models)
 
 	// Ensure CurrentModel is valid
 	if config.Gemini.CurrentModel == "" {
@@ -896,6 +1253,9 @@ func (a *App) LoadConfig() (AppConfig, error) {
 	}
 	if config.Codex.CurrentModel == "" {
 		config.Codex.CurrentModel = "Original"
+	}
+	if config.Opencode.CurrentModel == "" {
+		config.Opencode.CurrentModel = "Original"
 	}
 
 	if config.ActiveTool == "" {
@@ -905,49 +1265,68 @@ func (a *App) LoadConfig() (AppConfig, error) {
 	return config, nil
 }
 
-// getProviderApiKey gets the apikey for a specific provider name from a tool config
-func getProviderApiKey(toolConfig *ToolConfig, providerName string) string {
+// getProviderModel gets the model for a specific provider name from a tool config
+func getProviderModel(toolConfig *ToolConfig, providerName string) *ModelConfig {
 	for i := range toolConfig.Models {
-		model := &toolConfig.Models[i]
-		if strings.EqualFold(model.ModelName, providerName) {
-			return model.ApiKey
+		if strings.EqualFold(toolConfig.Models[i].ModelName, providerName) {
+			return &toolConfig.Models[i]
 		}
 	}
-	return ""
+	return nil
 }
 
-// syncProviderApiKey synchronizes the apikey of a specific provider across all tools
-func syncProviderApiKey(a *App, oldConfig, newConfig *AppConfig, providerName string) {
-	newClaudeKey := getProviderApiKey(&newConfig.Claude, providerName)
-	newGeminiKey := getProviderApiKey(&newConfig.Gemini, providerName)
-	newCodexKey := getProviderApiKey(&newConfig.Codex, providerName)
+// syncAllProviderApiKeys synchronizes apikeys of all providers (except 'Original') across all tools
+func syncAllProviderApiKeys(a *App, oldConfig, newConfig *AppConfig) {
+	// List of tools to sync
+	tools := []*ToolConfig{&newConfig.Claude, &newConfig.Gemini, &newConfig.Codex, &newConfig.Opencode}
+	oldTools := []*ToolConfig{&oldConfig.Claude, &oldConfig.Gemini, &oldConfig.Codex, &oldConfig.Opencode}
 
-	oldClaudeKey := getProviderApiKey(&oldConfig.Claude, providerName)
-	oldGeminiKey := getProviderApiKey(&oldConfig.Gemini, providerName)
-	oldCodexKey := getProviderApiKey(&oldConfig.Codex, providerName)
-
+	// 1. Identify which provider's ApiKey has changed
+	var changedProvider string
 	var updatedApiKey string
-	found := false
+	foundChange := false
 
-	if newClaudeKey != oldClaudeKey {
-		updatedApiKey = newClaudeKey
-		found = true
-		a.log(fmt.Sprintf("Sync: detected %s change in Claude", providerName))
-	} else if newGeminiKey != oldGeminiKey {
-		updatedApiKey = newGeminiKey
-		found = true
-		a.log(fmt.Sprintf("Sync: detected %s change in Gemini", providerName))
-	} else if newCodexKey != oldCodexKey {
-		updatedApiKey = newCodexKey
-		found = true
-		a.log(fmt.Sprintf("Sync: detected %s change in Codex", providerName))
+	// Iterate through all tools and their models to find a change compared to oldConfig
+	for i, tool := range tools {
+		oldTool := oldTools[i]
+
+		// Check for ApiKey changes
+		for _, model := range tool.Models {
+			if strings.EqualFold(model.ModelName, "Original") {
+				continue
+			}
+
+			oldModel := getProviderModel(oldTool, model.ModelName)
+			if oldModel != nil {
+				// If it existed before, check if ApiKey changed
+				if model.ApiKey != oldModel.ApiKey {
+					changedProvider = model.ModelName
+					updatedApiKey = model.ApiKey
+					foundChange = true
+					a.log(fmt.Sprintf("Sync: detected %s apikey change in tool config", changedProvider))
+					break
+				}
+			} else {
+				// New model added (not in oldTool)
+				if model.ApiKey != "" {
+					changedProvider = model.ModelName
+					updatedApiKey = model.ApiKey
+					foundChange = true
+					a.log(fmt.Sprintf("Sync: detected new provider %s with apikey", changedProvider))
+					break
+				}
+			}
+		}
+		if foundChange {
+			break
+		}
 	}
 
-	if found {
-		a.log(fmt.Sprintf("Sync: propagating %s apikey to all tools", providerName))
-		for _, toolCfg := range []*ToolConfig{&newConfig.Claude, &newConfig.Gemini, &newConfig.Codex} {
+	if foundChange {
+		a.log(fmt.Sprintf("Sync: propagating %s apikey to all tools", changedProvider))
+		for _, toolCfg := range tools {
 			for i := range toolCfg.Models {
-				if strings.EqualFold(toolCfg.Models[i].ModelName, providerName) {
+				if strings.EqualFold(toolCfg.Models[i].ModelName, changedProvider) {
 					toolCfg.Models[i].ApiKey = updatedApiKey
 				}
 			}
@@ -957,16 +1336,14 @@ func syncProviderApiKey(a *App, oldConfig, newConfig *AppConfig, providerName st
 
 func (a *App) SaveConfig(config AppConfig) error {
 	// Load old config to compare for sync logic
-	// We use a direct read here to avoid the injection logic in LoadConfig for comparison
 	var oldConfig AppConfig
 	path, _ := a.getConfigPath()
 	if data, err := os.ReadFile(path); err == nil {
 		json.Unmarshal(data, &oldConfig)
 	}
 
-	// Sync apikeys across all tools before saving
-	syncProviderApiKey(a, &oldConfig, &config, "AiCodeMirror")
-	syncProviderApiKey(a, &oldConfig, &config, "AIgoCode")
+	// Sync all apikeys across all tools before saving
+	syncAllProviderApiKeys(a, &oldConfig, &config)
 
 	if err := a.saveToPath(path, config); err != nil {
 		return err

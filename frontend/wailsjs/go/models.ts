@@ -18,26 +18,24 @@ export namespace main {
 	        this.yolo_mode = source["yolo_mode"];
 	    }
 	}
-	export class ModelConfig {
-	    model_name: string;
-	    model_id: string;
-	    model_url: string;
-	    api_key: string;
-	    is_custom: boolean;
-	
-	    static createFrom(source: any = {}) {
-	        return new ModelConfig(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.model_name = source["model_name"];
-	        this.model_id = source["model_id"];
-	        this.model_url = source["model_url"];
-	        this.api_key = source["api_key"];
-	        this.is_custom = source["is_custom"];
-	    }
-	}
+export class ModelConfig {
+    model_name: string;
+    model_id: string;
+    model_url: string;
+    api_key: string;
+    wire_api: string;
+    is_custom: boolean;
+
+    constructor(source: any = {}) {
+        if ("string" === typeof source) source = JSON.parse(source);
+        this.model_name = source["model_name"];
+        this.model_id = source["model_id"];
+        this.model_url = source["model_url"];
+        this.api_key = source["api_key"];
+        this.wire_api = source["wire_api"];
+        this.is_custom = source["is_custom"];
+    }
+}
 	export class ToolConfig {
 	    current_model: string;
 	    models: ModelConfig[];
@@ -74,6 +72,7 @@ export namespace main {
 	    claude: ToolConfig;
 	    gemini: ToolConfig;
 	    codex: ToolConfig;
+	    opencode: ToolConfig;
 	    projects: ProjectConfig[];
 	    current_project: string;
 	    active_tool: string;
@@ -88,6 +87,7 @@ export namespace main {
 	        this.claude = this.convertValues(source["claude"], ToolConfig);
 	        this.gemini = this.convertValues(source["gemini"], ToolConfig);
 	        this.codex = this.convertValues(source["codex"], ToolConfig);
+	        this.opencode = this.convertValues(source["opencode"], ToolConfig);
 	        this.projects = this.convertValues(source["projects"], ProjectConfig);
 	        this.current_project = source["current_project"];
 	        this.active_tool = source["active_tool"];

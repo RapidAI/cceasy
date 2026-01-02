@@ -20,7 +20,7 @@ const subscriptionUrls: {[key: string]: string} = {
     "aigocode": "https://aigocode.com/invite/TCFQQCCK"
 };
 
-const APP_VERSION = "2.0.1.119";
+const APP_VERSION = "2.0.1.166";
 
 const translations: any = {
     "en": {
@@ -79,6 +79,8 @@ const translations: any = {
         "version": "Version",
         "author": "Author",
         "checkingUpdate": "Checking for updates...",
+        "opencode": "OpenCode",
+        "opencodeDesc": "OpenCode AI Programming Assistant",
         "bugReport": "Problem Feedback",
         "businessCooperation": "Business: WeChat znsoft",
         "original": "Original",
@@ -159,6 +161,8 @@ const translations: any = {
         "version": "版本",
         "author": "作者",
         "checkingUpdate": "正在检查更新...",
+        "opencode": "OpenCode",
+        "opencodeDesc": "OpenCode AI 编程助手",
         "bugReport": "问题反馈",
         "businessCooperation": "商业合作：微信 znsoft",
         "original": "原厂",
@@ -189,7 +193,7 @@ const translations: any = {
         "faq": "常見問題",
         "hide": "隱藏",
         "launch": "開始編程",
-        "專案": "專案",
+        "project": "專案",
         "projectDir": "專案目錄",
         "change": "變更",
         "yoloMode": "Yolo 模式",
@@ -236,7 +240,9 @@ const translations: any = {
         "version": "版本",
         "author": "作者",
         "checkingUpdate": "正在檢查更新...",
-        "bugReport": "問題回饋",
+        "opencode": "OpenCode",
+        "opencodeDesc": "OpenCode AI 编程助手",
+        "bugReport": "問題反饋",
         "businessCooperation": "商業合作：微信 znsoft",
         "original": "原廠",
         "message": "消息",
@@ -514,7 +520,7 @@ function App() {
                 
                 // Keep track of the last active tool for settings/launch logic
                 const lastActiveTool = cfg.active_tool || "claude";
-                if (lastActiveTool === 'claude' || lastActiveTool === 'gemini' || lastActiveTool === 'codex') {
+                if (lastActiveTool === 'claude' || lastActiveTool === 'gemini' || lastActiveTool === 'codex' || lastActiveTool === 'opencode') {
                     setActiveTool(lastActiveTool);
                 }
                 
@@ -526,7 +532,7 @@ function App() {
                     if (idx !== -1) setActiveTab(idx);
 
                     // Check if any model has an API key configured for the active tool
-                    if (lastActiveTool === 'claude' || lastActiveTool === 'gemini' || lastActiveTool === 'codex') {
+                    if (lastActiveTool === 'claude' || lastActiveTool === 'gemini' || lastActiveTool === 'codex' || lastActiveTool === 'opencode') {
                         const hasAnyApiKey = toolCfg.models.some((m: any) => m.api_key && m.api_key.trim() !== "");
                         if (!hasAnyApiKey) {
                             setShowModelSettings(true);
@@ -544,7 +550,7 @@ function App() {
             // Sync with tray menu changes
             const tool = cfg.active_tool || "message";
             setNavTab(tool);
-            if (tool === 'claude' || tool === 'gemini' || tool === 'codex') {
+            if (tool === 'claude' || tool === 'gemini' || tool === 'codex' || tool === 'opencode') {
                 setActiveTool(tool);
                 const toolCfg = (cfg as any)[tool];
                 if (toolCfg && toolCfg.models) {
@@ -565,6 +571,16 @@ function App() {
         try {
             const statuses = await CheckToolsStatus();
             setToolStatuses(statuses);
+
+            // Add opencode check and installation if missing
+            const opencodeStatus = statuses?.find((s: any) => s.name === "opencode");
+            if (opencodeStatus && !opencodeStatus.installed) {
+                setEnvLogs(prev => [...prev, lang === 'zh-Hans' ? "正在安装 Opencode AI..." : "Installing Opencode AI..."]);
+                await InstallTool("opencode");
+                // Re-check after installation
+                const updatedStatuses = await CheckToolsStatus();
+                setToolStatuses(updatedStatuses);
+            }
         } catch (err) {
             console.error("Failed to check tools:", err);
         }
@@ -577,8 +593,9 @@ function App() {
 
     const switchTool = (tool: string) => {
         setNavTab(tool);
-        if (tool === 'claude' || tool === 'gemini' || tool === 'codex') {
+        if (tool === 'claude' || tool === 'gemini' || tool === 'codex' || tool === 'opencode') {
             setActiveTool(tool);
+            setActiveTab(0); // Reset to Original when switching tools
         }
         
         if (tool === 'message') {
@@ -611,6 +628,29 @@ function App() {
         setConfig(newConfig);
     };
 
+    const handleDeleteModel = () => {
+        if (!config) return;
+        const toolCfg = JSON.parse(JSON.stringify((config as any)[activeTool]));
+        const modelToDelete = toolCfg.models[activeTab];
+        if (modelToDelete.model_name === "Original") return;
+
+        if (window.confirm(lang === 'zh-Hans' ? `确定要删除服务商 "${modelToDelete.model_name}" 吗？` : 
+                          lang === 'zh-Hant' ? `確定要刪除服務商 "${modelToDelete.model_name}" 嗎？` : 
+                          `Are you sure you want to delete provider "${modelToDelete.model_name}"?`)) {
+            const newModels = toolCfg.models.filter((_: any, i: number) => i !== activeTab);
+            const newConfig = new main.AppConfig({...config, [activeTool]: {...toolCfg, models: newModels}});
+            
+            // Adjust active tab if it was the last one
+            const newActiveTab = Math.max(0, activeTab - 1);
+            setActiveTab(newActiveTab);
+            
+            setConfig(newConfig);
+            // We don't save immediately here to allow user to cancel or make other changes, 
+            // but the "Save Changes" button will call SaveConfig which triggers sync.
+            // Actually, for sync to work, we need to save.
+        }
+    };
+
     const handleModelUrlChange = (newUrl: string) => {
         if (!config) return;
         const toolCfg = JSON.parse(JSON.stringify((config as any)[activeTool]));
@@ -633,6 +673,36 @@ function App() {
         toolCfg.models[activeTab].model_id = id;
         const newConfig = new main.AppConfig({...config, [activeTool]: toolCfg});
         setConfig(newConfig);
+    };
+
+    const handleWireApiChange = (api: string) => {
+        if (!config) return;
+        const toolCfg = JSON.parse(JSON.stringify((config as any)[activeTool]));
+        toolCfg.models[activeTab].wire_api = api;
+        const newConfig = new main.AppConfig({...config, [activeTool]: toolCfg});
+        setConfig(newConfig);
+    };
+
+    const getDefaultModelId = (tool: string, provider: string) => {
+        const p = provider.toLowerCase();
+        if (tool === "claude") {
+            if (p.includes("glm")) return "glm-4.7";
+            if (p.includes("kimi")) return "kimi-k2-thinking";
+            if (p.includes("doubao")) return "doubao-seed-code-preview-latest";
+            if (p.includes("minimax")) return "MiniMax-M2.1";
+            if (p.includes("aigocode")) return "claude-3-5-sonnet-20241022";
+            if (p.includes("aicodemirror")) return "Haiku";
+        } else if (tool === "gemini") {
+            return "gemini-2.0-flash-exp";
+        } else if (tool === "codex") {
+            if (p.includes("aigocode") || p.includes("aicodemirror")) return "gpt-5.2-codex";
+            if (p.includes("deepseek")) return "deepseek-chat";
+            if (p.includes("glm")) return "glm-4.7";
+            if (p.includes("doubao")) return "doubao-seed-code-preview-latest";
+            if (p.includes("kimi")) return "kimi-for-coding";
+            if (p.includes("minimax")) return "MiniMax-M2.1";
+        }
+        return "";
     };
 
     const handleModelSwitch = (modelName: string) => {
@@ -882,6 +952,7 @@ function App() {
                 <div className={`sidebar-item ${navTab === 'message' ? 'active' : ''}`} onClick={() => switchTool('message')}>
                     <span className="sidebar-icon">💬</span> <span>{t("message")}</span>
                 </div>
+                <div style={{height: '10px'}}></div>
                 <div className={`sidebar-item ${navTab === 'claude' ? 'active' : ''}`} onClick={() => switchTool('claude')}>
                     <span className="sidebar-icon">🤖</span> <span>Claude</span>
                 </div>
@@ -891,7 +962,10 @@ function App() {
                 <div className={`sidebar-item ${navTab === 'codex' ? 'active' : ''}`} onClick={() => switchTool('codex')}>
                     <span className="sidebar-icon">💻</span> <span>CodeX</span>
                 </div>
-                <div style={{height: '20px'}}></div>
+                <div className={`sidebar-item ${navTab === 'opencode' ? 'active' : ''}`} onClick={() => switchTool('opencode')}>
+                    <span className="sidebar-icon">🚀</span> <span>OpenCode</span>
+                </div>
+                <div style={{height: '40px'}}></div>
                 <div className={`sidebar-item ${navTab === 'projects' ? 'active' : ''}`} onClick={() => switchTool('projects')}>
                     <span className="sidebar-icon">📂</span> <span style={{maxWidth: lang === 'en' ? '110px' : 'none'}}>{t("manageProjects")}</span>
                 </div>
@@ -911,6 +985,7 @@ function App() {
                              navTab === 'claude' ? 'Claude Code' : 
                              navTab === 'gemini' ? 'Gemini CLI' : 
                              navTab === 'codex' ? 'OpenAI Codex' : 
+                             navTab === 'opencode' ? 'OpenCode AI' : 
                              navTab === 'projects' ? t("projectManagement") : 
                              navTab === 'settings' ? t("globalSettings") : t("about")}
                         </h2>
@@ -1021,16 +1096,16 @@ function App() {
                             </div>
                         </div>
                     )}
-                    {(navTab === 'claude' || navTab === 'gemini' || navTab === 'codex') && (
-                        <ToolConfiguration 
-                            toolName={navTab === 'claude' ? 'Claude' : navTab === 'gemini' ? 'Gemini' : 'Codex'}
-                            toolCfg={toolCfg}
-                            showModelSettings={showModelSettings}
-                            setShowModelSettings={setShowModelSettings}
-                            handleModelSwitch={handleModelSwitch}
-                            t={t}
-                        />
-                    )}
+                        {(navTab === 'claude' || navTab === 'gemini' || navTab === 'codex' || navTab === 'opencode') && (
+                            <ToolConfiguration 
+                                toolName={navTab === 'claude' ? 'Claude Code' : navTab === 'gemini' ? 'Gemini CLI' : navTab === 'codex' ? 'OpenAI Codex' : 'OpenCode AI'} 
+                                toolCfg={toolCfg} 
+                                showModelSettings={showModelSettings}
+                                setShowModelSettings={setShowModelSettings}
+                                handleModelSwitch={handleModelSwitch}
+                                t={t}
+                            />
+                        )}
 
                     {navTab === 'projects' && (
                         <div style={{padding: '10px'}}>
@@ -1189,7 +1264,7 @@ function App() {
                 </div>
 
                 {/* Global Action Bar (Footer) */}
-                {config && (navTab === 'claude' || navTab === 'gemini' || navTab === 'codex') && (
+                {config && (navTab === 'claude' || navTab === 'gemini' || navTab === 'codex' || navTab === 'opencode') && (
                     <div className="global-action-bar">
                         <div style={{display: 'flex', flexDirection: 'column', gap: '8px', width: '100%', padding: '4px 0'}}>
                             <div style={{display: 'flex', alignItems: 'center', gap: '20px', justifyContent: 'center'}}>
@@ -1433,26 +1508,26 @@ function App() {
                             })()}
                         </div>
 
-                        {(config as any)[activeTool].models[activeTab].is_custom && (
-                            <div className="form-group">
-                                <label className="form-label">{t("providerName")}</label>
-                                <input
-                                    type="text"
-                                    className="form-input"
-                                    data-field="model-name"
-                                    value={(config as any)[activeTool].models[activeTab].model_name}
-                                    onChange={(e) => handleModelNameChange(e.target.value)}
-                                    onContextMenu={(e) => handleContextMenu(e, e.currentTarget)}
-                                    placeholder={t("customProviderPlaceholder")}
-                                    spellCheck={false}
-                                    autoComplete="off"
-                                />
-                            </div>
-                        )}
-                                                            
-                        {(config as any)[activeTool].models[activeTab].model_name !== "Original" && (
-                            <>
-                                <div className="form-group">
+                        <div style={{display: 'flex', gap: '16px'}}>
+                            {(config as any)[activeTool].models[activeTab].is_custom && (
+                                <div className="form-group" style={{flex: 1}}>
+                                    <label className="form-label">{t("providerName")}</label>
+                                    <input
+                                        type="text"
+                                        className="form-input"
+                                        data-field="model-name"
+                                        value={(config as any)[activeTool].models[activeTab].model_name}
+                                        onChange={(e) => handleModelNameChange(e.target.value)}
+                                        onContextMenu={(e) => handleContextMenu(e, e.currentTarget)}
+                                        placeholder={t("customProviderPlaceholder")}
+                                        spellCheck={false}
+                                        autoComplete="off"
+                                    />
+                                </div>
+                            )}
+                                                                
+                            {(config as any)[activeTool].models[activeTab].model_name !== "Original" && (
+                                <div className="form-group" style={{flex: 1}}>
                                     <label className="form-label">{t("modelName")}</label>
                                     <input
                                         type="text"
@@ -1461,13 +1536,34 @@ function App() {
                                         value={(config as any)[activeTool].models[activeTab].model_id}
                                         onChange={(e) => handleModelIdChange(e.target.value)}
                                         onContextMenu={(e) => handleContextMenu(e, e.currentTarget)}
-                                        placeholder="e.g. claude-3-5-sonnet-20241022"
+                                        placeholder={getDefaultModelId(activeTool, (config as any)[activeTool].models[activeTab].model_name) || "e.g. gpt-4"}
                                         spellCheck={false}
                                         autoComplete="off"
                                     />
                                 </div>
-                                <div className="form-group">
-                                    <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px'}}>
+                            )}
+                        </div>
+
+                        {(config as any)[activeTool].models[activeTab].model_name !== "Original" && (
+                            <>
+                                {activeTool === "codex" && (
+                                                                            <div className="form-group">
+                                                                                <label className="form-label">Wire API</label>
+                                                                                <input
+                                                                                    type="text"
+                                                                                    className="form-input"
+                                                                                    data-field="wire-api"
+                                                                                    value={(config as any)[activeTool].models[activeTab].wire_api || ""}
+                                                                                    onChange={(e) => handleWireApiChange(e.target.value)}
+                                                                                    onContextMenu={(e) => handleContextMenu(e, e.currentTarget)}
+                                                                                    placeholder="e.g. chat (default) or responses"
+                                                                                    spellCheck={false}
+                                                                                    autoComplete="off"
+                                                                                />
+                                                                            </div>
+                                                                        )}
+                                    
+                                                                        <div className="form-group">                                    <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px'}}>
                                         <label className="form-label" style={{margin: 0}}>{t("apiKey")}</label>
                                         {!(config as any)[activeTool].models[activeTab].is_custom && (
                                             <button 
