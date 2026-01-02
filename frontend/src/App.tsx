@@ -20,7 +20,7 @@ const subscriptionUrls: {[key: string]: string} = {
     "aigocode": "https://aigocode.com/invite/TCFQQCCK"
 };
 
-const APP_VERSION = "2.0.1.111";
+const APP_VERSION = "2.0.1.114";
 
 const translations: any = {
     "en": {
@@ -98,7 +98,9 @@ const translations: any = {
         "refreshSuccess": "✅ Refresh successful!",
         "refreshFailed": "❌ Refresh failed: ",
         "lastUpdate": "Last Update: ",
-        "startupTitle": "Welcome to AICoder"
+        "startupTitle": "Welcome to AICoder",
+        "showMore": "Show More",
+        "showLess": "Show Less"
     },
     "zh-Hans": {
         "title": "AICoder",
@@ -175,7 +177,9 @@ const translations: any = {
         "quickStart": "新手教学",
         "dontShowAgain": "下次不再显示",
         "showWelcomePage": "显示欢迎页",
-        "startupTitle": "欢迎使用 AICoder"
+        "startupTitle": "欢迎使用 AICoder",
+        "showMore": "更多",
+        "showLess": "收起"
     },
     "zh-Hant": {
         "title": "AICoder",
@@ -185,7 +189,7 @@ const translations: any = {
         "faq": "常見問題",
         "hide": "隱藏",
         "launch": "開始編程",
-        "project": "專案",
+        "專案": "專案",
         "projectDir": "專案目錄",
         "change": "變更",
         "yoloMode": "Yolo 模式",
@@ -250,7 +254,9 @@ const translations: any = {
         "quickStart": "新手教學",
         "dontShowAgain": "下次不再顯示",
         "showWelcomePage": "顯示歡迎頁",
-        "startupTitle": "歡迎使用 AICoder"
+        "startupTitle": "歡迎使用 AICoder",
+        "showMore": "更多",
+        "showLess": "收起"
     }
 };
 
@@ -348,8 +354,8 @@ function App() {
 
         if (localActiveIndex < tabStartIndex) {
             setTabStartIndex(localActiveIndex);
-        } else if (localActiveIndex >= tabStartIndex + 5) {
-            setTabStartIndex(localActiveIndex - 4);
+        } else if (localActiveIndex >= tabStartIndex + 4) {
+            setTabStartIndex(localActiveIndex - 3);
         }
     }, [activeTab]);
 
@@ -1365,24 +1371,28 @@ function App() {
                             {(() => {
                                 const allModels = (config as any)[activeTool].models;
                                 const configurableModels = allModels.filter((m: any) => m.model_name !== "Original");
+                                const showArrows = configurableModels.length >= 5;
+                                
                                 return (
                                     <div className="tabs" style={{alignItems: 'center', minHeight: '40px'}}>
-                                        <div style={{width: '30px', display: 'flex', justifyContent: 'center', flexShrink: 0}}>
-                                            {tabStartIndex > 0 && (
-                                                <button
-                                                    onClick={() => setTabStartIndex(Math.max(0, tabStartIndex - 1))}
-                                                    style={{
-                                                        border: 'none', background: 'transparent', cursor: 'pointer', 
-                                                        padding: '6px 4px', color: '#64748b', fontSize: '1rem'
-                                                    }}
-                                                >
-                                                    ◀
-                                                </button>
-                                            )}
-                                        </div>
+                                        {showArrows && (
+                                            <div style={{width: '30px', display: 'flex', justifyContent: 'center', flexShrink: 0}}>
+                                                {tabStartIndex > 0 && (
+                                                    <button
+                                                        onClick={() => setTabStartIndex(Math.max(0, tabStartIndex - 1))}
+                                                        style={{
+                                                            border: 'none', background: 'transparent', cursor: 'pointer', 
+                                                            padding: '6px 4px', color: '#64748b', fontSize: '1rem'
+                                                        }}
+                                                    >
+                                                        ◀
+                                                    </button>
+                                                )}
+                                            </div>
+                                        )}
 
                                         <div style={{flex: 1, display: 'flex', gap: '2px', overflow: 'hidden'}}>
-                                            {configurableModels.slice(tabStartIndex, tabStartIndex + 5).map((model: any, index: number) => {
+                                            {(showArrows ? configurableModels.slice(tabStartIndex, tabStartIndex + 4) : configurableModels).map((model: any, index: number) => {
                                                 const globalIndex = allModels.findIndex((m: any) => m.model_name === model.model_name);
                                                 return (
                                                     <button
@@ -1397,19 +1407,21 @@ function App() {
                                             })}
                                         </div>
 
-                                        <div style={{width: '30px', display: 'flex', justifyContent: 'center', flexShrink: 0}}>
-                                            {tabStartIndex + 5 < configurableModels.length && (
-                                                <button
-                                                    onClick={() => setTabStartIndex(Math.min(configurableModels.length - 5, tabStartIndex + 1))}
-                                                    style={{
-                                                        border: 'none', background: 'transparent', cursor: 'pointer', 
-                                                        padding: '6px 4px', color: '#64748b', fontSize: '1rem'
-                                                    }}
-                                                >
-                                                    ▶
-                                                </button>
-                                            )}
-                                        </div>
+                                        {showArrows && (
+                                            <div style={{width: '30px', display: 'flex', justifyContent: 'center', flexShrink: 0}}>
+                                                {tabStartIndex + 4 < configurableModels.length && (
+                                                    <button
+                                                        onClick={() => setTabStartIndex(Math.min(configurableModels.length - 4, tabStartIndex + 1))}
+                                                        style={{
+                                                            border: 'none', background: 'transparent', cursor: 'pointer', 
+                                                            padding: '6px 4px', color: '#64748b', fontSize: '1rem'
+                                                        }}
+                                                    >
+                                                        ▶
+                                                    </button>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
                                 );
                             })()}
