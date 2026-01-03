@@ -366,6 +366,8 @@ end try`, terminalCmd)
 }
 
 func (a *App) syncToSystemEnv(config AppConfig) {
+	// On macOS, we do not persist environment variables to system-wide configuration (like .zshrc)
+	// to avoid intrusive changes. LaunchTool handles process-level environment setup.
 }
 
 func createVersionCmd(path string) *exec.Cmd {

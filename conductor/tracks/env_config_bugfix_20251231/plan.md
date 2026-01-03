@@ -27,6 +27,6 @@ This plan outlines the steps to fix the environment configuration logic, ensurin
 - [x] Task: Conductor - User Manual Verification 'Phase 4: OpenAI Codex' (Protocol in workflow.md) [checkpoint: d587097]
 
 ## Phase 5: Global Launch & Persistence Refinement
-- [ ] Task: Ensure `SaveConfig` does not inadvertently write "leak" data when switching providers.
-- [ ] Task: Final verification of system-level environment variable sync (`setx` logic) to ensure it respects the "Original" mode.
+- [x] Task: Ensure `SaveConfig` does not inadvertently write "leak" data when switching providers.
+- [x] Task: Final verification of system-level environment variable sync (`setx` logic) to ensure it respects the "Original" mode.
 - [ ] Task: Conductor - User Manual Verification 'Phase 5: Global Integration' (Protocol in workflow.md)

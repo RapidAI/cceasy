@@ -314,6 +314,8 @@ func (a *App) platformLaunch(binaryName string, yoloMode bool, projectDir string
 }
 
 func (a *App) syncToSystemEnv(config AppConfig) {
+	// On Linux, we do not persist environment variables to system-wide configuration (like .bashrc)
+	// to avoid intrusive changes. LaunchTool handles process-level environment setup.
 }
 
 func createVersionCmd(path string) *exec.Cmd {
