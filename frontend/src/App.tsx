@@ -19,10 +19,11 @@ const subscriptionUrls: {[key: string]: string} = {
     "AiCodeMirror": "https://www.aicodemirror.com/register?invitecode=CZPPWZ",
     "AIgoCode": "https://aigocode.com/invite/TCFQQCCK",
     "GACCode": "https://gaccode.com/signup?ref=FVMCU97H",
-    "DeepSeek": "https://platform.deepseek.com/api_keys"
+    "DeepSeek": "https://platform.deepseek.com/api_keys",
+    "CodeRelay": "https://api.code-relay.com/register?aff=0ZtO"
 };
 
-const APP_VERSION = "2.6.0.2101";
+const APP_VERSION = "2.6.0.2102";
 
 const translations: any = {
     "en": {
