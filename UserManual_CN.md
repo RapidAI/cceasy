@@ -9,7 +9,7 @@
 ## 1. 启动与环境检测
 首次运行程序时，AICoder 会自动检查您的系统环境：
 *   **依赖检测**：检测 Node.js 及其他必要运行时。
-*   **工具安装**：程序会自动检测并尝试安装/更新 `claude-code`, `codex`, `gemini-cli` 等工具到最新版本。
+*   **工具安装**：程序会自动检测并尝试安装/更新 `claude-code`, `codex`, `gemini-cli`, `opencode`, `codebuddy`, `qodercli` 等工具到最新版本。
 *   **启动窗口**：启动时会显示一个进度窗口，展示环境准备状态。
 
 ## 2. 侧边栏导航 (Sidebar)
@@ -17,14 +17,22 @@ AICoder 采用垂直侧边栏设计，您可以轻松切换不同的 AI 工具�
 *   **Claude**：配置和启动 Anthropic Claude Code。
 *   **Codex**：配置和启动 OpenAI Codex 相关的 CLI 工具。
 *   **Gemini**：配置和启动 Google Gemini 相关的 CLI 工具。
+*   **OpenCode**：配置和启动 OpenCode AI 辅助工具。
+*   **CodeBuddy**：配置和启动 CodeBuddy 编程助手。
+*   **Qoder**：配置和启动 Qoder CLI 编程助手。
 
 ## 3. 模型配置 (Model Settings)
 在每个工具的面板中，您需要配置相应的 API Key。
 
 1.  在侧边栏选择对应的 AI 工具。
 2.  在主界面找到 **“模型设置”** 区域。
-3.  **API Key**：在输入框中粘贴您的 API 密钥。如果配置成功，系统会记录并用于后续启动。
-4.  **模型切换**：部分工具支持在不同的子模型或端点间切换。
+3.  **服务商选择**：支持 GLM, Kimi, Doubao, MiniMax, DeepSeek, AIgoCode, AiCodeMirror 等预设服务商。
+4.  **“原厂” (Original) 模式**：
+    *   如果您希望使用工具官方的默认配置和认证方式，请选择此模式。
+    *   **自动清理**：在该模式下启动工具时，AICoder 会自动清除本工具产生的自定义代理配置、环境变量以及官方工具的配置文件（如 Claude 的 `~/.claude` 目录），确保环境纯净。
+5.  **API Key**：在输入框中粘贴您的 API 密钥。如果配置成功，系统会记录并用于后续启动。
+6.  **智能同步**：如果您在 Claude 中配置了某个服务商的 Key，该 Key 会自动同步到其他工具（如 Gemini, Codex）的相同服务商下，无需重复输入。
+
 
 ## 4. 多项目管理 (Multi-Project)
 您可以同时管理多个不同的代码项目，并为每个项目设置独立的路径和模式。

@@ -133,7 +133,7 @@ func (a *App) CheckEnvironment() {
 
 		// 5. Check and Install AI Tools
 		tm := NewToolManager(a)
-		tools := []string{"claude", "gemini", "codex"}
+		tools := []string{"claude", "gemini", "codex", "opencode", "codebuddy"}
 		
 		for _, tool := range tools {
 			a.log(fmt.Sprintf("Checking %s...", tool))
@@ -149,6 +149,19 @@ func (a *App) CheckEnvironment() {
 				}
 			} else {
 				a.log(fmt.Sprintf("%s found (version: %s).", tool, status.Version))
+				// Check for updates for opencode and codebuddy
+				if tool == "opencode" || tool == "codebuddy" {
+					a.log(fmt.Sprintf("Checking for %s updates...", tool))
+					latest, err := a.getLatestNpmVersion(npmExec, tm.GetPackageName(tool))
+					if err == nil && latest != "" && latest != status.Version {
+						a.log(fmt.Sprintf("New version available for %s: %s (current: %s). Updating...", tool, latest, status.Version))
+						if err := tm.InstallTool(tool); err != nil {
+							a.log(fmt.Sprintf("ERROR: Failed to update %s: %v", tool, err))
+						} else {
+							a.log(fmt.Sprintf("%s updated successfully to %s.", tool, latest))
+						}
+					}
+				}
 			}
 		}
 
@@ -249,7 +262,7 @@ func (a *App) restartApp() {
 	wails_runtime.Quit(a.ctx)
 }
 
-func (a *App) platformLaunch(binaryName string, yoloMode bool, projectDir string, env map[string]string) {
+func (a *App) platformLaunch(binaryName string, yoloMode bool, projectDir string, env map[string]string, modelId string) {
 	a.log(fmt.Sprintf("Launching %s...", binaryName))
 
 	tm := NewToolManager(a)
@@ -261,7 +274,9 @@ func (a *App) platformLaunch(binaryName string, yoloMode bool, projectDir string
 	}
 
 	if binaryPath == "" {
-		a.log(fmt.Sprintf("Tool %s not found. Please ensure it is installed.", binaryName))
+		msg := fmt.Sprintf("Tool %s not found. Please ensure it is installed.", binaryName)
+		a.log(msg)
+		a.ShowMessage("Launch Error", msg)
 		return
 	}
 	a.log("Using binary at: " + binaryPath)
@@ -289,12 +304,19 @@ func (a *App) platformLaunch(binaryName string, yoloMode bool, projectDir string
 	// Navigate to project directory
 	if projectDir != "" {
 		safeProjectDir := strings.ReplaceAll(projectDir, "\"", "\\\"")
-		sb.WriteString(fmt.Sprintf("cd \"%s\" || exit\n", safeProjectDir))
+		sb.WriteString(fmt.Sprintf("echo \"Switching to project directory: %s\"\n", safeProjectDir))
+		sb.WriteString(fmt.Sprintf("cd \"%s\" || { echo \"Failed to change directory to %s\"; exit 1; }\n", safeProjectDir, safeProjectDir))
 	}
 
 	sb.WriteString("clear\n")
 	
 	finalCmd := fmt.Sprintf("\"%s\"", binaryPath)
+	
+	// Add model argument for codebuddy
+	if binaryName == "codebuddy" && modelId != "" {
+		finalCmd += fmt.Sprintf(" --model %s", modelId)
+	}
+
 	if yoloMode {
 		switch binaryName {
 		case "claude":
@@ -303,6 +325,10 @@ func (a *App) platformLaunch(binaryName string, yoloMode bool, projectDir string
 			finalCmd += " --yolo"
 		case "codex":
 			finalCmd += " --full-auto"
+		case "codebuddy":
+			finalCmd += " -y"
+		case "qodercli":
+			finalCmd += " --yolo"
 		}
 	}
 	sb.WriteString(fmt.Sprintf("exec %s", finalCmd))
@@ -314,12 +340,23 @@ func (a *App) platformLaunch(binaryName string, yoloMode bool, projectDir string
 	}
 
 	safeLaunchPath := strings.ReplaceAll(launchScriptPath, "\"", "\\\"")
+	var terminalCmd string
+	
+	if projectDir != "" {
+		safeProjectDir := strings.ReplaceAll(projectDir, "\"", "\\\"")
+		// Construct command: cd "projectDir" && "launchScriptPath"
+		// We use backslash escaping for the AppleScript string context
+		terminalCmd = fmt.Sprintf("cd \\\"%s\\\" && \\\"%s\\\"", safeProjectDir, safeLaunchPath)
+	} else {
+		terminalCmd = fmt.Sprintf("\\\"%s\\\"", safeLaunchPath)
+	}
+
 	appleScript := fmt.Sprintf(`try
-	tell application "Terminal" to do script "\"%s\""
+	tell application "Terminal" to do script "%s"
 	tell application "Terminal" to activate
 on error errMsg
 	display dialog "Failed to launch Terminal: " & errMsg
-end try`, safeLaunchPath)
+end try`, terminalCmd)
 
 	a.log("Executing AppleScript...")
 	cmd := exec.Command("osascript", "-e", appleScript)
@@ -333,10 +370,6 @@ func (a *App) syncToSystemEnv(config AppConfig) {
 
 func createVersionCmd(path string) *exec.Cmd {
 	return exec.Command(path, "--version")
-}
-
-func createNpmViewCmd(npmPath string) *exec.Cmd {
-	return exec.Command(npmPath, "view", "@anthropic-ai/claude-code", "version")
 }
 
 func createNpmInstallCmd(npmPath string, args []string) *exec.Cmd {

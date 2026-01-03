@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -201,7 +202,420 @@ func TestSyncToCodexSettings_Original(t *testing.T) {
 		t.Fatalf("syncToCodexSettings failed: %v", err)
 	}
 
-	if _, err := os.Stat(dir); !os.IsNotExist(err) {
-		t.Errorf("Expected .codex directory to be gone")
+		if _, err := os.Stat(dir); !os.IsNotExist(err) {
+
+			t.Errorf("Expected .codex directory to be gone")
+
+		}
+
 	}
-}
+
+	
+
+	func TestSyncToCodeBuddySettings(t *testing.T) {
+
+		tmpHome, _ := os.MkdirTemp("", "codebuddy-sync-test")
+
+		defer os.RemoveAll(tmpHome)
+
+	
+
+		os.Setenv("HOME", tmpHome)
+
+		if os.Getenv("USERPROFILE") != "" {
+
+			os.Setenv("USERPROFILE", tmpHome)
+
+		}
+
+	
+
+		app := &App{testHomeDir: tmpHome}
+
+		
+
+		projectPath := filepath.Join(tmpHome, "test-project")
+
+		os.MkdirAll(projectPath, 0755)
+
+	
+
+			config := AppConfig{
+
+	
+
+				CodeBuddy: ToolConfig{
+
+	
+
+					CurrentModel: "DeepSeek",
+
+	
+
+					Models: []ModelConfig{
+
+	
+
+						{ModelName: "Original"},
+
+	
+
+						{ModelName: "DeepSeek", ModelId: "ds-1", ModelUrl: "https://ds.api/v1", ApiKey: "sk-ds"},
+
+	
+
+					},
+
+	
+
+				},
+
+	
+
+				Projects: []ProjectConfig{
+
+				{Id: "p1", Name: "P1", Path: projectPath},
+
+			},
+
+					CurrentProject: "p1",
+
+				}
+
+			
+
+								// Save config so GetCurrentProjectPath can find it
+
+			
+
+								if err := app.SaveConfig(config); err != nil {
+
+			
+
+									t.Fatalf("Failed to save config: %v", err)
+
+			
+
+								}
+
+			
+
+							
+
+			
+
+								err := app.syncToCodeBuddySettings(config, "")
+
+			
+
+								if err != nil {
+
+			
+
+							t.Fatalf("syncToCodeBuddySettings failed: %v", err)
+
+			
+
+						}
+
+			
+
+				
+
+	
+
+		cbFilePath := filepath.Join(projectPath, ".codebuddy", "models.json")
+
+		if _, err := os.Stat(cbFilePath); os.IsNotExist(err) {
+
+			t.Fatalf("Expected .codebuddy/models.json to be created")
+
+		}
+
+	
+
+		data, err := os.ReadFile(cbFilePath)
+
+		if err != nil {
+
+			t.Fatalf("Failed to read models.json: %v", err)
+
+		}
+
+	
+
+		if !strings.Contains(string(data), "ds-1") {
+
+			t.Errorf("Expected model ID ds-1 in models.json")
+
+		}
+
+			if !strings.Contains(string(data), "sk-ds") {
+
+				t.Errorf("Expected API key sk-ds in models.json")
+
+			}
+
+				if !strings.Contains(string(data), "https://ds.api/v1/chat/completions") {
+
+					t.Errorf("Expected completed URL in models.json, got: %s", string(data))
+
+				}
+
+			
+
+								// Test multi-model ID support
+
+			
+
+								config.CodeBuddy.Models[1].ModelId = "model-1, model-2"
+
+			
+
+								app.syncToCodeBuddySettings(config, "")
+
+			
+
+								data, _ = os.ReadFile(cbFilePath)
+
+			
+
+				
+
+				
+
+						if !strings.Contains(string(data), "\"id\": \"model-1\"") || !strings.Contains(string(data), "\"id\": \"model-2\"") {
+
+				
+
+							t.Errorf("Expected both model-1 and model-2 IDs in models.json, got: %s", string(data))
+
+				
+
+						}
+
+				
+
+					}
+
+				
+
+					
+
+				
+
+					func TestSyncAllProviderApiKeys_CustomExclusion(t *testing.T) {
+
+				
+
+						app := &App{}
+
+				
+
+					
+
+				
+
+						// Setup initial config: Claude has a Custom key, Gemini has a different Custom key
+
+				
+
+						oldConfig := AppConfig{
+
+				
+
+							Claude: ToolConfig{
+
+				
+
+								Models: []ModelConfig{
+
+				
+
+									{ModelName: "Custom", ApiKey: "key-claude", IsCustom: true},
+
+				
+
+									{ModelName: "DeepSeek", ApiKey: "key-common"},
+
+				
+
+								},
+
+				
+
+							},
+
+				
+
+							Gemini: ToolConfig{
+
+				
+
+								Models: []ModelConfig{
+
+				
+
+									{ModelName: "Custom", ApiKey: "key-gemini", IsCustom: true},
+
+				
+
+									{ModelName: "DeepSeek", ApiKey: "key-common"},
+
+				
+
+								},
+
+				
+
+							},
+
+				
+
+						}
+
+				
+
+					
+
+				
+
+						// New config: User updates Claude Custom key
+
+				
+
+						newConfig := AppConfig{
+
+				
+
+							Claude: ToolConfig{
+
+				
+
+								Models: []ModelConfig{
+
+				
+
+									{ModelName: "Custom", ApiKey: "key-claude-updated", IsCustom: true},
+
+				
+
+									{ModelName: "DeepSeek", ApiKey: "key-common"},
+
+				
+
+								},
+
+				
+
+							},
+
+				
+
+							Gemini: ToolConfig{
+
+				
+
+								Models: []ModelConfig{
+
+				
+
+									{ModelName: "Custom", ApiKey: "key-gemini", IsCustom: true},
+
+				
+
+									{ModelName: "DeepSeek", ApiKey: "key-common"},
+
+				
+
+								},
+
+				
+
+							},
+
+				
+
+						}
+
+				
+
+					
+
+				
+
+						syncAllProviderApiKeys(app, &oldConfig, &newConfig)
+
+				
+
+					
+
+				
+
+						// Verify: Gemini Custom key should NOT change
+
+				
+
+						if newConfig.Gemini.Models[0].ApiKey != "key-gemini" {
+
+				
+
+							t.Errorf("Custom provider key should not sync! Expected 'key-gemini', got '%s'", newConfig.Gemini.Models[0].ApiKey)
+
+				
+
+						}
+
+				
+
+					
+
+				
+
+						// Verify: Common provider should still sync (if we updated it)
+
+				
+
+						// Let's test common provider update now
+
+				
+
+						newConfig.Claude.Models[1].ApiKey = "key-common-updated"
+
+				
+
+						
+
+				
+
+						// Reset foundChange logic by calling sync again with the updated struct as input
+
+				
+
+						syncAllProviderApiKeys(app, &oldConfig, &newConfig)
+
+				
+
+					
+
+				
+
+						if newConfig.Gemini.Models[1].ApiKey != "key-common-updated" {
+
+				
+
+							t.Errorf("Common provider key should sync! Expected 'key-common-updated', got '%s'", newConfig.Gemini.Models[1].ApiKey)
+
+				
+
+						}
+
+				
+
+					}
+
+				
+
+					
+
+	

@@ -123,7 +123,7 @@ func (a *App) CheckEnvironment() {
 
 		// 5. Check and Install AI Tools
 		tm := NewToolManager(a)
-		tools := []string{"claude", "gemini", "codex"}
+		tools := []string{"claude", "gemini", "codex", "opencode", "codebuddy"}
 		
 		for _, tool := range tools {
 			a.log(fmt.Sprintf("Checking %s...", tool))
@@ -133,12 +133,26 @@ func (a *App) CheckEnvironment() {
 				a.log(fmt.Sprintf("%s not found. Attempting automatic installation...", tool))
 				if err := tm.InstallTool(tool); err != nil {
 					a.log(fmt.Sprintf("ERROR: Failed to install %s: %v", tool, err))
+					// We continue to other tools even if one fails, allowing manual intervention later
 				} else {
 					a.log(fmt.Sprintf("%s installed successfully.", tool))
 					a.updatePathForNode() // Refresh path after install
 				}
 			} else {
 				a.log(fmt.Sprintf("%s found (version: %s).", tool, status.Version))
+				// Check for updates for opencode and codebuddy
+				if tool == "opencode" || tool == "codebuddy" {
+					a.log(fmt.Sprintf("Checking for %s updates...", tool))
+					latest, err := a.getLatestNpmVersion(npmExec, tm.GetPackageName(tool))
+					if err == nil && latest != "" && latest != status.Version {
+						a.log(fmt.Sprintf("New version available for %s: %s (current: %s). Updating...", tool, latest, status.Version))
+						if err := tm.InstallTool(tool); err != nil {
+							a.log(fmt.Sprintf("ERROR: Failed to update %s: %v", tool, err))
+						} else {
+							a.log(fmt.Sprintf("%s updated successfully to %s.", tool, latest))
+						}
+					}
+				}
 			}
 		}
 
@@ -342,7 +356,7 @@ func (a *App) restartApp() {
 	}
 }
 
-func (a *App) platformLaunch(binaryName string, yoloMode bool, projectDir string, env map[string]string) {
+func (a *App) platformLaunch(binaryName string, yoloMode bool, projectDir string, env map[string]string, modelId string) {
 	tm := NewToolManager(a)
 	status := tm.GetToolStatus(binaryName)
 	
@@ -352,9 +366,12 @@ func (a *App) platformLaunch(binaryName string, yoloMode bool, projectDir string
 	}
 
 	if binaryPath == "" {
-		a.log(fmt.Sprintf("Tool %s not found. Please ensure it is installed.", binaryName))
+		msg := fmt.Sprintf("Tool %s not found. Please ensure it is installed.", binaryName)
+		a.log(msg)
+		a.ShowMessage("Launch Error", msg)
 		return
 	}
+	a.log("Using binary at: " + binaryPath)
 
 	for k, v := range env {
 		os.Setenv(k, v)
@@ -363,11 +380,12 @@ func (a *App) platformLaunch(binaryName string, yoloMode bool, projectDir string
 	projectDir = filepath.Clean(projectDir)
 	binaryPath = filepath.Clean(binaryPath)
 
-	// Use SysProcAttr.CmdLine for raw control over quoting on Windows.
-	// This is necessary because paths with special characters like '&'
-	// require explicit quoting that Go's default escaping might not handle
-	// correctly when passed through 'cmd /c'.
-	var cmdLine string
+	// Build the command with arguments
+	cmdArgs := ""
+	if binaryName == "codebuddy" && modelId != "" {
+		cmdArgs += fmt.Sprintf(" --model %s", modelId)
+	}
+
 	if yoloMode {
 		var flag string
 		switch binaryName {
@@ -377,15 +395,21 @@ func (a *App) platformLaunch(binaryName string, yoloMode bool, projectDir string
 			flag = "--yolo"
 		case "codex":
 			flag = "--full-auto"
+		case "codebuddy":
+			flag = "-y"
+		case "qodercli":
+			flag = "--yolo"
 		}
 		if flag != "" {
-			cmdLine = fmt.Sprintf(`cmd /c start "" cmd /k "%s" %s`, binaryPath, flag)
-		} else {
-			cmdLine = fmt.Sprintf(`cmd /c start "" cmd /k "%s"`, binaryPath)
+			cmdArgs += " " + flag
 		}
-	} else {
-		cmdLine = fmt.Sprintf(`cmd /c start "" cmd /k "%s"`, binaryPath)
 	}
+
+	// Use SysProcAttr.CmdLine for raw control over quoting on Windows.
+	// This is necessary because paths with special characters like '&'
+	// require explicit quoting that Go's default escaping might not handle
+	// correctly when passed through 'cmd /c'.
+	cmdLine := fmt.Sprintf(`cmd /c start "" /d "%s" cmd /k "%s"%s`, projectDir, binaryPath, cmdArgs)
 
 	cmd := exec.Command("cmd")
 	cmd.Dir = projectDir
@@ -518,14 +542,7 @@ func createVersionCmd(path string) *exec.Cmd {
 	return cmd
 }
 
-func createNpmViewCmd(npmPath string) *exec.Cmd {
-	cmd := exec.Command("cmd")
-	cmd.SysProcAttr = &syscall.SysProcAttr{
-		CmdLine:    fmt.Sprintf(`cmd /c ""%s" view @anthropic-ai/claude-code version"`, npmPath),
-		HideWindow: true,
-	}
-	return cmd
-}
+
 
 func createNpmInstallCmd(npmPath string, args []string) *exec.Cmd {
 	quotedArgs := make([]string, len(args))

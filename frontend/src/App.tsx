@@ -17,10 +17,11 @@ const subscriptionUrls: {[key: string]: string} = {
     "codex": "https://www.aicodemirror.com/register?invitecode=CZPPWZ",
     "gemini": "https://www.aicodemirror.com/register?invitecode=CZPPWZ",
     "aicodemirror": "https://www.aicodemirror.com/register?invitecode=CZPPWZ",
-    "aigocode": "https://aigocode.com/invite/TCFQQCCK"
+    "aigocode": "https://aigocode.com/invite/TCFQQCCK",
+    "deepseek": "https://platform.deepseek.com/api_keys"
 };
 
-const APP_VERSION = "2.0.1.166";
+const APP_VERSION = "2.5.0.2027";
 
 const translations: any = {
     "en": {
@@ -41,6 +42,8 @@ const translations: any = {
         "providerName": "Provider Name",
         "modelName": "Model ID",
         "apiKey": "API Key",
+        "personalToken": "Personal Token",
+        "getToken": "Get Token",
         "getKey": "Get API Key",
         "enterKey": "Enter API Key",
         "apiEndpoint": "API Endpoint",
@@ -64,8 +67,8 @@ const translations: any = {
         "custom": "Custom",
         "checkUpdate": "Check Update",
         "noUpdate": "No updates available",
-        "updateAvailable": "Update available: ",
-        "foundNewVersion": "Found new version",
+        "updateAvailable": "Check for new version: ",
+        "foundNewVersion": "Check for new version",
         "downloadNow": "Download Now",
         "paste": "Paste",
         "hideConfig": "Configure",
@@ -81,6 +84,10 @@ const translations: any = {
         "checkingUpdate": "Checking for updates...",
         "opencode": "OpenCode",
         "opencodeDesc": "OpenCode AI Programming Assistant",
+        "codebuddy": "CodeBuddy",
+        "codebuddyDesc": "CodeBuddy AI Assistant",
+        "qoder": "Qoder CLI",
+        "qoderDesc": "Qoder AI Programming Assistant",
         "bugReport": "Problem Feedback",
         "businessCooperation": "Business: WeChat znsoft",
         "original": "Original",
@@ -122,8 +129,10 @@ const translations: any = {
         "modelSettings": "服务商设置",
         "providerName": "服务商名称",
         "modelName": "模型名称/ID",
-        "apiKey": "API 密钥",
-        "getKey": "获取API密钥",
+        "apiKey": "API Key",
+        "personalToken": "个人令牌",
+        "getToken": "获取令牌",
+        "getKey": "获取 API Key",
         "enterKey": "输入 API Key",
         "apiEndpoint": "API 端点",
         "saveChanges": "保存并关闭",
@@ -146,8 +155,8 @@ const translations: any = {
         "custom": "自定义",
         "checkUpdate": "检查更新",
         "noUpdate": "无可用更新",
-        "updateAvailable": "发现新版本: ",
-        "foundNewVersion": "发现新版本",
+        "updateAvailable": "检查新版本: ",
+        "foundNewVersion": "检查新版本",
         "downloadNow": "立即下载",
         "paste": "粘贴",
         "hideConfig": "配置",
@@ -162,7 +171,11 @@ const translations: any = {
         "author": "作者",
         "checkingUpdate": "正在检查更新...",
         "opencode": "OpenCode",
-        "opencodeDesc": "OpenCode AI 编程助手",
+        "opencodeDesc": "OpenCode AI 辅助编程",
+        "codebuddy": "CodeBuddy",
+        "codebuddyDesc": "CodeBuddy 编程助手",
+        "qoder": "Qoder CLI",
+        "qoderDesc": "Qoder AI 辅助编程",
         "bugReport": "问题反馈",
         "businessCooperation": "商业合作：微信 znsoft",
         "original": "原厂",
@@ -203,8 +216,10 @@ const translations: any = {
         "modelSettings": "服務商設定",
         "providerName": "服務商名稱",
         "modelName": "模型名稱/ID",
-        "apiKey": "API 金鑰",
-        "getKey": "獲取API密鑰",
+        "apiKey": "API Key",
+        "personalToken": "個人令牌",
+        "getToken": "獲取令牌",
+        "getKey": "獲取 API Key",
         "enterKey": "輸入 API Key",
         "apiEndpoint": "API 端點",
         "saveChanges": "儲存並關閉",
@@ -241,7 +256,11 @@ const translations: any = {
         "author": "作者",
         "checkingUpdate": "正在檢查更新...",
         "opencode": "OpenCode",
-        "opencodeDesc": "OpenCode AI 编程助手",
+        "opencodeDesc": "OpenCode AI 輔助編程",
+        "codebuddy": "CodeBuddy",
+        "codebuddyDesc": "CodeBuddy 編程助手",
+        "qoder": "Qoder CLI",
+        "qoderDesc": "Qoder AI 輔助編程",
         "bugReport": "問題反饋",
         "businessCooperation": "商業合作：微信 znsoft",
         "original": "原廠",
@@ -520,7 +539,7 @@ function App() {
                 
                 // Keep track of the last active tool for settings/launch logic
                 const lastActiveTool = cfg.active_tool || "claude";
-                if (lastActiveTool === 'claude' || lastActiveTool === 'gemini' || lastActiveTool === 'codex' || lastActiveTool === 'opencode') {
+                if (lastActiveTool === 'claude' || lastActiveTool === 'gemini' || lastActiveTool === 'codex' || lastActiveTool === 'opencode' || lastActiveTool === 'codebuddy' || lastActiveTool === 'qoder') {
                     setActiveTool(lastActiveTool);
                 }
                 
@@ -532,7 +551,7 @@ function App() {
                     if (idx !== -1) setActiveTab(idx);
 
                     // Check if any model has an API key configured for the active tool
-                    if (lastActiveTool === 'claude' || lastActiveTool === 'gemini' || lastActiveTool === 'codex' || lastActiveTool === 'opencode') {
+                    if (lastActiveTool === 'claude' || lastActiveTool === 'gemini' || lastActiveTool === 'codex' || lastActiveTool === 'opencode' || lastActiveTool === 'codebuddy' || lastActiveTool === 'qoder') {
                         const hasAnyApiKey = toolCfg.models.some((m: any) => m.api_key && m.api_key.trim() !== "");
                         if (!hasAnyApiKey) {
                             setShowModelSettings(true);
@@ -550,7 +569,7 @@ function App() {
             // Sync with tray menu changes
             const tool = cfg.active_tool || "message";
             setNavTab(tool);
-            if (tool === 'claude' || tool === 'gemini' || tool === 'codex' || tool === 'opencode') {
+            if (tool === 'claude' || tool === 'gemini' || tool === 'codex' || tool === 'opencode' || tool === 'codebuddy') {
                 setActiveTool(tool);
                 const toolCfg = (cfg as any)[tool];
                 if (toolCfg && toolCfg.models) {
@@ -577,10 +596,25 @@ function App() {
             if (opencodeStatus && !opencodeStatus.installed) {
                 setEnvLogs(prev => [...prev, lang === 'zh-Hans' ? "正在安装 Opencode AI..." : "Installing Opencode AI..."]);
                 await InstallTool("opencode");
-                // Re-check after installation
-                const updatedStatuses = await CheckToolsStatus();
-                setToolStatuses(updatedStatuses);
             }
+
+            // Add codebuddy check and installation if missing
+            const codebuddyStatus = statuses?.find((s: any) => s.name === "codebuddy");
+            if (codebuddyStatus && !codebuddyStatus.installed) {
+                setEnvLogs(prev => [...prev, lang === 'zh-Hans' ? "正在安装 CodeBuddy AI..." : "Installing CodeBuddy AI..."]);
+                await InstallTool("codebuddy");
+            }
+
+            // Add qoder check and installation if missing
+            const qoderStatus = statuses?.find((s: any) => s.name === "qoder");
+            if (qoderStatus && !qoderStatus.installed) {
+                setEnvLogs(prev => [...prev, lang === 'zh-Hans' ? "正在安装 Qoder CLI..." : "Installing Qoder CLI..."]);
+                await InstallTool("qoder");
+            }
+
+            // Re-check after installation
+            const updatedStatuses = await CheckToolsStatus();
+            setToolStatuses(updatedStatuses);
         } catch (err) {
             console.error("Failed to check tools:", err);
         }
@@ -593,7 +627,7 @@ function App() {
 
     const switchTool = (tool: string) => {
         setNavTab(tool);
-        if (tool === 'claude' || tool === 'gemini' || tool === 'codex' || tool === 'opencode') {
+        if (tool === 'claude' || tool === 'gemini' || tool === 'codex' || tool === 'opencode' || tool === 'codebuddy' || tool === 'qoder') {
             setActiveTool(tool);
             setActiveTab(0); // Reset to Original when switching tools
         }
@@ -696,6 +730,12 @@ function App() {
             return "gemini-2.0-flash-exp";
         } else if (tool === "codex") {
             if (p.includes("aigocode") || p.includes("aicodemirror")) return "gpt-5.2-codex";
+            if (p.includes("deepseek")) return "deepseek-chat";
+            if (p.includes("glm")) return "glm-4.7";
+            if (p.includes("doubao")) return "doubao-seed-code-preview-latest";
+            if (p.includes("kimi")) return "kimi-for-coding";
+            if (p.includes("minimax")) return "MiniMax-M2.1";
+        } else if (tool === "opencode" || tool === "codebuddy" || tool === "qoder") {
             if (p.includes("deepseek")) return "deepseek-chat";
             if (p.includes("glm")) return "glm-4.7";
             if (p.includes("doubao")) return "doubao-seed-code-preview-latest";
@@ -858,7 +898,14 @@ function App() {
                     zIndex: 999, 
                     '--wails-draggable': 'drag'
                 } as any}></div>
-                <h2 style={{color: '#60a5fa', marginBottom: '20px'}}>AICoder</h2>
+                <h2 style={{
+                    background: 'linear-gradient(to right, #60a5fa, #a855f7, #ec4899)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    marginBottom: '20px',
+                    display: 'inline-block',
+                    fontWeight: 'bold'
+                }}>AICoder</h2>
                 <div style={{width: '100%', height: '4px', backgroundColor: '#e2e8f0', borderRadius: '2px', overflow: 'hidden', marginBottom: '15px'}}>
                     <div style={{
                         width: '50%', 
@@ -929,7 +976,10 @@ function App() {
 
     if (!config) return <div className="main-content" style={{display:'flex', justifyContent:'center', alignItems:'center'}}>{t("loadingConfig")}</div>;
 
-    const toolCfg = (config as any)[activeTool] || { models: [], current_model: "" };
+            const toolCfg = (navTab === 'claude' || navTab === 'gemini' || navTab === 'codex' || navTab === 'opencode' || navTab === 'codebuddy' || navTab === 'qoder')
+                ? (config as any)[navTab]
+                : null;
+
     const currentProject = getCurrentProject();
 
     return (
@@ -947,28 +997,41 @@ function App() {
             <div className="sidebar" style={{'--wails-draggable': 'no-drag'} as any}>
                 <div className="sidebar-header">
                     <img src={appIcon} alt="Logo" className="sidebar-logo" />
-                    <span className="sidebar-title">AICoder</span>
+                    <span className="sidebar-title" style={{
+                        background: 'linear-gradient(to right, #60a5fa, #a855f7, #ec4899)',
+                        WebkitBackgroundClip: 'text',
+                        WebkitTextFillColor: 'transparent',
+                        fontWeight: 'bold',
+                        display: 'inline-block'
+                    }}>AICoder</span>
                 </div>
                 <div className={`sidebar-item ${navTab === 'message' ? 'active' : ''}`} onClick={() => switchTool('message')}>
                     <span className="sidebar-icon">💬</span> <span>{t("message")}</span>
                 </div>
                 <div style={{height: '10px'}}></div>
-                <div className={`sidebar-item ${navTab === 'claude' ? 'active' : ''}`} onClick={() => switchTool('claude')}>
-                    <span className="sidebar-icon">🤖</span> <span>Claude</span>
+                
+                <div style={{backgroundColor: 'rgba(96, 165, 250, 0.05)', borderRadius: '8px', margin: '0 8px', overflow: 'hidden'}}>
+                    <div className={`sidebar-item ${navTab === 'claude' ? 'active' : ''}`} onClick={() => switchTool('claude')}>
+                        <span className="sidebar-icon">🤖</span> <span>Claude Code</span>
+                    </div>
+                    <div className={`sidebar-item ${navTab === 'gemini' ? 'active' : ''}`} onClick={() => switchTool('gemini')}>
+                        <span className="sidebar-icon">♊</span> <span>Gemini CLI</span>
+                    </div>
+                    <div className={`sidebar-item ${navTab === 'codex' ? 'active' : ''}`} onClick={() => switchTool('codex')}>
+                        <span className="sidebar-icon">💻</span> <span>CodeX</span>
+                    </div>
+                    <div className={`sidebar-item ${navTab === 'opencode' ? 'active' : ''}`} onClick={() => switchTool('opencode')}>
+                        <span className="sidebar-icon">🚀</span> <span>OpenCode</span>
+                    </div>
+                    <div className={`sidebar-item ${navTab === 'codebuddy' ? 'active' : ''}`} onClick={() => switchTool('codebuddy')}>
+                        <span className="sidebar-icon">👨‍💻</span> <span>CodeBuddy</span>
+                    </div>
+                    <div className={`sidebar-item ${navTab === 'qoder' ? 'active' : ''}`} onClick={() => switchTool('qoder')}>
+                        <span className="sidebar-icon">⚡</span> <span>Qoder CLI</span>
+                    </div>
                 </div>
-                <div className={`sidebar-item ${navTab === 'gemini' ? 'active' : ''}`} onClick={() => switchTool('gemini')}>
-                    <span className="sidebar-icon">♊</span> <span>Gemini</span>
-                </div>
-                <div className={`sidebar-item ${navTab === 'codex' ? 'active' : ''}`} onClick={() => switchTool('codex')}>
-                    <span className="sidebar-icon">💻</span> <span>CodeX</span>
-                </div>
-                <div className={`sidebar-item ${navTab === 'opencode' ? 'active' : ''}`} onClick={() => switchTool('opencode')}>
-                    <span className="sidebar-icon">🚀</span> <span>OpenCode</span>
-                </div>
+
                 <div style={{height: '40px'}}></div>
-                <div className={`sidebar-item ${navTab === 'projects' ? 'active' : ''}`} onClick={() => switchTool('projects')}>
-                    <span className="sidebar-icon">📂</span> <span style={{maxWidth: lang === 'en' ? '110px' : 'none'}}>{t("manageProjects")}</span>
-                </div>
                 <div className={`sidebar-item ${navTab === 'settings' ? 'active' : ''}`} onClick={() => switchTool('settings')}>
                     <span className="sidebar-icon">⚙️</span> <span style={{maxWidth: lang === 'en' ? '110px' : 'none'}}>{t("settings")}</span>
                 </div>
@@ -986,6 +1049,8 @@ function App() {
                              navTab === 'gemini' ? 'Gemini CLI' : 
                              navTab === 'codex' ? 'OpenAI Codex' : 
                              navTab === 'opencode' ? 'OpenCode AI' : 
+                             navTab === 'codebuddy' ? 'CodeBuddy AI' :
+                             navTab === 'qoder' ? 'Qoder CLI' :
                              navTab === 'projects' ? t("projectManagement") : 
                              navTab === 'settings' ? t("globalSettings") : t("about")}
                         </h2>
@@ -1087,26 +1152,25 @@ function App() {
                                     BrowserOpenURL(manualUrl);
                                 }}>{t("manual")}</button>
                                 <button className="btn-link" onClick={() => BrowserOpenURL("https://github.com/BIT-ENGD/cs146s_cn")}>{t("cs146s")}</button>
-                                <button className="btn-link" onClick={() => {
-                                    const faqUrl = (lang === 'zh-Hans' || lang === 'zh-Hant')
-                                        ? "https://github.com/RapidAI/aicoder/blob/main/faq.md"
-                                        : "https://github.com/RapidAI/aicoder/blob/main/faq_en.md";
-                                    BrowserOpenURL(faqUrl);
-                                }}>{t("faq")}</button>
-                            </div>
-                        </div>
-                    )}
-                        {(navTab === 'claude' || navTab === 'gemini' || navTab === 'codex' || navTab === 'opencode') && (
+                                                                <button className="btn-link" onClick={() => {
+                                                                    const faqUrl = (lang === 'zh-Hans' || lang === 'zh-Hant')
+                                                                        ? "https://github.com/RapidAI/aicoder/blob/main/faq.md"
+                                                                        : "https://github.com/RapidAI/aicoder/blob/main/faq_en.md";
+                                                                    BrowserOpenURL(faqUrl);
+                                                                }}>{t("faq")}</button>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                        {(navTab === 'claude' || navTab === 'gemini' || navTab === 'codex' || navTab === 'opencode' || navTab === 'codebuddy' || navTab === 'qoder') && (
                             <ToolConfiguration 
-                                toolName={navTab === 'claude' ? 'Claude Code' : navTab === 'gemini' ? 'Gemini CLI' : navTab === 'codex' ? 'OpenAI Codex' : 'OpenCode AI'} 
+                                toolName={navTab} 
                                 toolCfg={toolCfg} 
                                 showModelSettings={showModelSettings}
                                 setShowModelSettings={setShowModelSettings}
                                 handleModelSwitch={handleModelSwitch}
-                                t={t}
+                                t={t} 
                             />
                         )}
-
                     {navTab === 'projects' && (
                         <div style={{padding: '10px'}}>
                              <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px'}}>
@@ -1188,6 +1252,17 @@ function App() {
                                     <option value="zh-Hant">繁體中文</option>
                                 </select>
                             </div>
+
+                            <div style={{marginTop: '25px', marginBottom: '20px'}}>
+                                <button 
+                                    className="btn-link" 
+                                    onClick={() => switchTool('projects')}
+                                    style={{display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 15px', border: '1px solid var(--border-color)'}}
+                                >
+                                    <span>📂</span> {t("manageProjects")}
+                                </button>
+                            </div>
+
                             <div className="form-group" style={{marginTop: '20px'}}>
                                 <label style={{display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer'}}>
                                     <input 
@@ -1225,8 +1300,25 @@ function App() {
                             boxSizing: 'border-box'
                         }}>
                             <img src={appIcon} alt="Logo" style={{width: '64px', height: '64px', marginBottom: '15px'}} />
-                                                    <h2 style={{color: '#60a5fa', margin: '0 0 4px 0'}}>RapidAI AICoder</h2>
-                                                    <div style={{fontSize: '0.9rem', color: '#94a3b8', marginBottom: '12px'}}>(2026 New Year)</div>
+                                                    <h2 style={{
+                                                        margin: '0 0 4px 0',
+                                                        background: 'linear-gradient(to right, #60a5fa, #a855f7, #ec4899)',
+                                                        WebkitBackgroundClip: 'text',
+                                                        WebkitTextFillColor: 'transparent',
+                                                        display: 'inline-block',
+                                                        fontWeight: 'bold'
+                                                    }}>RapidAI AICoder</h2>
+                                                    <div style={{
+                                                        fontSize: '1rem', 
+                                                        fontWeight: 'bold',
+                                                        background: 'linear-gradient(to right, #60a5fa, #a855f7, #ec4899)',
+                                                        WebkitBackgroundClip: 'text',
+                                                        WebkitTextFillColor: 'transparent',
+                                                        marginBottom: '12px',
+                                                        display: 'inline-block'
+                                                    }}>
+                                                        会AI编程者得工作！
+                                                    </div>
                                                     <div style={{fontSize: '1rem', color: '#374151', marginBottom: '5px'}}>{t("version")} {APP_VERSION}</div>
                                                     <div style={{fontSize: '0.9rem', color: '#64748b', marginBottom: '5px'}}>{t("businessCooperation")}</div>
                                                     <div style={{fontSize: '0.9rem', color: '#6b7280', marginBottom: '20px'}}>{t("author")}: Dr. Daniel</div>
@@ -1264,7 +1356,7 @@ function App() {
                 </div>
 
                 {/* Global Action Bar (Footer) */}
-                {config && (navTab === 'claude' || navTab === 'gemini' || navTab === 'codex' || navTab === 'opencode') && (
+                {config && (navTab === 'claude' || navTab === 'gemini' || navTab === 'codex' || navTab === 'opencode' || navTab === 'codebuddy' || navTab === 'qoder') && (
                     <div className="global-action-bar">
                         <div style={{display: 'flex', flexDirection: 'column', gap: '8px', width: '100%', padding: '4px 0'}}>
                             <div style={{display: 'flex', alignItems: 'center', gap: '20px', justifyContent: 'center'}}>
@@ -1400,7 +1492,14 @@ function App() {
                     <div className="modal-content" onClick={e => e.stopPropagation()}>
                         <button className="modal-close" onClick={() => setShowAbout(false)}>&times;</button>
                         <img src={appIcon} alt="Logo" style={{width: '64px', height: '64px', marginBottom: '15px'}} />
-                        <h3 style={{color: '#60a5fa'}}>AICoder</h3>
+                        <h3 style={{
+                            background: 'linear-gradient(to right, #60a5fa, #a855f7, #ec4899)',
+                            WebkitBackgroundClip: 'text',
+                            WebkitTextFillColor: 'transparent',
+                            display: 'inline-block',
+                            fontWeight: 'bold',
+                            margin: '0 0 10px 0'
+                        }}>AICoder</h3>
                         <p>Version {APP_VERSION}</p>
                         <button className="btn-primary" onClick={() => BrowserOpenURL("https://github.com/RapidAI/cceasy")}>GitHub</button>
                     </div>
@@ -1419,7 +1518,7 @@ function App() {
                                     <div style={{fontSize: '0.85rem', color: '#6b7280', marginBottom: '8px'}}>最新版本</div>
                                     <div style={{fontSize: '1rem', fontWeight: '600', color: '#059669'}}>{updateResult.latest_version}</div>
                                 </div>
-                                <p style={{margin: '10px 0', fontSize: '0.9rem', color: '#374151'}}>发现新版本，是否立即下载？</p>
+                                <p style={{margin: '10px 0', fontSize: '0.9rem', color: '#374151'}}>检查新版本，是否立即下载？</p>
                                 <a href={updateResult.release_url} target="_blank" rel="noopener noreferrer" style={{color: '#60a5fa', cursor: 'pointer', fontSize: '0.9rem', display: 'inline-block', marginTop: '10px'}}>
                                     {t("downloadNow")}
                                 </a>
@@ -1526,9 +1625,12 @@ function App() {
                                 </div>
                             )}
                                                                 
-                            {(config as any)[activeTool].models[activeTab].model_name !== "Original" && (
+                            {(config as any)[activeTool].models[activeTab].model_name !== "Original" && activeTool !== 'qoder' && (
                                 <div className="form-group" style={{flex: 1}}>
-                                    <label className="form-label">{t("modelName")}</label>
+                                    <label className="form-label">
+                                        {t("modelName")}
+                                        {(activeTool === 'codebuddy' || activeTool === 'qoder') && <span style={{fontSize: '0.7rem', color: '#94a3b8', marginLeft: '5px'}}>(Supports multiple, separated by comma)</span>}
+                                    </label>
                                     <input
                                         type="text"
                                         className="form-input"
@@ -1536,7 +1638,7 @@ function App() {
                                         value={(config as any)[activeTool].models[activeTab].model_id}
                                         onChange={(e) => handleModelIdChange(e.target.value)}
                                         onContextMenu={(e) => handleContextMenu(e, e.currentTarget)}
-                                        placeholder={getDefaultModelId(activeTool, (config as any)[activeTool].models[activeTab].model_name) || "e.g. gpt-4"}
+                                        placeholder={(activeTool === 'codebuddy' || activeTool === 'qoder') ? "e.g. gpt-4,gpt-3.5-turbo" : (getDefaultModelId(activeTool, (config as any)[activeTool].models[activeTab].model_name) || "e.g. gpt-4")}
                                         spellCheck={false}
                                         autoComplete="off"
                                     />
@@ -1563,16 +1665,27 @@ function App() {
                                                                             </div>
                                                                         )}
                                     
-                                                                        <div className="form-group">                                    <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px'}}>
-                                        <label className="form-label" style={{margin: 0}}>{t("apiKey")}</label>
-                                        {!(config as any)[activeTool].models[activeTab].is_custom && (
+                                                                        <div className="form-group">
+                                                                            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px'}}>
+                                        <label className="form-label" style={{margin: 0}}>{activeTool === 'qoder' ? t("personalToken") : t("apiKey")}</label>
+                                        {activeTool === 'qoder' ? (
                                             <button 
                                                 className="btn-link" 
                                                 style={{fontSize: '0.75rem', padding: '2px 8px'}}
-                                                onClick={() => handleOpenSubscribe((config as any)[activeTool].models[activeTab].model_name)}
+                                                onClick={() => BrowserOpenURL("https://qoder.com/account/integrations")}
                                             >
-                                                {t("getKey")}
+                                                {t("getToken")}
                                             </button>
+                                        ) : (
+                                            !(config as any)[activeTool].models[activeTab].is_custom && (
+                                                <button 
+                                                    className="btn-link" 
+                                                    style={{fontSize: '0.75rem', padding: '2px 8px'}}
+                                                    onClick={() => handleOpenSubscribe((config as any)[activeTool].models[activeTab].model_name)}
+                                                >
+                                                    {t("getKey")}
+                                                </button>
+                                            )
                                         )}
                                     </div>
                                     <input
@@ -1582,12 +1695,13 @@ function App() {
                                         value={(config as any)[activeTool].models[activeTab].api_key}
                                         onChange={(e) => handleApiKeyChange(e.target.value)}
                                         onContextMenu={(e) => handleContextMenu(e, e.currentTarget)}
-                                        placeholder={t("enterKey")}
+                                        placeholder={activeTool === 'qoder' ? t("personalToken") : t("enterKey")}
                                         spellCheck={false}
                                         autoComplete="off"
                                     />
                                 </div>
                                                             
+                                {activeTool !== 'qoder' && (
                                 <div className="form-group">
                                     <label className="form-label">{t("apiEndpoint")}</label>
                                     <input
@@ -1602,6 +1716,7 @@ function App() {
                                         autoComplete="off"
                                     />
                                 </div>
+                                )}
                             </>
                         )}
 
@@ -1658,7 +1773,15 @@ function App() {
                             >&times;</button>
                             <div style={{fontSize: '3rem', marginBottom: '10px'}}>🚀</div>
                             <h3 style={{margin: 0, color: 'white', fontSize: '1.5rem', fontWeight: 'bold'}}>{t("startupTitle")}</h3>
-                            <p style={{margin: '10px 0 0 0', opacity: 0.9, fontSize: '0.9rem'}}>开启您的 AI 辅助编程之旅</p>
+                            <p style={{
+                                margin: '10px 0 0 0', 
+                                color: 'white', 
+                                fontSize: '1.1rem', 
+                                fontWeight: '600',
+                                textShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                            }}>
+                                会AI编程者得工作！
+                            </p>
                         </div>
                         
                         <div style={{padding: '30px 25px'}}>

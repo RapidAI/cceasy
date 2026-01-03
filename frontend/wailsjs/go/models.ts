@@ -73,6 +73,8 @@ export class ModelConfig {
 	    gemini: ToolConfig;
 	    codex: ToolConfig;
 	    opencode: ToolConfig;
+	    codebuddy: ToolConfig;
+	    qoder: ToolConfig;
 	    projects: ProjectConfig[];
 	    current_project: string;
 	    active_tool: string;
@@ -88,6 +90,8 @@ export class ModelConfig {
 	        this.gemini = this.convertValues(source["gemini"], ToolConfig);
 	        this.codex = this.convertValues(source["codex"], ToolConfig);
 	        this.opencode = this.convertValues(source["opencode"], ToolConfig);
+	        this.codebuddy = this.convertValues(source["codebuddy"], ToolConfig);
+	        this.qoder = this.convertValues(source["qoder"], ToolConfig);
 	        this.projects = this.convertValues(source["projects"], ProjectConfig);
 	        this.current_project = source["current_project"];
 	        this.active_tool = source["active_tool"];

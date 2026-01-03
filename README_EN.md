@@ -2,20 +2,20 @@
 
 [📖 User Manual](UserManual_EN.md) | [❓ FAQ](faq_en.md) | [English](README_EN.md) | [中文](README.md)
 
-AICoder is a desktop AI programming assistant dashboard built with Wails, Go, and React. It is designed to provide unified configuration management, automated environment deployment, and one-click launch capabilities for multiple AI CLI tools (Anthropic Claude Code, OpenAI Codex, and Google Gemini CLI).
+AICoder is a desktop AI programming assistant dashboard built with Wails, Go, and React. It is designed to provide unified configuration management, automated environment deployment, and one-click launch capabilities for multiple AI CLI tools (Anthropic Claude Code, OpenAI Codex, Google Gemini CLI, OpenCode, CodeBuddy, and Qoder CLI).
 
 This application is deeply integrated with popular AI programming models, supporting rapid API Key configuration and automatic synchronization.
 <img width="806" height="486" alt="image" src="https://github.com/user-attachments/assets/6b81570d-804d-4faa-8b79-79a84ee2fb88" />
 
 ## Core Features
 
-*   **🚀 Automatic Environment Preparation**: Automatically detects and prepares the required AI CLI environments (Claude Code, Codex, Gemini) upon startup, supporting automatic installation and version updates.
+*   **🚀 Automatic Environment Preparation**: Automatically detects and prepares the required AI CLI environments (Claude Code, Codex, Gemini, OpenCode, CodeBuddy, Qoder CLI) upon startup, supporting automatic installation and version updates.
 *   **🖼️ Unified Sidebar UI**: Features a modern vertical sidebar navigation for quick switching between different AI programming tools.
 *   **📂 Multi-Project Management (Vibe Coding)**:
     *   **Tabbed Interface**: Manage multiple projects simultaneously and switch contexts quickly using tabs.
     *   **Independent Configuration**: Each project can have its own working directory and launch parameters (e.g., Yolo Mode).
 *   **🔄 Multi-Model & Cross-Platform Support**:
-    *   Integrated with **Claude Code**, **OpenAI Codex**, and **Google Gemini CLI**.
+    *   Integrated with **Claude Code**, **OpenAI Codex**, **Google Gemini CLI**, **OpenCode**, **CodeBuddy**, and **Qoder CLI**.
     *   **"Original" Provider Mode**: One-click switch back to official configurations. Automatically clears custom proxy settings to ensure a pure official tool experience.
     *   **Deep Provider Integration**: Pre-configured support for mainstream providers including GLM, Kimi, Doubao, MiniMax, AIgoCode, and AiCodeMirror.
     *   **Smart Sync**: API Keys for the same provider are automatically synchronized across different tools.
@@ -46,7 +46,7 @@ Select a provider and enter your API Key in the configuration panel for each too
 
 ## About
 
-*   **Version**: V2.0.1.122
+*   **Version**: V2.5.0.2026
 *   **Author**: Dr. Daniel
 *   **GitHub**: [RapidAI/aicoder](https://github.com/RapidAI/aicoder)
 *   **Resources**: [CS146s Chinese Version](https://github.com/BIT-ENGD/cs146s_cn)

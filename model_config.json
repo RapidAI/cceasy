@@ -54,7 +54,7 @@
       "model_url": "https://api.aicodemirror.com/api/codex/backend-api/codex",
       "api_key": "",
       "temperature": 0.7,
-      "max_tokens": 4096
+      "max_tokens": 8192
     },
     {
       "model_name": "AICodeMirror-Claude",

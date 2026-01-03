@@ -49,15 +49,34 @@ type ToolConfig struct {
 	Models       []ModelConfig `json:"models"`
 }
 
+type CodeBuddyModel struct {
+	Id               string `json:"id"`
+	Name             string `json:"name"`
+	Vendor           string `json:"vendor"`
+	ApiKey           string `json:"apiKey"`
+	MaxInputTokens   int    `json:"maxInputTokens"`
+	MaxOutputTokens  int    `json:"maxOutputTokens"`
+	Url              string `json:"url"`
+	SupportsToolCall bool   `json:"supportsToolCall"`
+	SupportsImages   bool   `json:"supportsImages"`
+}
+
+type CodeBuddyFileConfig struct {
+	Models          []CodeBuddyModel `json:"Models"`
+	AvailableModels []string         `json:"availableModels"`
+}
+
 type AppConfig struct {
-	Claude             ToolConfig      `json:"claude"`
-	Gemini             ToolConfig      `json:"gemini"`
-	Codex              ToolConfig      `json:"codex"`
-	Opencode           ToolConfig      `json:"opencode"`
-	Projects           []ProjectConfig `json:"projects"`
-	CurrentProject     string          `json:"current_project"` // ID of the current project
-	ActiveTool         string          `json:"active_tool"`     // "claude", "gemini", or "codex"
-	HideStartupPopup   bool            `json:"hide_startup_popup"`
+	Claude           ToolConfig      `json:"claude"`
+	Gemini           ToolConfig      `json:"gemini"`
+	Codex            ToolConfig      `json:"codex"`
+	Opencode         ToolConfig      `json:"opencode"`
+	CodeBuddy        ToolConfig      `json:"codebuddy"`
+	Qoder            ToolConfig      `json:"qoder"`
+	Projects         []ProjectConfig `json:"projects"`
+	CurrentProject   string          `json:"current_project"` // ID of the current project
+	ActiveTool       string          `json:"active_tool"`     // "claude", "gemini", or "codex"
+	HideStartupPopup bool            `json:"hide_startup_popup"`
 }
 
 // NewApp creates a new App application struct
@@ -72,6 +91,11 @@ func (a *App) startup(ctx context.Context) {
 	// Platform specific initialization
 	a.platformStartup()
 	a.startConfigWatcher()
+
+	// Initialize CodeBuddy config in project directory
+	if _, err := a.LoadConfig(); err == nil {
+		// a.syncToCodeBuddySettings(config, "")
+	}
 }
 
 func (a *App) startConfigWatcher() {
@@ -247,6 +271,7 @@ func (a *App) clearEnvVars() {
 		"OPENAI_API_KEY", "OPENAI_BASE_URL", "WIRE_API",
 		"GEMINI_API_KEY", "GOOGLE_GEMINI_BASE_URL",
 		"OPENCODE_API_KEY", "OPENCODE_BASE_URL",
+		"QODER_API_KEY", "QODER_BASE_URL",
 	}
 	for _, v := range vars {
 		os.Unsetenv(v)
@@ -465,6 +490,9 @@ model = "%s"
 model_reasoning_effort = "xhigh"
 disable_response_storage = true
 preferred_auth_method = "apikey"
+
+[model.limit]
+output = 8192
 
 [model_providers.deepseek]
 name = "deepseek"
@@ -700,7 +728,7 @@ func (a *App) syncToOpencodeSettings(config AppConfig) error {
 						"name": modelId,
 						"limit": map[string]interface{}{
 							"context": 8192,
-							"output":  5000,
+							"output":  8192,
 						},
 					},
 				},
@@ -762,6 +790,194 @@ func (a *App) syncToGeminiSettings(config AppConfig) error {
 	return os.WriteFile(configPath, configJson, 0644)
 }
 
+func (a *App) syncToCodeBuddySettings(config AppConfig, projectPath string) error {
+	if projectPath == "" {
+		projectPath = a.GetCurrentProjectPath()
+	}
+	
+	if projectPath == "" {
+		return nil
+	}
+
+	cbDir := filepath.Join(projectPath, ".codebuddy")
+	if err := os.MkdirAll(cbDir, 0755); err != nil {
+		return err
+	}
+
+	cbFilePath := filepath.Join(cbDir, "models.json")
+
+	var cbModels []CodeBuddyModel
+	var availableModelIds []string
+
+	for _, m := range config.CodeBuddy.Models {
+		// Only sync the currently selected model
+		if m.ModelName != config.CodeBuddy.CurrentModel {
+			continue
+		}
+
+		if strings.ToLower(m.ModelName) == "original" {
+			continue
+		}
+
+		vendor := strings.ToLower(m.ModelName)
+		
+		idStr := m.ModelId
+		if idStr == "" {
+			switch vendor {
+			case "deepseek":
+				idStr = "deepseek-chat"
+			case "glm":
+				idStr = "glm-4.7"
+			case "doubao":
+				idStr = "doubao-seed-code-preview-latest"
+			case "kimi":
+				idStr = "kimi-for-coding"
+			case "minimax":
+				idStr = "MiniMax-M2.1"
+			default:
+				idStr = vendor + "-model"
+			}
+		}
+
+		modelIds := strings.Split(idStr, ",")
+		
+		modelUrl := m.ModelUrl
+		if modelUrl != "" && !strings.HasSuffix(modelUrl, "/chat/completions") {
+			if strings.HasSuffix(modelUrl, "/") {
+				modelUrl += "chat/completions"
+			} else {
+				modelUrl += "/chat/completions"
+			}
+		}
+
+		for _, id := range modelIds {
+			id = strings.TrimSpace(id)
+			if id == "" {
+				continue
+			}
+
+			availableModelIds = append(availableModelIds, id)
+			cbModels = append(cbModels, CodeBuddyModel{
+				Id:               id,
+				Name:             id,
+				Vendor:           vendor,
+				ApiKey:           m.ApiKey,
+				MaxInputTokens:   200000,
+				MaxOutputTokens:  8192,
+				Url:              modelUrl,
+				SupportsToolCall: true,
+				SupportsImages:   true,
+			})
+		}
+	}
+
+	cbConfig := CodeBuddyFileConfig{
+		Models:          cbModels,
+		AvailableModels: availableModelIds,
+	}
+
+	data, err := json.MarshalIndent(cbConfig, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(cbFilePath, data, 0644)
+}
+
+func (a *App) syncToQoderSettings(config AppConfig, projectPath string) error {
+	if projectPath == "" {
+		projectPath = a.GetCurrentProjectPath()
+	}
+	
+	if projectPath == "" {
+		return nil
+	}
+
+	qDir := filepath.Join(projectPath, ".qoder")
+	if err := os.MkdirAll(qDir, 0755); err != nil {
+		return err
+	}
+
+	qFilePath := filepath.Join(qDir, "models.json")
+
+	var qModels []CodeBuddyModel
+	var availableModelIds []string
+
+	for _, m := range config.Qoder.Models {
+		// Only sync the currently selected model
+		if m.ModelName != config.Qoder.CurrentModel {
+			continue
+		}
+
+		if strings.ToLower(m.ModelName) == "original" {
+			continue
+		}
+
+		vendor := strings.ToLower(m.ModelName)
+		
+		idStr := m.ModelId
+		if idStr == "" {
+			switch vendor {
+			case "deepseek":
+				idStr = "deepseek-chat"
+			case "glm":
+				idStr = "glm-4.7"
+			case "doubao":
+				idStr = "doubao-seed-code-preview-latest"
+			case "kimi":
+				idStr = "kimi-for-coding"
+			case "minimax":
+				idStr = "MiniMax-M2.1"
+			default:
+				idStr = vendor + "-model"
+			}
+		}
+
+		modelIds := strings.Split(idStr, ",")
+		
+		modelUrl := m.ModelUrl
+		if modelUrl != "" && !strings.HasSuffix(modelUrl, "/chat/completions") {
+			if strings.HasSuffix(modelUrl, "/") {
+				modelUrl += "chat/completions"
+			} else {
+				modelUrl += "/chat/completions"
+			}
+		}
+
+		for _, id := range modelIds {
+			id = strings.TrimSpace(id)
+			if id == "" {
+				continue
+			}
+
+			availableModelIds = append(availableModelIds, id)
+			qModels = append(qModels, CodeBuddyModel{
+				Id:               id,
+				Name:             id,
+				Vendor:           vendor,
+				ApiKey:           m.ApiKey,
+				MaxInputTokens:   200000,
+				MaxOutputTokens:  8192,
+				Url:              modelUrl,
+				SupportsToolCall: true,
+				SupportsImages:   true,
+			})
+		}
+	}
+
+	qConfig := CodeBuddyFileConfig{
+		Models:          qModels,
+		AvailableModels: availableModelIds,
+	}
+
+	data, err := json.MarshalIndent(qConfig, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(qFilePath, data, 0644)
+}
+
 
 func getBaseUrl(selectedModel *ModelConfig) string {
 	// If user provided a URL for the selected model, always prefer it.
@@ -789,6 +1005,10 @@ func getBaseUrl(selectedModel *ModelConfig) string {
 func (a *App) LaunchTool(toolName string, yoloMode bool, projectDir string) {
 	a.log(fmt.Sprintf("Launching %s...", toolName))
 	
+	if projectDir == "" {
+		projectDir = a.GetCurrentProjectPath()
+	}
+
 	config, err := a.LoadConfig()
 	if err != nil {
 		a.log("Error loading config: " + err.Error())
@@ -820,6 +1040,16 @@ func (a *App) LaunchTool(toolName string, yoloMode bool, projectDir string) {
 		envKey = "OPENCODE_API_KEY"
 		envBaseUrl = "OPENCODE_BASE_URL"
 		binaryName = "opencode"
+	case "codebuddy":
+		toolCfg = config.CodeBuddy
+		envKey = "CODEBUDDY_API_KEY"
+		envBaseUrl = "CODEBUDDY_BASE_URL"
+		binaryName = "codebuddy"
+	case "qoder":
+		toolCfg = config.Qoder
+		envKey = "QODER_PERSONAL_ACCESS_TOKEN"
+		envBaseUrl = "" // Qoder doesn't use a base URL env var in this context
+		binaryName = "qodercli"
 	default:
 		a.log("Unknown tool: " + toolName)
 		return
@@ -858,7 +1088,7 @@ func (a *App) LaunchTool(toolName string, yoloMode bool, projectDir string) {
 		// Set process environment variables
 		os.Setenv(envKey, selectedModel.ApiKey)
 		env[envKey] = selectedModel.ApiKey
-		if selectedModel.ModelUrl != "" {
+		if selectedModel.ModelUrl != "" && envBaseUrl != "" {
 			os.Setenv(envBaseUrl, selectedModel.ModelUrl)
 			env[envBaseUrl] = selectedModel.ModelUrl
 		}
@@ -878,6 +1108,11 @@ func (a *App) LaunchTool(toolName string, yoloMode bool, projectDir string) {
 			case "opencode":
 				os.Setenv("OPENCODE_MODEL", selectedModel.ModelId)
 				env["OPENCODE_MODEL"] = selectedModel.ModelId
+			case "codebuddy":
+				// os.Setenv("CODEBUDDY_MODEL", selectedModel.ModelId)
+				// env["CODEBUDDY_MODEL"] = selectedModel.ModelId
+			case "qoder":
+				// Qoder doesn't use model env var
 			}
 		}
 
@@ -902,6 +1137,10 @@ func (a *App) LaunchTool(toolName string, yoloMode bool, projectDir string) {
 		case "opencode":
 			// Opencode might use similar settings to Codex or its own
 			a.syncToOpencodeSettings(config)
+		case "codebuddy":
+			// a.syncToCodeBuddySettings(config, projectDir)
+		case "qoder":
+			a.syncToQoderSettings(config, projectDir)
 		}
 	} else {
 		// --- ORIGINAL MODE: CLEANUP SPECIFIC TOOL ONLY ---
@@ -923,6 +1162,13 @@ func (a *App) LaunchTool(toolName string, yoloMode bool, projectDir string) {
 			os.Unsetenv("OPENCODE_API_KEY")
 			os.Unsetenv("OPENCODE_BASE_URL")
 			a.clearOpencodeConfig()
+		} else if strings.ToLower(toolName) == "codebuddy" {
+			os.Unsetenv("CODEBUDDY_API_KEY")
+			os.Unsetenv("CODEBUDDY_BASE_URL")
+			// Codebuddy might need cleanup too if we added a clear function
+		} else if strings.ToLower(toolName) == "qoder" {
+			os.Unsetenv("QODER_PERSONAL_ACCESS_TOKEN")
+			// No base URL to unset for Qoder
 		}
 		
 		a.log(fmt.Sprintf("Running %s in Original mode: Custom configurations cleared.", toolName))
@@ -930,7 +1176,7 @@ func (a *App) LaunchTool(toolName string, yoloMode bool, projectDir string) {
 
 	// Platform specific launch
 
-		a.platformLaunch(binaryName, yoloMode, projectDir, env)
+		a.platformLaunch(binaryName, yoloMode, projectDir, env, selectedModel.ModelId)
 
 	}
 
@@ -995,6 +1241,10 @@ func (a *App) LoadConfig() (AppConfig, error) {
 		{ModelName: "MiniMax", ModelId: "MiniMax-M2.1", ModelUrl: "https://api.minimaxi.com/v1", ApiKey: ""},
 		{ModelName: "Custom", ModelId: "", ModelUrl: "", ApiKey: "", IsCustom: true},
 	}
+	defaultQoderModels := []ModelConfig{
+		{ModelName: "Original", ModelId: "", ModelUrl: "", ApiKey: ""},
+		{ModelName: "Qoder", ModelId: "qoder-1.0", ModelUrl: "https://api.qoder.com/v1", ApiKey: ""},
+	}
 
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		// Check for old config file for migration
@@ -1028,6 +1278,14 @@ func (a *App) LoadConfig() (AppConfig, error) {
 							CurrentModel: "AiCodeMirror",
 							Models:       defaultOpencodeModels,
 						},
+						CodeBuddy: ToolConfig{
+							CurrentModel: "AiCodeMirror",
+							Models:       defaultOpencodeModels,
+						},
+						Qoder: ToolConfig{
+							CurrentModel: "Original",
+							Models:       defaultQoderModels,
+						},
 						Projects:       oldConfig.Projects,
 						CurrentProject: oldConfig.CurrentProj,
 						ActiveTool:     "message",
@@ -1056,6 +1314,14 @@ func (a *App) LoadConfig() (AppConfig, error) {
 			Opencode: ToolConfig{
 				CurrentModel: "AiCodeMirror",
 				Models:       defaultOpencodeModels,
+			},
+			CodeBuddy: ToolConfig{
+				CurrentModel: "AiCodeMirror",
+				Models:       defaultOpencodeModels,
+			},
+			Qoder: ToolConfig{
+				CurrentModel: "Original",
+				Models:       defaultQoderModels,
 			},
 			Projects: []ProjectConfig{
 				{
@@ -1115,6 +1381,14 @@ func (a *App) LoadConfig() (AppConfig, error) {
 		config.Opencode.Models = defaultOpencodeModels
 		config.Opencode.CurrentModel = "AiCodeMirror"
 	}
+	if config.CodeBuddy.Models == nil || len(config.CodeBuddy.Models) == 0 {
+		config.CodeBuddy.Models = defaultOpencodeModels
+		config.CodeBuddy.CurrentModel = "AiCodeMirror"
+	}
+	if config.Qoder.Models == nil || len(config.Qoder.Models) == 0 {
+		config.Qoder.Models = defaultQoderModels
+		config.Qoder.CurrentModel = "Original"
+	}
 
 	ensureModel(&config.Claude.Models, "AiCodeMirror", "https://api.aicodemirror.com/api/claudecode")
 	ensureModel(&config.Claude.Models, "DeepSeek", "https://api.deepseek.com/anthropic")
@@ -1152,6 +1426,12 @@ func (a *App) LoadConfig() (AppConfig, error) {
 	ensureModel(&config.Opencode.Models, "Kimi", "https://api.kimi.com/coding/v1")
 	ensureModel(&config.Opencode.Models, "MiniMax", "https://api.minimaxi.com/v1")
 
+	ensureModel(&config.CodeBuddy.Models, "DeepSeek", "https://api.deepseek.com/v1")
+	ensureModel(&config.CodeBuddy.Models, "GLM", "https://open.bigmodel.cn/api/paas/v4")
+	ensureModel(&config.CodeBuddy.Models, "Doubao", "https://ark.cn-beijing.volces.com/api/coding/v3")
+	ensureModel(&config.CodeBuddy.Models, "Kimi", "https://api.kimi.com/coding/v1")
+	ensureModel(&config.CodeBuddy.Models, "MiniMax", "https://api.minimaxi.com/v1")
+
 	// Ensure 'Original' is always present and first
 	ensureOriginal := func(models *[]ModelConfig) {
 		found := false
@@ -1182,7 +1462,11 @@ func (a *App) LoadConfig() (AppConfig, error) {
 	ensureOriginal(&config.Gemini.Models)
 	ensureOriginal(&config.Codex.Models)
 	ensureOriginal(&config.Opencode.Models)
+	ensureOriginal(&config.CodeBuddy.Models)
+	ensureOriginal(&config.Qoder.Models)
+
 	cleanOpencodeModels(&config.Opencode.Models)
+	cleanOpencodeModels(&config.CodeBuddy.Models)
 
 	// Ensure 'Custom' is always present
 	ensureCustom := func(models *[]ModelConfig) {
@@ -1201,6 +1485,25 @@ func (a *App) LoadConfig() (AppConfig, error) {
 	ensureCustom(&config.Gemini.Models)
 	ensureCustom(&config.Codex.Models)
 	ensureCustom(&config.Opencode.Models)
+	ensureCustom(&config.CodeBuddy.Models)
+	// Qoder only has Original and Qoder
+	// Preserve existing Qoder key if present
+	var existingQoderKey string
+	for _, m := range config.Qoder.Models {
+		if m.ModelName == "Qoder" {
+			existingQoderKey = m.ApiKey
+			break
+		}
+	}
+	config.Qoder.Models = defaultQoderModels
+	if existingQoderKey != "" {
+		for i := range config.Qoder.Models {
+			if config.Qoder.Models[i].ModelName == "Qoder" {
+				config.Qoder.Models[i].ApiKey = existingQoderKey
+				break
+			}
+		}
+	}
 
 	// Ensure 'Custom' is always last for all tools
 	moveCustomToLast := func(models *[]ModelConfig) {
@@ -1241,11 +1544,14 @@ func (a *App) LoadConfig() (AppConfig, error) {
 	moveCustomToLast(&config.Gemini.Models)
 	moveCustomToLast(&config.Codex.Models)
 	moveCustomToLast(&config.Opencode.Models)
+	moveCustomToLast(&config.CodeBuddy.Models)
 
 	ensureOriginalFirst(&config.Claude.Models)
 	ensureOriginalFirst(&config.Gemini.Models)
 	ensureOriginalFirst(&config.Codex.Models)
 	ensureOriginalFirst(&config.Opencode.Models)
+	ensureOriginalFirst(&config.CodeBuddy.Models)
+	ensureOriginalFirst(&config.Qoder.Models)
 
 	// Ensure CurrentModel is valid
 	if config.Gemini.CurrentModel == "" {
@@ -1256,6 +1562,12 @@ func (a *App) LoadConfig() (AppConfig, error) {
 	}
 	if config.Opencode.CurrentModel == "" {
 		config.Opencode.CurrentModel = "Original"
+	}
+	if config.CodeBuddy.CurrentModel == "" {
+		config.CodeBuddy.CurrentModel = "Original"
+	}
+	if config.Qoder.CurrentModel == "" {
+		config.Qoder.CurrentModel = "Original"
 	}
 
 	if config.ActiveTool == "" {
@@ -1278,8 +1590,8 @@ func getProviderModel(toolConfig *ToolConfig, providerName string) *ModelConfig 
 // syncAllProviderApiKeys synchronizes apikeys of all providers (except 'Original') across all tools
 func syncAllProviderApiKeys(a *App, oldConfig, newConfig *AppConfig) {
 	// List of tools to sync
-	tools := []*ToolConfig{&newConfig.Claude, &newConfig.Gemini, &newConfig.Codex, &newConfig.Opencode}
-	oldTools := []*ToolConfig{&oldConfig.Claude, &oldConfig.Gemini, &oldConfig.Codex, &oldConfig.Opencode}
+	tools := []*ToolConfig{&newConfig.Claude, &newConfig.Gemini, &newConfig.Codex, &newConfig.Opencode, &newConfig.CodeBuddy, &newConfig.Qoder}
+	oldTools := []*ToolConfig{&oldConfig.Claude, &oldConfig.Gemini, &oldConfig.Codex, &oldConfig.Opencode, &oldConfig.CodeBuddy, &oldConfig.Qoder}
 
 	// 1. Identify which provider's ApiKey has changed
 	var changedProvider string
@@ -1293,6 +1605,11 @@ func syncAllProviderApiKeys(a *App, oldConfig, newConfig *AppConfig) {
 		// Check for ApiKey changes
 		for _, model := range tool.Models {
 			if strings.EqualFold(model.ModelName, "Original") {
+				continue
+			}
+			
+			// Exclude "Custom" providers or any provider marked as IsCustom
+			if strings.EqualFold(model.ModelName, "Custom") || model.IsCustom {
 				continue
 			}
 
@@ -1686,9 +2003,14 @@ func (a *App) getInstalledClaudeVersion(claudePath string) (string, error) {
 	return "", fmt.Errorf("unexpected output format: %s", output)
 }
 
-func (a *App) getLatestClaudeVersion(npmPath string) (string, error) {
+func (a *App) getLatestNpmVersion(npmPath string, packageName string) (string, error) {
 	var cmd *exec.Cmd
-	cmd = createNpmViewCmd(npmPath)
+	// Use npm view <package> version
+	args := []string{"view", packageName, "version"}
+	if strings.HasPrefix(strings.ToLower(a.CurrentLanguage), "zh") {
+		args = append(args, "--registry=https://registry.npmmirror.com")
+	}
+	cmd = createNpmInstallCmd(npmPath, args) // Using createNpmInstallCmd as it's a general npm command runner
 	out, err := cmd.Output()
 	if err != nil {
 		return "", err

@@ -131,6 +131,54 @@ func setupTray(app *App, appOptions *options.App) {
 					})
 				}
 
+				// 5. CodeBuddy Submenu
+				mCodeBuddy := systray.AddMenuItem("CodeBuddy AI", "CodeBuddy Models")
+				for _, model := range config.CodeBuddy.Models {
+					m := mCodeBuddy.AddSubMenuItemCheckbox(model.ModelName, "Switch to "+model.ModelName, model.ModelName == config.CodeBuddy.CurrentModel && config.ActiveTool == "codebuddy")
+					toolItems["codebuddy-"+model.ModelName] = m
+
+					modelName := model.ModelName
+					m.Click(func() {
+						go func() {
+							currentConfig, _ := app.LoadConfig()
+							currentConfig.CodeBuddy.CurrentModel = modelName
+							currentConfig.ActiveTool = "codebuddy"
+							app.SaveConfig(currentConfig)
+
+							for _, m := range currentConfig.CodeBuddy.Models {
+								if m.ModelName == modelName && m.ApiKey == "" {
+									runtime.WindowShow(app.ctx)
+									break
+								}
+							}
+						}()
+					})
+				}
+
+				// 6. Qoder CLI Submenu
+				mQoder := systray.AddMenuItem("Qoder CLI", "Qoder Models")
+				for _, model := range config.Qoder.Models {
+					m := mQoder.AddSubMenuItemCheckbox(model.ModelName, "Switch to "+model.ModelName, model.ModelName == config.Qoder.CurrentModel && config.ActiveTool == "qoder")
+					toolItems["qoder-"+model.ModelName] = m
+
+					modelName := model.ModelName
+					m.Click(func() {
+						go func() {
+							currentConfig, _ := app.LoadConfig()
+							currentConfig.Qoder.CurrentModel = modelName
+							currentConfig.ActiveTool = "qoder"
+							app.SaveConfig(currentConfig)
+
+							for _, m := range currentConfig.Qoder.Models {
+								if m.ModelName == modelName && m.ApiKey == "" {
+									runtime.WindowShow(app.ctx)
+									break
+								}
+							}
+						}()
+					})
+				}
+
 				systray.AddSeparator()
 				mQuit := systray.AddMenuItem("Quit", "Quit Application")
 
@@ -157,7 +205,9 @@ func setupTray(app *App, appOptions *options.App) {
 						if (cfg.ActiveTool == "claude" && key == "claude-"+cfg.Claude.CurrentModel) ||
 							(cfg.ActiveTool == "gemini" && key == "gemini-"+cfg.Gemini.CurrentModel) ||
 							(cfg.ActiveTool == "codex" && key == "codex-"+cfg.Codex.CurrentModel) ||
-							(cfg.ActiveTool == "opencode" && key == "opencode-"+cfg.Opencode.CurrentModel) {
+							(cfg.ActiveTool == "opencode" && key == "opencode-"+cfg.Opencode.CurrentModel) ||
+							(cfg.ActiveTool == "codebuddy" && key == "codebuddy-"+cfg.CodeBuddy.CurrentModel) ||
+							(cfg.ActiveTool == "qoder" && key == "qoder-"+cfg.Qoder.CurrentModel) {
 							item.Check()
 						} else {
 							item.Uncheck()

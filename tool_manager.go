@@ -31,6 +31,12 @@ func (tm *ToolManager) GetToolStatus(name string) ToolStatus {
 	if name == "codex" {
 		binaryNames = append(binaryNames, "openai")
 	}
+	if name == "codebuddy" {
+		binaryNames = []string{"codebuddy", "codebuddy-code"}
+	}
+	if name == "qoder" {
+		binaryNames = []string{"qodercli", "qoder"}
+	}
 
 	var path string
 	var err error
@@ -134,6 +140,10 @@ func (tm *ToolManager) InstallTool(name string) error {
 		packageName = "@openai/codex"
 	case "opencode":
 		packageName = "opencode-ai"
+	case "codebuddy":
+		packageName = "@tencent-ai/codebuddy-code"
+	case "qoder":
+		packageName = "@qoder-ai/qodercli"
 	default:
 		return fmt.Errorf("unknown tool: %s", name)
 	}
@@ -178,6 +188,25 @@ func (tm *ToolManager) InstallTool(name string) error {
 	return nil
 }
 
+func (tm *ToolManager) GetPackageName(name string) string {
+	switch name {
+	case "claude":
+		return "@anthropic-ai/claude-code"
+	case "gemini":
+		return "@google/gemini-cli"
+	case "codex":
+		return "@openai/codex"
+	case "opencode":
+		return "opencode-ai"
+	case "codebuddy":
+		return "@tencent-ai/codebuddy-code"
+	case "qoder":
+		return "@qoder-ai/qodercli"
+	default:
+		return ""
+	}
+}
+
 func (tm *ToolManager) getNpmPath() string {
 	// 1. Check local node environment first
 	home, _ := os.UserHomeDir()
@@ -208,7 +237,7 @@ func (a *App) InstallTool(name string) error {
 
 func (a *App) CheckToolsStatus() []ToolStatus {
 	tm := NewToolManager(a)
-	tools := []string{"claude", "gemini", "codex", "opencode"}
+	tools := []string{"claude", "gemini", "codex", "opencode", "codebuddy", "qoder"}
 	statuses := make([]ToolStatus, len(tools))
 	for i, name := range tools {
 		statuses[i] = tm.GetToolStatus(name)

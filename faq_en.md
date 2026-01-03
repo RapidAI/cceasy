@@ -29,10 +29,20 @@ If Node.js or tool installation fails, please check your internet connection. In
 Select **AICoderMirror** as the provider and enter your API Key. This provider acts as a relay for the original services, allowing easy access to native model services.
 
 ## 8. How to use the services provided directly by the tools themselves?
-Select **"Original"** as the provider in the tool's settings to restore each tool to its default state. In this mode, you can use the tool's built-in authentication and communication methods directly.
+Select **"Original"** as the provider in the tool's settings to restore each tool to its default state. In this mode, AICoder will automatically clear all related custom proxy configurations, environment variables, and the tool's own configuration files (e.g., `~/.claude`), allowing you to use the tool's built-in authentication and communication methods directly.
 
 ## 9. What does Yolo mode mean?
 When Yolo mode is enabled, the programming tool will no longer ask for confirmation before every file or system operation, enhancing the coding experience. However, please be aware that this option is risky and carries the potential for accidental file deletion or modification. It is intended for expert users only.
+
+## 10. Which tools does AICoder support?
+AICoder currently supports **Claude Code**, **OpenAI Codex**, **Google Gemini CLI**, **OpenCode**, **CodeBuddy**, and **Qoder CLI**. You can quickly switch between them in the sidebar and configure each tool independently.
+
+## 11. Why hasn't the tool's behavior changed after switching providers?
+Please make sure you click the **"Launch"** button on the main interface to restart the tool after switching providers. AICoder automatically syncs the environment based on your latest configuration before launching. If issues persist, try switching to **"Original"** mode first to clear old configurations, and then switch back to your target provider.
+
+## 12. What is the difference between "Original" and "Qoder" providers in Qoder CLI?
+*   **Original**: Uses the default authentication method of Qoder CLI, which requires **logging in via a web browser**.
+*   **Qoder**: Uses a **Personal Access Token** for authentication. You can obtain a token from the Qoder website and enter it into AICoder. This method is ideal for environments where opening a browser is not possible or for faster deployment.
 
 ---
 *For more issues, please visit GitHub Issues: [RapidAI/cceasy/issues](https://github.com/RapidAI/cceasy/issues)*
