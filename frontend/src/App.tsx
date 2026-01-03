@@ -22,7 +22,7 @@ const subscriptionUrls: {[key: string]: string} = {
     "DeepSeek": "https://platform.deepseek.com/api_keys"
 };
 
-const APP_VERSION = "2.5.0.2069";
+const APP_VERSION = "2.5.0.2070";
 
 const translations: any = {
     "en": {
@@ -2014,9 +2014,11 @@ function App() {
                             <h3 style={{margin: 0, color: '#0f172a', fontSize: '1.2rem', fontWeight: 'bold'}}>{t("startupTitle")}</h3>
                             <p style={{
                                 margin: '6px 0 0 0', 
-                                color: '#475569', 
-                                fontSize: '0.9rem', 
-                                fontWeight: '500'
+                                background: 'linear-gradient(to right, #2563eb, #9333ea, #db2777)',
+                                WebkitBackgroundClip: 'text',
+                                WebkitTextFillColor: 'transparent',
+                                fontSize: '0.95rem',
+                                fontWeight: '700'
                             }}>
                                 会AI编程者得工作！
                             </p>
