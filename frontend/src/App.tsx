@@ -1552,10 +1552,9 @@ function App() {
                                                     <div style={{fontSize: '0.9rem', color: '#6b7280', marginBottom: '20px'}}>{t("author")}: Dr. Daniel</div>
                             
                             <div style={{display: 'flex', gap: '15px'}}>
-                                <button className="btn-primary" onClick={() => BrowserOpenURL("https://aicoder.rapidai.tech/")}>{t("officialWebsite")}</button>
+                                <button className="btn-link" onClick={() => BrowserOpenURL("https://aicoder.rapidai.tech/")}>{t("officialWebsite")}</button>
                                 <button
-                                    className="btn-primary"
-                                    style={{backgroundColor: '#6b7280', backgroundImage: 'none'}}
+                                    className="btn-link"
                                     onClick={() => {
                                         setStatus(t("checkingUpdate"));
                                         CheckUpdate(APP_VERSION).then(res => {
