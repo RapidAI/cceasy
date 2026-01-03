@@ -46,6 +46,10 @@ export function ReadBBS() {
   return window['go']['main']['App']['ReadBBS']();
 }
 
+export function ReadTutorial() {
+  return window['go']['main']['App']['ReadTutorial']();
+}
+
 export function RecoverCC() {
   return window['go']['main']['App']['RecoverCC']();
 }

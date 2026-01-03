@@ -1947,9 +1947,9 @@ func (a *App) ClipboardGetText() (string, error) {
 	return "", nil
 }
 
-func (a *App) ReadBBS() (string, error) {
+func (a *App) fetchRemoteMarkdown(repo, file string) (string, error) {
 	// Use GitHub API with timestamp to bypass all caches
-	url := fmt.Sprintf("https://api.github.com/repos/RapidAI/aicoder/contents/bbs.md?ref=main&t=%d", time.Now().UnixNano())
+	url := fmt.Sprintf("https://api.github.com/repos/%s/contents/%s?ref=main&t=%d", repo, file, time.Now().UnixNano())
 
 	// Create a new transport to avoid connection reuse caching
 	transport := &http.Transport{
@@ -1979,7 +1979,7 @@ func (a *App) ReadBBS() (string, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Sprintf("Remote message unavailable (Status: %d %s)", resp.StatusCode, resp.Status), nil
+		return fmt.Sprintf("Remote content unavailable (Status: %d %s)", resp.StatusCode, resp.Status), nil
 	}
 
 	data, err := io.ReadAll(resp.Body)
@@ -1988,6 +1988,14 @@ func (a *App) ReadBBS() (string, error) {
 	}
 
 	return string(data), nil
+}
+
+func (a *App) ReadBBS() (string, error) {
+	return a.fetchRemoteMarkdown("rapidaicoder/msg", "bbs.md")
+}
+
+func (a *App) ReadTutorial() (string, error) {
+	return a.fetchRemoteMarkdown("rapidaicoder/msg", "tutorial.md")
 }
 
 // compareVersions returns 1 if v1 > v2, -1 if v1 < v2, 0 if equal

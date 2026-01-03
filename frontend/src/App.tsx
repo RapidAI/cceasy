@@ -2,7 +2,7 @@ import {useEffect, useState, useRef} from 'react';
 import './App.css';
 import {buildNumber} from './version';
 import appIcon from './assets/images/appicon.png';
-import {CheckToolsStatus, InstallTool, LoadConfig, SaveConfig, CheckEnvironment, ResizeWindow, LaunchTool, SelectProjectDir, SetLanguage, GetUserHomeDir, CheckUpdate, ShowMessage, ReadBBS, ClipboardGetText} from "../wailsjs/go/main/App";
+import {CheckToolsStatus, InstallTool, LoadConfig, SaveConfig, CheckEnvironment, ResizeWindow, LaunchTool, SelectProjectDir, SetLanguage, GetUserHomeDir, CheckUpdate, ShowMessage, ReadBBS, ReadTutorial, ClipboardGetText} from "../wailsjs/go/main/App";
 import {WindowHide, EventsOn, EventsOff, BrowserOpenURL, Quit} from "../wailsjs/runtime";
 import {main} from "../wailsjs/go/models";
 import ReactMarkdown from 'react-markdown';
@@ -22,7 +22,7 @@ const subscriptionUrls: {[key: string]: string} = {
     "DeepSeek": "https://platform.deepseek.com/api_keys"
 };
 
-const APP_VERSION = "2.5.0.2057";
+const APP_VERSION = "2.5.0.2068";
 
 const translations: any = {
     "en": {
@@ -93,6 +93,7 @@ const translations: any = {
         "businessCooperation": "Business: WeChat znsoft",
         "original": "Original",
         "message": "Message",
+        "tutorial": "Tutorial",
         "danger": "DANGER",
         "selectAll": "Select All",
         "copy": "Copy",
@@ -101,6 +102,7 @@ const translations: any = {
         "forward": "Relay",
         "quickStart": "Tutorial",
         "manual": "Documentation",
+        "officialWebsite": "Official Website",
         "dontShowAgain": "Don't show again",
         "showWelcomePage": "Show Welcome Page",
         "refreshMessage": "Refresh Message",
@@ -181,6 +183,7 @@ const translations: any = {
         "businessCooperation": "商业合作：微信 znsoft",
         "original": "原厂",
         "message": "消息",
+        "tutorial": "教程",
         "danger": "危险",
         "selectAll": "全选",
         "copy": "复制",
@@ -193,6 +196,7 @@ const translations: any = {
         "lastUpdate": "最后更新：",
         "forward": "转发服务",
         "quickStart": "新手教学",
+        "officialWebsite": "官方网站",
         "dontShowAgain": "下次不再显示",
         "showWelcomePage": "显示欢迎页",
         "startupTitle": "欢迎使用 AICoder",
@@ -266,6 +270,7 @@ const translations: any = {
         "businessCooperation": "商業合作：微信 znsoft",
         "original": "原廠",
         "message": "消息",
+        "tutorial": "教程",
         "danger": "危險",
         "selectAll": "全選",
         "copy": "複製",
@@ -278,6 +283,7 @@ const translations: any = {
         "lastUpdate": "最後更新：",
         "forward": "轉發服務",
         "quickStart": "新手教學",
+        "officialWebsite": "官方網站",
         "dontShowAgain": "下次不再顯示",
         "showWelcomePage": "顯示歡迎頁",
         "startupTitle": "歡迎使用 AICoder",
@@ -326,7 +332,8 @@ const ToolConfiguration = ({
                 gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))',
                 gap: '12px',
                 width: '100%',
-                paddingTop: '8px'
+                paddingTop: '8px',
+                overflowY: 'hidden'
             }}>
                 {toolCfg.models.map((model: any) => (
                     <button
@@ -374,6 +381,7 @@ function App() {
     const [config, setConfig] = useState<main.AppConfig | null>(null);
     const [navTab, setNavTab] = useState<string>("claude");
     const [bbsContent, setBbsContent] = useState<string>("");
+    const [tutorialContent, setTutorialContent] = useState<string>("");
     const [refreshStatus, setRefreshStatus] = useState<string>("");
     const [lastUpdateTime, setLastUpdateTime] = useState<string>("");
     const [refreshKey, setRefreshKey] = useState<number>(0);
@@ -647,6 +655,11 @@ function App() {
         if (tool === 'message') {
             setShowModelSettings(false);
             ReadBBS().then(content => setBbsContent(content)).catch(err => console.error(err));
+        }
+
+        if (tool === 'tutorial') {
+            setShowModelSettings(false);
+            ReadTutorial().then(content => setTutorialContent(content)).catch(err => console.error(err));
         }
 
         if (config) {
@@ -1020,6 +1033,9 @@ function App() {
                 <div className={`sidebar-item ${navTab === 'message' ? 'active' : ''}`} onClick={() => switchTool('message')}>
                     <span className="sidebar-icon">💬</span> <span>{t("message")}</span>
                 </div>
+                <div className={`sidebar-item ${navTab === 'tutorial' ? 'active' : ''}`} onClick={() => switchTool('tutorial')}>
+                    <span className="sidebar-icon">📚</span> <span>{t("tutorial")}</span>
+                </div>
                 <div style={{height: '10px'}}></div>
                 
                 <div style={{backgroundColor: 'rgba(96, 165, 250, 0.05)', borderRadius: '8px', margin: '0 8px', overflow: 'hidden'}}>
@@ -1084,7 +1100,7 @@ function App() {
                     </div>
                 </div>
 
-                <div className={`main-content ${navTab === 'settings' || navTab === 'about' ? 'no-scrollbar' : ''}`} style={{overflowY: 'auto', paddingBottom: '20px'}}>
+                <div className={`main-content no-scrollbar ${navTab === 'settings' || navTab === 'about' ? '' : ''}`} style={{overflowY: 'auto', paddingBottom: '20px'}}>
                                                             {navTab === 'message' && (
                                                                 <div style={{
                                                                     width: '100%', 
@@ -1180,7 +1196,7 @@ function App() {
                                                     borderRadius: '8px',
                                                     border: '1px solid var(--border-color)',
                                                     fontFamily: 'inherit',
-                                                    fontSize: '0.85rem',
+                                                    fontSize: '0.75rem',
                                                     lineHeight: '1.6',
                                                     color: '#374151',
                                                     marginBottom: '20px',
@@ -1191,8 +1207,106 @@ function App() {
                                                         remarkPlugins={[remarkGfm]}
                                                         // @ts-ignore - rehype-raw type compatibility
                                                         rehypePlugins={[rehypeRaw]}
+                                                        components={{
+                                                            a: ({node, ...props}) => (
+                                                                <a 
+                                                                    {...props} 
+                                                                    onClick={(e) => {
+                                                                        e.preventDefault();
+                                                                        if (props.href) BrowserOpenURL(props.href);
+                                                                    }}
+                                                                    style={{cursor: 'pointer', color: '#3b82f6', textDecoration: 'underline'}}
+                                                                />
+                                                            )
+                                                        }}
                                                     >
                                                         {bbsContent}
+                                                    </ReactMarkdown>
+                                                </div>
+                                            </div>
+                                        )}
+                                        {navTab === 'tutorial' && (
+                                            <div style={{
+                                                width: '100%', 
+                                                padding: '0 15px', 
+                                                boxSizing: 'border-box'
+                                            }}>
+                                                <div style={{
+                                                    display: 'flex', 
+                                                    flexDirection: 'column',
+                                                    gap: '8px',
+                                                    marginBottom: '5px',
+                                                    position: 'relative'
+                                                }}>
+                                                    <div style={{display: 'flex', gap: '10px', width: '70%', margin: '0 auto', justifyContent: 'space-between'}}>
+                                                        <button className="btn-link" style={{flex: 1, justifyContent: 'center', height: '20px', fontSize: '0.7rem', padding: '0 5px', borderRadius: '10px'}} onClick={async () => {
+                                                            try {
+                                                                setRefreshStatus(t("refreshing"));
+                                                                setTutorialContent('');
+                                                                const content = await ReadTutorial();
+                                                                setRefreshStatus(t("refreshSuccess"));
+                                                                setTutorialContent(content);
+                                                                setRefreshKey(prev => prev + 1);
+                                                                setTimeout(() => setRefreshStatus(''), 5000);
+                                                            } catch (err) {
+                                                                setRefreshStatus(t("refreshFailed") + err);
+                                                                setTimeout(() => setRefreshStatus(''), 5000);
+                                                            }
+                                                        }}>{t("refreshMessage")}</button>
+                                                    </div>
+
+                                                    {refreshStatus && (
+                                                        <div style={{
+                                                            position: 'absolute',
+                                                            top: '35px',
+                                                            right: '0',
+                                                            zIndex: 100,
+                                                            padding: '4px 12px',
+                                                            backgroundColor: 'rgba(224, 242, 254, 0.95)',
+                                                            borderRadius: '16px',
+                                                            color: '#0369a1',
+                                                            fontSize: '0.75rem',
+                                                            fontWeight: 'bold',
+                                                            boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+                                                            backdropFilter: 'blur(4px)',
+                                                            animation: 'fadeIn 0.3s ease-out'
+                                                        }}>
+                                                            {refreshStatus}
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                <div className="markdown-content" style={{
+                                                    backgroundColor: '#fff',
+                                                    padding: '20px',
+                                                    borderRadius: '8px',
+                                                    border: '1px solid var(--border-color)',
+                                                    fontFamily: 'inherit',
+                                                    fontSize: '0.75rem',
+                                                    lineHeight: '1.6',
+                                                    color: '#374151',
+                                                    marginBottom: '20px',
+                                                    textAlign: 'left'
+                                                }}>
+                                                    <ReactMarkdown
+                                                        key={refreshKey}
+                                                        remarkPlugins={[remarkGfm]}
+                                                        // @ts-ignore - rehype-raw type compatibility
+                                                        rehypePlugins={[rehypeRaw]}
+                                                        components={{
+                                                            a: ({node, ...props}) => (
+                                                                <a 
+                                                                    {...props} 
+                                                                    onClick={(e) => {
+                                                                        e.preventDefault();
+                                                                        if (props.href) BrowserOpenURL(props.href);
+                                                                    }}
+                                                                    style={{cursor: 'pointer', color: '#3b82f6', textDecoration: 'underline'}}
+                                                                />
+                                                            )
+                                                        }}
+                                                    >
+                                                        {tutorialContent}
                                                     </ReactMarkdown>
                                                 </div>
                                             </div>
@@ -1278,10 +1392,10 @@ function App() {
 
                     {navTab === 'settings' && (
                         <div style={{padding: '10px'}}>
-                            <div style={{display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: '20px', marginBottom: '25px'}}>
-                                <div className="form-group" style={{flex: '0 0 160px', marginBottom: 0}}>
-                                    <label className="form-label">{t("language")}</label>
-                                    <select value={lang} onChange={handleLangChange} className="form-input" style={{width: '100%'}}>
+                            <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '20px', marginBottom: '25px'}}>
+                                <div className="form-group" style={{flex: '1', marginBottom: 0, display: 'flex', alignItems: 'center', gap: '10px'}}>
+                                    <label className="form-label" style={{marginBottom: 0, whiteSpace: 'nowrap', fontSize: '0.8rem'}}>{t("language")}</label>
+                                    <select value={lang} onChange={handleLangChange} className="form-input" style={{width: 'auto', fontSize: '0.8rem', padding: '2px 8px', height: '28px'}}>
                                         <option value="en">English</option>
                                         <option value="zh-Hans">简体中文</option>
                                         <option value="zh-Hant">繁體中文</option>
@@ -1290,7 +1404,7 @@ function App() {
                                 <button 
                                     className="btn-link" 
                                     onClick={() => switchTool('projects')}
-                                    style={{display: 'flex', alignItems: 'center', gap: '8px', padding: '2px 12px', border: '1px solid var(--border-color)', height: '20px', borderRadius: '10px', fontSize: '0.7rem'}}
+                                    style={{display: 'flex', alignItems: 'center', gap: '8px', padding: '2px 12px', border: '1px solid var(--border-color)', height: '24px', borderRadius: '12px', fontSize: '0.7rem'}}
                                 >
                                     <span>📂</span> {t("manageProjects")}
                                 </button>
@@ -1391,7 +1505,7 @@ function App() {
                                         }}
                                         style={{width: '16px', height: '16px'}}
                                     />
-                                    <span style={{fontSize: '0.9rem', color: '#374151'}}>{t("showWelcomePage")}</span>
+                                    <span style={{fontSize: '0.8rem', color: '#374151'}}>{t("showWelcomePage")}</span>
                                 </label>
                                 <p style={{fontSize: '0.75rem', color: '#64748b', marginLeft: '24px', marginTop: '4px'}}>
                                     {lang === 'zh-Hans' ? '开启后，程序启动时将显示新手教学和快速入门链接' : 
@@ -1438,8 +1552,10 @@ function App() {
                                                     <div style={{fontSize: '0.9rem', color: '#6b7280', marginBottom: '20px'}}>{t("author")}: Dr. Daniel</div>
                             
                             <div style={{display: 'flex', gap: '15px'}}>
+                                <button className="btn-primary" onClick={() => BrowserOpenURL("https://aicoder.rapidai.tech/")}>{t("officialWebsite")}</button>
                                 <button
                                     className="btn-primary"
+                                    style={{backgroundColor: '#6b7280', backgroundImage: 'none'}}
                                     onClick={() => {
                                         setStatus(t("checkingUpdate"));
                                         CheckUpdate(APP_VERSION).then(res => {

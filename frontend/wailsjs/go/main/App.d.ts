@@ -24,6 +24,8 @@ export function LoadConfig():Promise<main.AppConfig>;
 
 export function ReadBBS():Promise<string>;
 
+export function ReadTutorial():Promise<string>;
+
 export function RecoverCC():Promise<void>;
 
 export function ResizeWindow(arg1:number,arg2:number):Promise<void>;
