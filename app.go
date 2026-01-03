@@ -271,6 +271,7 @@ func (a *App) clearEnvVars() {
 		"OPENAI_API_KEY", "OPENAI_BASE_URL", "WIRE_API",
 		"GEMINI_API_KEY", "GOOGLE_GEMINI_BASE_URL",
 		"OPENCODE_API_KEY", "OPENCODE_BASE_URL",
+		"CODEBUDDY_API_KEY", "CODEBUDDY_BASE_URL", "CODEBUDDY_CODE_MAX_OUTPUT_TOKENS",
 		"QODER_API_KEY", "QODER_BASE_URL",
 	}
 	for _, v := range vars {
@@ -1092,6 +1093,12 @@ func (a *App) LaunchTool(toolName string, yoloMode bool, projectDir string) {
 			os.Setenv(envBaseUrl, selectedModel.ModelUrl)
 			env[envBaseUrl] = selectedModel.ModelUrl
 		}
+
+		// Add CODEBUDDY_CODE_MAX_OUTPUT_TOKENS for DeepSeek
+		if strings.ToLower(selectedModel.ModelName) == "deepseek" {
+			os.Setenv("CODEBUDDY_CODE_MAX_OUTPUT_TOKENS", "8192")
+			env["CODEBUDDY_CODE_MAX_OUTPUT_TOKENS"] = "8192"
+		}
 		
 		// Set generic model name env var if applicable
 		if selectedModel.ModelId != "" {
@@ -1165,6 +1172,7 @@ func (a *App) LaunchTool(toolName string, yoloMode bool, projectDir string) {
 		} else if strings.ToLower(toolName) == "codebuddy" {
 			os.Unsetenv("CODEBUDDY_API_KEY")
 			os.Unsetenv("CODEBUDDY_BASE_URL")
+			os.Unsetenv("CODEBUDDY_CODE_MAX_OUTPUT_TOKENS")
 			// Codebuddy might need cleanup too if we added a clear function
 		} else if strings.ToLower(toolName) == "qoder" {
 			os.Unsetenv("QODER_PERSONAL_ACCESS_TOKEN")
