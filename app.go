@@ -1802,7 +1802,7 @@ func (a *App) CheckUpdate(currentVersion string) (UpdateResult, error) {
 
 	// Add GitHub token for authentication (helps avoid rate limiting)
 	// Priority: 1) GITHUB_TOKEN environment variable, 2) Built-in default token
-	const defaultGitHubToken = "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"
+	const defaultGitHubToken = "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"
 
 	token := os.Getenv("GITHUB_TOKEN")
 	if token == "" {
@@ -2052,7 +2052,7 @@ func (a *App) fetchRemoteMarkdown(repo, file string) (string, error) {
 
 	// Add GitHub token for authentication (helps avoid rate limiting)
 	// Priority: 1) GITHUB_TOKEN environment variable, 2) Built-in default token
-	const defaultGitHubToken = "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"
+	const defaultGitHubToken = "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"
 
 	token := os.Getenv("GITHUB_TOKEN")
 	if token == "" {
