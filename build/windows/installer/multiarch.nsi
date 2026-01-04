@@ -3,7 +3,7 @@ Unicode true
 !define INFO_PROJECTNAME "AICoder"
 !define INFO_COMPANYNAME "RapidAI"
 !define INFO_PRODUCTNAME "AICoder"
-!define INFO_PRODUCTVERSION "2.6.0.2100"
+!define INFO_PRODUCTVERSION "2.6.0.2101"
 !define INFO_COPYRIGHT "Copyright 2025"
 !define PRODUCT_EXECUTABLE "AICoder.exe"
 !define REQUEST_EXECUTION_LEVEL "admin"
