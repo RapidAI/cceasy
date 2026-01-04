@@ -24,7 +24,7 @@ const subscriptionUrls: {[key: string]: string} = {
 };
 
 
-const APP_VERSION = "2.6.1.2156";
+const APP_VERSION = "2.6.0.2102";
 
 const translations: any = {
     "en": {
@@ -1717,7 +1717,7 @@ function App() {
                                         }
                                     }}
                                 >
-                                    {t("launch")}
+                                    <span style={{marginRight: '6px'}}>✈️</span>{t("launch")}
                                 </button>
                             </div>
                         </div>
