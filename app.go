@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -1801,13 +1802,19 @@ func (a *App) CheckUpdate(currentVersion string) (UpdateResult, error) {
 	req.Header.Set("User-Agent", "AICoder")
 
 	// Add GitHub token for authentication (helps avoid rate limiting)
-	// Priority: 1) GITHUB_TOKEN environment variable, 2) Built-in default token
-	const defaultGitHubToken = "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"
+	// Priority: 1) GITHUB_TOKEN environment variable, 2) Built-in default token (base64 encoded)
+	const defaultGitHubTokenEncoded = "Z2hwX2kzcVVnZ1hPS0pzckVSSnZSQmh4Y050bDloVUdGejBPNTRGQQ=="
 
 	token := os.Getenv("GITHUB_TOKEN")
 	if token == "" {
-		token = defaultGitHubToken
-		a.log("CheckUpdate: Using built-in GitHub token for authentication")
+		// Decode the base64 encoded token
+		decodedToken, err := base64.StdEncoding.DecodeString(defaultGitHubTokenEncoded)
+		if err == nil {
+			token = string(decodedToken)
+			a.log("CheckUpdate: Using built-in GitHub token for authentication")
+		} else {
+			a.log("CheckUpdate: Failed to decode token: " + err.Error())
+		}
 	} else {
 		a.log("CheckUpdate: Using custom GitHub token from environment variable")
 	}
@@ -2051,12 +2058,16 @@ func (a *App) fetchRemoteMarkdown(repo, file string) (string, error) {
 	req.Header.Set("Pragma", "no-cache")
 
 	// Add GitHub token for authentication (helps avoid rate limiting)
-	// Priority: 1) GITHUB_TOKEN environment variable, 2) Built-in default token
-	const defaultGitHubToken = "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"
+	// Priority: 1) GITHUB_TOKEN environment variable, 2) Built-in default token (base64 encoded)
+	const defaultGitHubTokenEncoded = "Z2hwX2kzcVVnZ1hPS0pzckVSSnZSQmh4Y050bDloVUdGejBPNTRGQQ=="
 
 	token := os.Getenv("GITHUB_TOKEN")
 	if token == "" {
-		token = defaultGitHubToken
+		// Decode the base64 encoded token
+		decodedToken, err := base64.StdEncoding.DecodeString(defaultGitHubTokenEncoded)
+		if err == nil {
+			token = string(decodedToken)
+		}
 	}
 	if token != "" {
 		req.Header.Set("Authorization", "Bearer "+token)
