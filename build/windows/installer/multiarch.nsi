@@ -1,12 +1,26 @@
 Unicode true
 
-!define INFO_PROJECTNAME "AICoder"
-!define INFO_COMPANYNAME "RapidAI"
-!define INFO_PRODUCTNAME "AICoder"
-!define INFO_PRODUCTVERSION "2.6.2.3000"
-!define INFO_COPYRIGHT "Copyright 2025"
-!define PRODUCT_EXECUTABLE "AICoder.exe"
-!define REQUEST_EXECUTION_LEVEL "admin"
+!ifndef INFO_PROJECTNAME
+    !define INFO_PROJECTNAME "AICoder"
+!endif
+!ifndef INFO_COMPANYNAME
+    !define INFO_COMPANYNAME "RapidAI"
+!endif
+!ifndef INFO_PRODUCTNAME
+    !define INFO_PRODUCTNAME "AICoder"
+!endif
+!ifndef INFO_PRODUCTVERSION
+    !define INFO_PRODUCTVERSION "2.6.2.3000"
+!endif
+!ifndef INFO_COPYRIGHT
+    !define INFO_COPYRIGHT "Copyright 2025"
+!endif
+!ifndef PRODUCT_EXECUTABLE
+    !define PRODUCT_EXECUTABLE "AICoder.exe"
+!endif
+!ifndef REQUEST_EXECUTION_LEVEL
+    !define REQUEST_EXECUTION_LEVEL "admin"
+!endif
 
 # Define Wails binaries (passed from command line or hardcoded here for manual build)
 !ifndef ARG_WAILS_AMD64_BINARY
