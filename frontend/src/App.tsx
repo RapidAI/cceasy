@@ -82,7 +82,7 @@ const translations: any = {
         "language": "Language",
         "runnerStatus": "Cur",
         "yoloModeLabel": "Yolo Mode",
-        "adminModeLabel": "Administrator Privileges",
+        "adminModeLabel": "As Admin",
         "rootModeLabel": "As root",
         "pythonProjectLabel": "Python Project",
         "pythonEnvLabel": "Env",

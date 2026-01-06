@@ -50,8 +50,8 @@ You need to set up a **liteLLM proxy** service yourself. In Gemini CLI, select *
 ## 14. Which Python environments are supported?
 AICoder currently supports **Conda/Anaconda** environments. After enabling "Python Project" in the project settings, AICoder scans for available conda environments on your system for selection. Environment switching is handled automatically upon launch.
 
-## 15. Why use Administrator privileges to launch?
-Some projects may involve system-level file operations or access to restricted directories. Launching with administrator privileges can prevent tools from failing due to insufficient permissions. This feature is currently only supported on Windows.
+## 15. Why use admin privileges to launch?
+Some projects may involve system-level file operations or access to restricted directories. Launching with admin privileges can prevent tools from failing due to insufficient permissions. This feature is currently only supported on Windows.
 
 ---
 *For more issues, please visit GitHub Issues: [RapidAI/cceasy/issues](https://github.com/RapidAI/cceasy/issues)*

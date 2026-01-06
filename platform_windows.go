@@ -468,7 +468,7 @@ func (a *App) platformLaunch(binaryName string, yoloMode bool, adminMode bool, p
 
 		if ret <= 32 {
 			a.log(fmt.Sprintf("ShellExecute failed with return value: %d", ret))
-			a.ShowMessage("Launch Error", "Failed to launch with administrator privileges. Please check UAC settings.")
+			a.ShowMessage("Launch Error", "Failed to launch with admin privileges. Please check UAC settings.")
 		}
 
 		// Clean up the batch file after a delay (since it's launched asynchronously)
