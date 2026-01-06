@@ -2,7 +2,7 @@ import {useEffect, useState, useRef} from 'react';
 import './App.css';
 import {buildNumber} from './version';
 import appIcon from './assets/images/appicon.png';
-import {CheckToolsStatus, InstallTool, LoadConfig, SaveConfig, CheckEnvironment, ResizeWindow, LaunchTool, SelectProjectDir, SetLanguage, GetUserHomeDir, CheckUpdate, ShowMessage, ReadBBS, ReadTutorial, ClipboardGetText, ListPythonEnvironments, PackLog, ShowItemInFolder, GetSystemInfo, OpenSystemUrl} from "../wailsjs/go/main/App";
+import {CheckToolsStatus, InstallTool, LoadConfig, SaveConfig, CheckEnvironment, ResizeWindow, LaunchTool, SelectProjectDir, SetLanguage, GetUserHomeDir, CheckUpdate, ShowMessage, ReadBBS, ReadTutorial, ReadThanks, ClipboardGetText, ListPythonEnvironments, PackLog, ShowItemInFolder, GetSystemInfo, OpenSystemUrl} from "../wailsjs/go/main/App";
 import {WindowHide, EventsOn, EventsOff, BrowserOpenURL, Quit} from "../wailsjs/runtime";
 import {main} from "../wailsjs/go/models";
 import ReactMarkdown from 'react-markdown';
@@ -33,6 +33,7 @@ const translations: any = {
         "cs146s": "Course",
         "introVideo": "Beginner",
         "faq": "FAQ",
+        "thanks": "Thanks",
         "hide": "Hide",
         "launch": "Start Coding",
         "project": "Project",
@@ -463,6 +464,8 @@ function App() {
     const [navTab, setNavTab] = useState<string>("claude");
     const [bbsContent, setBbsContent] = useState<string>("");
     const [tutorialContent, setTutorialContent] = useState<string>("");
+    const [thanksContent, setThanksContent] = useState<string>(""); // New state for thanks content
+    const [showThanksModal, setShowThanksModal] = useState<boolean>(false); // New state for thanks modal
     const [refreshStatus, setRefreshStatus] = useState<string>("");
     const [lastUpdateTime, setLastUpdateTime] = useState<string>("");
     const [refreshKey, setRefreshKey] = useState<number>(0);
@@ -549,6 +552,17 @@ function App() {
         setTimeout(() => {
             setShowToast(false);
         }, duration);
+    };
+
+    const handleShowThanks = async () => {
+        try {
+            const content = await ReadThanks();
+            setThanksContent(content);
+            setShowThanksModal(true);
+        } catch (err) {
+            console.error("Failed to read thanks content:", err);
+            showToastMessage(t("refreshFailed") + err, 5000);
+        }
     };
 
     const handleWindowHide = (e: React.MouseEvent) => {
@@ -1356,12 +1370,7 @@ ${instruction}`;
                                                                                                                                                     BrowserOpenURL(manualUrl);
                                                                                                                                                 }}>{t("manual")}</button>
                                                                                                                                                 <button className="btn-link" style={{flex: 1, justifyContent: 'center', height: '20px', fontSize: '0.7rem', padding: '0 5px', borderRadius: '10px'}} onClick={() => BrowserOpenURL("https://github.com/BIT-ENGD/cs146s_cn")}>{t("cs146s")}</button>
-                                                                                                                                                <button className="btn-link" style={{flex: 1, justifyContent: 'center', height: '20px', fontSize: '0.7rem', padding: '0 5px', borderRadius: '10px'}} onClick={() => {
-                                                                                                                                                    const faqUrl = (lang === 'zh-Hans' || lang === 'zh-Hant')
-                                                                                                                                                        ? "https://github.com/RapidAI/aicoder/blob/main/faq.md"
-                                                                                                                                                        : "https://github.com/RapidAI/aicoder/blob/main/faq_en.md";
-                                                                                                                                                    BrowserOpenURL(faqUrl);
-                                                                                                                                                }}>{t("faq")}</button>
+                                                                                                                                                <button className="btn-link" style={{flex: 1, justifyContent: 'center', height: '20px', fontSize: '0.7rem', padding: '0 5px', borderRadius: '10px'}} onClick={handleShowThanks}>{t("thanks")}</button>
                                                                                                                                             </div>                                                                                                            
                                                                                                             {refreshStatus && (
                                                                                                                 <div style={{
@@ -2626,6 +2635,53 @@ ${instruction}`;
                 </div>
             )}
 
+            </div>
+
+            {/* Thanks Modal */}
+            {showThanksModal && (
+                <div className="modal-overlay">
+                    <div className="modal-content" style={{maxWidth: '600px', maxHeight: '80vh', overflowY: 'auto'}}>
+                        <h3 style={{marginTop: 0, marginBottom: '15px', color: '#60a5fa'}}>{t("thanks")}</h3>
+                        <div className="markdown-content" style={{
+                            backgroundColor: '#fff',
+                            padding: '10px',
+                            borderRadius: '4px',
+                            border: '1px solid var(--border-color)',
+                            fontFamily: 'inherit',
+                            fontSize: '0.8rem',
+                            lineHeight: '1.6',
+                            color: '#374151',
+                            textAlign: 'left',
+                            whiteSpace: 'pre-wrap',
+                            wordBreak: 'break-word'
+                        }}>
+                            <ReactMarkdown
+                                remarkPlugins={[remarkGfm]}
+                                // @ts-ignore
+                                rehypePlugins={[rehypeRaw]}
+                                components={{
+                                    a: ({node, ...props}) => (
+                                        <a 
+                                            {...props} 
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                if (props.href) BrowserOpenURL(props.href);
+                                            }}
+                                            style={{cursor: 'pointer', color: '#3b82f6', textDecoration: 'underline'}}
+                                        />
+                                    )
+                                }}
+                            >
+                                {thanksContent}
+                            </ReactMarkdown>
+                        </div>
+                        <button onClick={() => setShowThanksModal(false)} className="btn-secondary" style={{marginTop: '20px'}}>
+                            {t("close")}
+                        </button>
+                    </div>
+                </div>
+            )}
+            
             {/* Confirm Dialog */}
             {confirmDialog.show && (
                 <div style={{

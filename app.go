@@ -2203,6 +2203,10 @@ func (a *App) ReadTutorial() (string, error) {
 	return a.fetchRemoteMarkdown("rapidaicoder/msg", "tutorial.md")
 }
 
+func (a *App) ReadThanks() (string, error) {
+	return a.fetchRemoteMarkdown("rapidaicoder/msg", "thanks.md")
+}
+
 // compareVersions returns 1 if v1 > v2, -1 if v1 < v2, 0 if equal
 func compareVersions(v1, v2 string) int {
 	parts1 := strings.Split(v1, ".")
