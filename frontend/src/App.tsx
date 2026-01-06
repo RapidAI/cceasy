@@ -109,6 +109,8 @@ const translations: any = {
         "forward": "Relay",
         "customized": "Custom",
         "originalFlag": "Native",
+        "monthly": "Monthly",
+        "premium": "Paid",
         "quickStart": "Tutorial",
         "manual": "Materials",
         "officialWebsite": "Official Website",
@@ -232,6 +234,8 @@ const translations: any = {
         "forward": "转发服务",
         "customized": "定制",
         "originalFlag": "原生",
+        "monthly": "包月",
+        "premium": "氪金",
         "quickStart": "新手教学",
         "officialWebsite": "官方网站",
         "dontShowAgain": "下次不再显示",
@@ -347,6 +351,8 @@ const translations: any = {
         "forward": "轉發服務",
         "customized": "定制",
         "originalFlag": "原生",
+        "monthly": "包月",
+        "premium": "氪金",
         "quickStart": "新手教學",
         "officialWebsite": "官方網站",
         "dontShowAgain": "下次不再顯示",
@@ -454,12 +460,51 @@ const ToolConfiguration = ({
                                 {t("originalFlag")}
                             </span>
                         )}
+                        {(model.model_name.toLowerCase().includes("glm") || 
+                          model.model_name.toLowerCase().includes("kimi") ||
+                          model.model_name.toLowerCase().includes("doubao") ||
+                          model.model_name.toLowerCase().includes("minimax")) && (
+                            <span style={{
+                                position: 'absolute',
+                                top: '-8px',
+                                right: '0px',
+                                backgroundColor: '#ec4899',
+                                color: 'white',
+                                fontSize: '10px',
+                                padding: '1px 5px',
+                                borderRadius: '4px',
+                                fontWeight: 'bold',
+                                zIndex: 10,
+                                transform: 'scale(0.85)',
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
+                            }}>
+                                {t("monthly")}
+                            </span>
+                        )}
+                        {model.model_name.toLowerCase().includes("deepseek") && (
+                            <span style={{
+                                position: 'absolute',
+                                top: '-8px',
+                                right: '0px',
+                                backgroundColor: '#f59e0b',
+                                color: 'white',
+                                fontSize: '10px',
+                                padding: '1px 5px',
+                                borderRadius: '4px',
+                                fontWeight: 'bold',
+                                zIndex: 10,
+                                transform: 'scale(0.85)',
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
+                            }}>
+                                {t("premium")}
+                            </span>
+                        )}
                         {model.is_custom ? (
                             <span style={{
                                 position: 'absolute',
                                 top: '-8px',
                                 right: '0px',
-                                backgroundColor: '#ef4444',
+                                backgroundColor: '#9ca3af',
                                 color: 'white',
                                 fontSize: '10px',
                                 padding: '1px 5px',
@@ -480,7 +525,7 @@ const ToolConfiguration = ({
                                     position: 'absolute',
                                     top: '-8px',
                                     right: '0px',
-                                    backgroundColor: '#10b981',
+                                    backgroundColor: '#14b8a6',
                                     color: 'white',
                                     fontSize: '10px',
                                     padding: '1px 5px',
