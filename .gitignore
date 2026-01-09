@@ -1,3 +1,5 @@
 build/bin
 node_modules
 frontend/dist
+frontend/.npm_cache
+build/windows/installer/tmp
