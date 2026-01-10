@@ -1,6 +1,6 @@
 # Implementation Plan: Fix Windows Online Update Download URL
 
-## Phase 1: Backend Improvements (Go) [checkpoint: 3307dbf]
+## Phase 1: Backend Improvements (Go) [checkpoint: 21f15de]
 Refine the update checking and downloading logic to ensure the correct installer asset is targeted and validated.
 
 - [x] **Task 1: Update `UpdateResult` and `CheckUpdate`** (d870d7e)
@@ -13,7 +13,7 @@ Refine the update checking and downloading logic to ensure the correct installer
   - Add a minimum file size check (e.g., > 5MB) to ensure it's not an HTML error page.
   - Ensure the file extension is `.exe`.
   - *Status:* `[ ]`
-- [x] **Task 3: Update Backend Tests** (3307dbf)
+- [x] **Task 3: Update Backend Tests** (21f15de)
 - [x] **Task: Conductor - User Manual Verification 'Phase 1: Backend Improvements' (Protocol in workflow.md)** (3307dbf)
 
 ## Phase 2: Frontend UI Refinement (React/TS)
