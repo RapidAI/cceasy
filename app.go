@@ -2108,6 +2108,8 @@ type UpdateResult struct {
 	HasUpdate     bool   `json:"has_update"`
 	LatestVersion string `json:"latest_version"`
 	ReleaseUrl    string `json:"release_url"`
+	TagName       string `json:"tag_name"`
+	DownloadUrl   string `json:"download_url"`
 }
 
 func (a *App) CheckUpdate(currentVersion string) (UpdateResult, error) {
@@ -2233,6 +2235,10 @@ func (a *App) CheckUpdate(currentVersion string) (UpdateResult, error) {
 	// Extract release URL
 	htmlURL, _ := release["html_url"].(string)
 
+	// Construct direct download URL for AICoder-Setup.exe
+	downloadUrl := fmt.Sprintf("https://github.com/RapidAI/aicoder/releases/download/%s/AICoder-Setup.exe", tagName)
+	a.log(a.tr("CheckUpdate: Constructed download URL: %s", downloadUrl))
+
 	// Keep original version with V prefix for display
 	displayVersion := strings.TrimSpace(tagName)
 	if !strings.HasPrefix(strings.ToUpper(displayVersion), "V") {
@@ -2250,11 +2256,23 @@ func (a *App) CheckUpdate(currentVersion string) (UpdateResult, error) {
 	// Compare versions
 	if compareVersions(latestVersionForComparison, cleanCurrent) > 0 {
 		a.log(a.tr("CheckUpdate: Update available! %s > %s", latestVersionForComparison, cleanCurrent))
-		return UpdateResult{HasUpdate: true, LatestVersion: displayVersion, ReleaseUrl: htmlURL}, nil
+		return UpdateResult{
+			HasUpdate:     true,
+			LatestVersion: displayVersion,
+			ReleaseUrl:    htmlURL,
+			TagName:       tagName,
+			DownloadUrl:   downloadUrl,
+		}, nil
 	}
 
 	a.log(a.tr("CheckUpdate: Already on latest version"))
-	return UpdateResult{HasUpdate: false, LatestVersion: displayVersion, ReleaseUrl: htmlURL}, nil
+	return UpdateResult{
+		HasUpdate:     false,
+		LatestVersion: displayVersion,
+		ReleaseUrl:    htmlURL,
+		TagName:       tagName,
+		DownloadUrl:   downloadUrl,
+	}, nil
 }
 
 // Helper function to get map keys
