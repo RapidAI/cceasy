@@ -16,18 +16,14 @@ Refine the update checking and downloading logic to ensure the correct installer
 - [x] **Task 3: Update Backend Tests** (21f15de)
 - [x] **Task: Conductor - User Manual Verification 'Phase 1: Backend Improvements' (Protocol in workflow.md)** (3307dbf)
 
-## Phase 2: Frontend UI Refinement (React/TS)
+## Phase 2: Frontend UI Refinement (React/TS) [checkpoint: 75a443c]
 Update the UI to use the direct download URL and provide better error recovery options.
 
 - [x] **Task 1: Update `handleDownload` to use `DownloadUrl`** (bbf56d4)
   - Modify `handleDownload` in `App.tsx` to use `updateResult.download_url` instead of `release_url`.
   - *Status:* `[ ]`
-- [ ] **Task 2: Improve Error UI and Add Retry Button**
-  - Update the `UpdateModal` to show a "Retry" button when `downloadError` is present.
-  - Ensure the "Retry" button resets the error state and triggers `handleDownload` again.
-  - *Status:* `[ ]`
-- [ ] **Task: Conductor - User Manual Verification 'Phase 2: Frontend UI Refinement' (Protocol in workflow.md)**
-  - *Status:* `[ ]`
+- [x] **Task 2: Improve Error UI and Add Retry Button** (75a443c)
+- [x] **Task: Conductor - User Manual Verification 'Phase 2: Frontend UI Refinement' (Protocol in workflow.md)** (75a443c)
 
 ## Phase 3: Integration and Final Verification
 - [ ] **Task 1: End-to-End Verification on Windows**
