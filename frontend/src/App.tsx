@@ -621,6 +621,7 @@ function App() {
     const [showInstallLog, setShowInstallLog] = useState(false);
     const [showUpdateModal, setShowUpdateModal] = useState(false);
     const [updateResult, setUpdateResult] = useState<any>(null);
+    const [isStartupUpdateCheck, setIsStartupUpdateCheck] = useState(false);
     const [projectOffset, setProjectOffset] = useState(0);
     const [lang, setLang] = useState("en");
     const [toastMessage, setToastMessage] = useState<string>("");
@@ -818,6 +819,7 @@ function App() {
                 CheckUpdate(APP_VERSION).then(res => {
                     if (res && res.has_update) {
                         setUpdateResult(res);
+                        setIsStartupUpdateCheck(true);
                         setShowUpdateModal(true);
                     } else {
                         // No update available, show welcome page if needed
@@ -2187,6 +2189,7 @@ ${instruction}`;
                                             CheckUpdate(APP_VERSION).then(res => {
                                                 console.log("CheckUpdate result:", res);
                                                 setUpdateResult(res);
+                                                setIsStartupUpdateCheck(false);
                                                 setShowUpdateModal(true);
                                                 setStatus("");
                                             }).catch(err => {
@@ -2198,6 +2201,7 @@ ${instruction}`;
                                                     latest_version: "获取失败",
                                                     release_url: ""
                                                 });
+                                                setIsStartupUpdateCheck(false);
                                                 setShowUpdateModal(true);
                                             });
                                         }}
@@ -2634,10 +2638,12 @@ ${instruction}`;
                         <div style={{display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '20px'}}>
                             <button className="btn-primary" onClick={() => {
                                 setShowUpdateModal(false);
-                                // After closing update modal, show welcome page if configured
-                                if (config && !config.hide_startup_popup) {
+                                // After closing update modal, show welcome page only if this was a startup check
+                                if (isStartupUpdateCheck && config && !config.hide_startup_popup) {
                                     setShowStartupPopup(true);
                                 }
+                                // Reset the flag
+                                setIsStartupUpdateCheck(false);
                             }}>{t("close")}</button>
                         </div>
                     </div>

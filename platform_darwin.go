@@ -133,7 +133,7 @@ func (a *App) CheckEnvironment() {
 
 		// 5. Check and Install AI Tools
 		tm := NewToolManager(a)
-		tools := []string{"claude", "gemini", "codex", "opencode", "codebuddy", "qoder"}
+		tools := []string{"claude", "gemini", "codex", "opencode", "codebuddy", "qoder", "iflow"}
 		
 		for _, tool := range tools {
 			a.log(a.tr("Checking %s...", tool))
