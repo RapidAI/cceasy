@@ -164,8 +164,7 @@ const translations: any = {
         "useDefaultProxy": "Use default proxy settings",
         "proxyHostPlaceholder": "e.g., 192.168.1.1 or proxy.company.com",
         "proxyPortPlaceholder": "e.g., 8080",
-        "freeload": "Free",
-        "checkUpdateOnStartup": "Check for updates on startup"
+        "freeload": "Free"
     },
     "zh-Hans": {
         "title": "AICoder",
@@ -295,8 +294,7 @@ const translations: any = {
         "useDefaultProxy": "使用默认代理设置",
         "proxyHostPlaceholder": "例如：192.168.1.1 或 proxy.company.com",
         "proxyPortPlaceholder": "例如：8080",
-        "freeload": "正白嫖",
-        "checkUpdateOnStartup": "启动时检查更新"
+        "freeload": "白嫖中"
     },
     "zh-Hant": {
         "title": "AICoder",
@@ -424,8 +422,7 @@ const translations: any = {
         "useDefaultProxy": "使用預設代理設置",
         "proxyHostPlaceholder": "例如：192.168.1.1 或 proxy.company.com",
         "proxyPortPlaceholder": "例如：8080",
-        "freeload": "正白嫖",
-        "checkUpdateOnStartup": "啟動時檢查更新"
+        "freeload": "白嫖中"
     }
 };
 
@@ -900,31 +897,10 @@ function App() {
                 SetLanguage(cfg.language);
             }
 
-            // Check for updates on startup if enabled
-            if (cfg && cfg.check_update_on_startup !== false) {
-                CheckUpdate(APP_VERSION).then(res => {
-                    if (res && res.has_update) {
-                        setUpdateResult(res);
-                        setIsStartupUpdateCheck(true);
-                        setShowUpdateModal(true);
-                    } else {
-                        // No update available, show welcome page if needed
-                        if (cfg && !cfg.hide_startup_popup) {
-                            setShowStartupPopup(true);
-                        }
-                    }
-                }).catch(err => {
-                    console.error("Startup update check failed:", err);
-                    // On error, still show welcome page if needed
-                    if (cfg && !cfg.hide_startup_popup) {
-                        setShowStartupPopup(true);
-                    }
-                });
-            } else {
-                // Update check disabled, show welcome page if needed
-                if (cfg && !cfg.hide_startup_popup) {
-                    setShowStartupPopup(true);
-                }
+            // Automatic update check on startup disabled - use "Online Update" button instead
+            // Show welcome page if needed
+            if (cfg && !cfg.hide_startup_popup) {
+                setShowStartupPopup(true);
             }
             if (cfg && cfg.current_project) {
                 setSelectedProjectForLaunch(cfg.current_project);
@@ -2194,27 +2170,6 @@ ${instruction}`;
                                     {lang === 'zh-Hans' ? '开启后，程序启动时将显示新手教学和快速入门链接' :
                                      lang === 'zh-Hant' ? '開啟後，程序啟動時將顯示新手教學和快速入門鏈接' :
                                      'When enabled, a welcome popup with tutorial links will be shown at startup.'}
-                                </p>
-
-                                <label style={{display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', marginTop: '12px'}}>
-                                    <input
-                                        type="checkbox"
-                                        checked={config?.check_update_on_startup !== false}
-                                        onChange={(e) => {
-                                            if (config) {
-                                                const newConfig = new main.AppConfig({...config, check_update_on_startup: e.target.checked});
-                                                setConfig(newConfig);
-                                                SaveConfig(newConfig);
-                                            }
-                                        }}
-                                        style={{width: '16px', height: '16px'}}
-                                    />
-                                    <span style={{fontSize: '0.8rem', color: '#374151'}}>{t("onlineUpdate")}</span>
-                                </label>
-                                <p style={{fontSize: '0.75rem', color: '#64748b', marginLeft: '24px', marginTop: '4px'}}>
-                                    {lang === 'zh-Hans' ? '开启后，程序启动时将自动检查是否有新版本可用' :
-                                     lang === 'zh-Hant' ? '開啟後，程序啟動時將自動檢查是否有新版本可用' :
-                                     'When enabled, the application will automatically check for updates at startup.'}
                                 </p>
                             </div>
                         </div>
