@@ -6,7 +6,7 @@ AICoder 是一款基于 Wails + Go + React 开发的桌面 AI 编程辅助工具
 
 本程序特别针对主流 AI 编程模型进行了深度集成，支持 API Key 的快速配置与自动同步。
 
-<img width="600" height="320" alt="7d567ca7e9df22ab11c955e213fd40cb" src="https://github.com/user-attachments/assets/f644e856-7e8b-45da-a51d-5ebbd0a1d15f" />
+<img width="600" height="390" alt="7d567ca7e9df22ab11c955e213fd40cb" src="https://github.com/user-attachments/assets/f644e856-7e8b-45da-a51d-5ebbd0a1d15f" />
 
 
 
