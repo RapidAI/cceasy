@@ -892,11 +892,13 @@ function App() {
             }
         };
         EventsOn("config-changed", handleConfigChange);
+        EventsOn("config-updated", handleConfigChange);
 
         return () => {
             EventsOff("env-log");
             EventsOff("env-check-done");
             EventsOff("config-changed");
+            EventsOff("config-updated");
         };
     }, []);
 

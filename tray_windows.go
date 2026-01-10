@@ -186,6 +186,30 @@ func setupTray(app *App, appOptions *options.App) {
 				})
 			}
 
+			// 7. iFlow CLI Submenu
+			mIFlow := systray.AddMenuItem("iFlow CLI", "iFlow Models")
+			for _, model := range config.IFlow.Models {
+				m := mIFlow.AddSubMenuItemCheckbox(model.ModelName, "Switch to "+model.ModelName, model.ModelName == config.IFlow.CurrentModel && config.ActiveTool == "iflow")
+				toolItems["iflow-"+model.ModelName] = m
+
+				modelName := model.ModelName
+				m.Click(func() {
+					go func() {
+						currentConfig, _ := app.LoadConfig()
+						currentConfig.IFlow.CurrentModel = modelName
+						currentConfig.ActiveTool = "iflow"
+						app.SaveConfig(currentConfig)
+
+						for _, m := range currentConfig.IFlow.Models {
+							if m.ModelName == modelName && m.ApiKey == "" {
+								runtime.WindowShow(app.ctx)
+								break
+							}
+						}
+					}()
+				})
+			}
+
 							systray.AddSeparator()
 
 							mQuit := systray.AddMenuItem("Quit", "Quit Application")
@@ -238,7 +262,28 @@ func setupTray(app *App, appOptions *options.App) {
 
 											}
 
-								
+
+											// Register config change listener
+											OnConfigChanged = func(cfg AppConfig) {
+												if toolItems == nil {
+													return
+												}
+												for name, item := range toolItems {
+													// Only check the currently active tool's current model
+													if (cfg.ActiveTool == "claude" && name == "claude-"+cfg.Claude.CurrentModel) ||
+														(cfg.ActiveTool == "gemini" && name == "gemini-"+cfg.Gemini.CurrentModel) ||
+														(cfg.ActiveTool == "codex" && name == "codex-"+cfg.Codex.CurrentModel) ||
+														(cfg.ActiveTool == "opencode" && name == "opencode-"+cfg.Opencode.CurrentModel) ||
+														(cfg.ActiveTool == "codebuddy" && name == "codebuddy-"+cfg.CodeBuddy.CurrentModel) ||
+														(cfg.ActiveTool == "qoder" && name == "qoder-"+cfg.Qoder.CurrentModel) ||
+														(cfg.ActiveTool == "iflow" && name == "iflow-"+cfg.IFlow.CurrentModel) {
+														item.Check()
+													} else {
+														item.Uncheck()
+													}
+												}
+												runtime.EventsEmit(app.ctx, "config-changed", cfg)
+											}
 
 											// Handle menu clicks
 
