@@ -22,9 +22,7 @@ This phase updates the UI to reflect the new update workflow on Windows.
 - [x] **Task 3: Connect Frontend to Backend Update Logic** (1ee0b30)
 - [x] **Task: Conductor - User Manual Verification 'Phase 2: Frontend' (Protocol in workflow.md)** (1ee0b30)
 
-## Phase 3: Final Integration and Verification
-- [ ] **Task 1: End-to-End Test on Windows**
-  - Verify the entire flow: Check -> Download -> Progress UI -> Launch Installer -> App Exit.
-  - *Status:* `[ ]`
-- [ ] **Task: Conductor - User Manual Verification 'Phase 3: Final Integration' (Protocol in workflow.md)**
+## Phase 3: Final Integration and Verification [checkpoint: 91dc5ca]
+- [x] **Task 1: End-to-End Test on Windows** (Manual Verification)
+- [x] **Task: Conductor - User Manual Verification 'Phase 3: Final Integration' (Protocol in workflow.md)** (Completed)
   - *Status:* `[ ]`
