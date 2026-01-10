@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	goruntime "runtime"
 	"strings"
 	"testing"
 )
@@ -41,7 +42,13 @@ func TestDownloadValidation(t *testing.T) {
 		}))
 		defer server.Close()
 
-		_, err := app.DownloadUpdate(server.URL+"/AICoder-Setup.exe", "AICoder-Setup.exe")
+		// Determine correct filename based on platform
+		fileName := "AICoder-Setup.exe"
+		if goruntime.GOOS == "darwin" {
+			fileName = "AICoder-Universal.pkg"
+		}
+
+		_, err := app.DownloadUpdate(server.URL+"/"+fileName, fileName)
 		if err == nil {
 			t.Error("Expected error for small file, got nil")
 		} else if !strings.Contains(err.Error(), "file too small") {
@@ -56,15 +63,8 @@ func TestDownloadValidation(t *testing.T) {
 			w.Header().Set("Content-Length", fmt.Sprintf("%d", size))
 			w.Header().Set("Content-Type", "application/octet-stream")
 			w.WriteHeader(http.StatusOK)
-			// Don't actually write 6MB to save time/memory in test, just set header
 		}))
 		defer server.Close()
-
-		// Use HEAD request logic or just rely on Content-Length check happening before read?
-		// My implementation reads body... so I should probably write a little bit or handle it.
-		// Wait, my implementation checks Content-Length header BEFORE reading body.
-		// So checking extension happens before reading too?
-		// No, extension check is on the filename argument.
 		
 		_, err := app.DownloadUpdate(server.URL+"/readme.txt", "readme.txt")
 		if err == nil {
@@ -81,22 +81,16 @@ func TestDownloadValidation(t *testing.T) {
 			w.Header().Set("Content-Length", fmt.Sprintf("%d", size))
 			w.Header().Set("Content-Type", "application/octet-stream")
 			w.WriteHeader(http.StatusOK)
-			
-			// Write a chunk, client loop will read until EOF
-			// We can just write less than Content-Length and close, 
-			// http client might complain about unexpected EOF but that's a different error.
-			// Let's write a small chunk.
 			w.Write([]byte("valid executable content simulation"))
 		}))
 		defer server.Close()
 
-		_, err := app.DownloadUpdate(server.URL+"/AICoder-Setup.exe", "AICoder-Setup.exe")
-		
-		// Note: Since we didn't write the full 6MB, io.Copy or Read might return UnexpectedEOF.
-		// But validation logic happens BEFORE reading body.
-		// Wait, my code does: check status -> check content-type -> check size -> check extension -> create file -> read loop.
-		// So if validation passes, it enters read loop.
-		// If read loop fails (because we closed connection early), that's fine, it means validation PASSED.
+		fileName := "AICoder-Setup.exe"
+		if goruntime.GOOS == "darwin" {
+			fileName = "AICoder-Universal.pkg"
+		}
+
+		_, err := app.DownloadUpdate(server.URL+"/"+fileName, fileName)
 		
 		if err != nil && strings.Contains(err.Error(), "file too small") {
 			t.Errorf("Validation failed unexpectedly: %v", err)
