@@ -2369,8 +2369,12 @@ func (a *App) DownloadUpdate(url string, fileName string) (string, error) {
 	}
 
 	// 3. Check Extension
-	if !strings.HasSuffix(strings.ToLower(fileName), ".exe") {
-		return "", fmt.Errorf("invalid file extension: %s (expected .exe)", fileName)
+	expectedExt := ".exe"
+	if goruntime.GOOS == "darwin" {
+		expectedExt = ".pkg"
+	}
+	if !strings.HasSuffix(strings.ToLower(fileName), expectedExt) {
+		return "", fmt.Errorf("invalid file extension: %s (expected %s)", fileName, expectedExt)
 	}
 
 	size := resp.ContentLength
