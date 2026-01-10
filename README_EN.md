@@ -5,7 +5,9 @@
 AICoder is a desktop AI programming assistant dashboard built with Wails, Go, and React. It is designed to provide unified configuration management, automated environment deployment, and one-click launch capabilities for multiple AI CLI tools (Anthropic Claude Code, OpenAI Codex, Google Gemini CLI, OpenCode, CodeBuddy, and Qoder CLI).
 
 This application is deeply integrated with popular AI programming models, supporting rapid API Key configuration and automatic synchronization.
-<img width="806" height="486" alt="image" src="https://github.com/user-attachments/assets/6b81570d-804d-4faa-8b79-79a84ee2fb88" />
+
+
+<img width="806" height="486" alt="image" src="https://github.com/user-attachments/assets/c5f1d640-3bed-49af-bd2c-532d1f039a1a" />
 
 ## Core Features
 
