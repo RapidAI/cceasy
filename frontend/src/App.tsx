@@ -1733,6 +1733,8 @@ ${instruction}`;
                         <span style={{fontSize: '0.65rem', lineHeight: 1}}>{t("tutorial")}</span>
                     </div>
 
+                    <div style={{flex: 1}}></div>
+
                     <div 
                         className={`sidebar-item ${navTab === 'skills' ? 'active' : ''}`} 
                         onClick={() => switchTool('skills')}
@@ -1742,8 +1744,6 @@ ${instruction}`;
                         <span className="sidebar-icon" style={{margin: 0, fontSize: '1.2rem'}}>🛠️</span>
                         <span style={{fontSize: '0.65rem', lineHeight: 1}}>{t("skills")}</span>
                     </div>
-
-                    <div style={{flex: 1}}></div>
 
                     <div 
                         className={`sidebar-item ${navTab === 'settings' ? 'active' : ''}`} 
