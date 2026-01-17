@@ -2,6 +2,7 @@ package main
 
 import (
 	"embed"
+	"os"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
@@ -19,6 +20,17 @@ func main() {
 	// Create an instance of the app structure
 	app := NewApp()
 
+	// Check for command line arguments
+	args := os.Args
+	if len(args) > 1 {
+		for _, arg := range args[1:] {
+			if arg == "init" {
+				app.IsInitMode = true
+				break
+			}
+		}
+	}
+
 	// Platform specific early initialization (like hiding console on Windows)
 	app.platformStartup()
 
@@ -28,12 +40,23 @@ func main() {
 		Frameless: true,
 		Width:     510,
 		Height:    259,
+		OnStartup: app.startup,
+		OnDomReady: app.domReady,
 		SingleInstanceLock: &options.SingleInstanceLock{
 			UniqueId: "aicoder-lock",
 			OnSecondInstanceLaunch: func(secondInstanceData options.SecondInstanceData) {
 				if app.ctx == nil {
 					return
 				}
+				
+				// Check if init argument was passed to the second instance
+				for _, arg := range secondInstanceData.Args {
+					if arg == "init" {
+						go app.CheckEnvironment(true)
+						break
+					}
+				}
+
 				go func() {
 					runtime.WindowUnminimise(app.ctx)
 					runtime.WindowShow(app.ctx)

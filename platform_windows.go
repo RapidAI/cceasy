@@ -21,6 +21,254 @@ func (a *App) platformStartup() {
 	// No console to hide if built with -H windowsgui
 }
 
+// platformInitConsole allocates a console window for init mode (Windows only)
+func (a *App) platformInitConsole() {
+	kernel32 := syscall.NewLazyDLL("kernel32.dll")
+	allocConsole := kernel32.NewProc("AllocConsole")
+	allocConsole.Call()
+
+	// Set console title
+	setConsoleTitle := kernel32.NewProc("SetConsoleTitleW")
+	title, _ := syscall.UTF16PtrFromString("AICoder - Environment Setup")
+	setConsoleTitle.Call(uintptr(unsafe.Pointer(title)))
+}
+
+// RunEnvironmentCheckCLI runs environment check in command-line mode (synchronous, no GUI events)
+func (a *App) RunEnvironmentCheckCLI() {
+	fmt.Println("\n[1/4] Checking Node.js installation...")
+
+	// Check for node
+	nodeCmd := exec.Command("node", "--version")
+	nodeCmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: false}
+	if err := nodeCmd.Run(); err != nil {
+		fmt.Println("Node.js not found. Downloading and installing...")
+		if err := a.installNodeJSCLI(); err != nil {
+			fmt.Printf("ERROR: Failed to install Node.js: %v\n", err)
+			return
+		}
+		fmt.Println("✓ Node.js installed successfully.")
+	} else {
+		fmt.Println("✓ Node.js is already installed.")
+	}
+
+	// Update path for the current process
+	a.updatePathForNode()
+
+	// Check for Git
+	fmt.Println("\n[2/4] Checking Git installation...")
+	if _, err := exec.LookPath("git"); err != nil {
+		gitFound := false
+		if _, err := os.Stat(`C:\Program Files\Git\cmd\git.exe`); err == nil {
+			gitFound = true
+		}
+
+		if gitFound {
+			a.updatePathForGit()
+			fmt.Println("✓ Git found in standard location.")
+		} else {
+			fmt.Println("Git not found. Downloading and installing...")
+			if err := a.installGitBashCLI(); err != nil {
+				fmt.Printf("ERROR: Failed to install Git: %v\n", err)
+			} else {
+				fmt.Println("✓ Git installed successfully.")
+				a.updatePathForGit()
+			}
+		}
+	} else {
+		fmt.Println("✓ Git is already installed.")
+	}
+
+	// Ensure node.exe is in local tool path
+	fmt.Println("\n[3/4] Setting up local Node.js environment...")
+	a.ensureLocalNodeBinary()
+
+	// Check and Install AI Tools
+	fmt.Println("\n[4/4] Checking AI Tools installation...")
+	tm := NewToolManager(a)
+
+	npmExec, err := exec.LookPath("npm")
+	if err != nil {
+		npmExec, err = exec.LookPath("npm.cmd")
+	}
+	if npmExec == "" {
+		npmExec = "npm"
+	}
+
+	tools := []string{"claude", "gemini", "codex", "opencode", "codebuddy", "qoder", "iflow", "kiro"}
+
+	for _, tool := range tools {
+		fmt.Printf("\nChecking %s...\n", tool)
+		status := tm.GetToolStatus(tool)
+
+		if !status.Installed {
+			fmt.Printf("  %s not found. Installing...\n", tool)
+			if err := tm.InstallTool(tool); err != nil {
+				fmt.Printf("  ERROR: Failed to install %s: %v\n", tool, err)
+			} else {
+				fmt.Printf("  ✓ %s installed successfully.\n", tool)
+				a.updatePathForNode()
+			}
+		} else {
+			home, _ := os.UserHomeDir()
+			expectedPrefix := filepath.Join(home, ".cceasy", "tools")
+			if !strings.HasPrefix(status.Path, expectedPrefix) {
+				fmt.Printf("  ! %s found at %s (not in private directory, skipping)\n", tool, status.Path)
+				continue
+			}
+
+			fmt.Printf("  ✓ %s is installed (version: %s)\n", tool, status.Version)
+
+			// Check for updates
+			if tool == "codex" || tool == "opencode" || tool == "codebuddy" || tool == "qoder" || tool == "iflow" || tool == "gemini" || tool == "claude" || tool == "kiro" {
+				fmt.Printf("  Checking for updates...\n")
+				latest, err := a.getLatestNpmVersion(npmExec, tm.GetPackageName(tool))
+				if err == nil && latest != "" && latest != status.Version {
+					fmt.Printf("  New version available: %s (current: %s). Updating...\n", latest, status.Version)
+					if err := tm.UpdateTool(tool); err != nil {
+						fmt.Printf("  ERROR: Failed to update %s: %v\n", tool, err)
+					} else {
+						fmt.Printf("  ✓ Updated to version %s\n", latest)
+					}
+				}
+			}
+		}
+	}
+
+	// Update config
+	if cfg, err := a.LoadConfig(); err == nil {
+		cfg.EnvCheckDone = true
+		cfg.PauseEnvCheck = true
+		a.SaveConfig(cfg)
+	}
+}
+
+func (a *App) installNodeJSCLI() error {
+	arch := os.Getenv("PROCESSOR_ARCHITECTURE")
+	nodeArch := "x64"
+	if arch == "ARM64" || os.Getenv("PROCESSOR_ARCHITEW6432") == "ARM64" {
+		nodeArch = "arm64"
+	}
+
+	nodeVersion := RequiredNodeVersion
+	fileName := fmt.Sprintf("node-v%s-%s.msi", nodeVersion, nodeArch)
+
+	downloadURL := fmt.Sprintf("https://nodejs.org/dist/v%s/%s", nodeVersion, fileName)
+	fmt.Printf("  Downloading from: %s\n", downloadURL)
+
+	// Pre-check
+	client := &http.Client{Timeout: 10 * time.Second}
+	headReq, _ := http.NewRequest("HEAD", downloadURL, nil)
+	headReq.Header.Set("User-Agent", "Mozilla/5.0")
+	headResp, err := client.Do(headReq)
+	if err != nil || headResp.StatusCode != http.StatusOK {
+		return fmt.Errorf("installer not accessible")
+	}
+	headResp.Body.Close()
+
+	tempDir := os.TempDir()
+	msiPath := filepath.Join(tempDir, fileName)
+
+	// Download
+	fmt.Println("  Downloading Node.js installer...")
+	if err := a.downloadFileCLI(msiPath, downloadURL); err != nil {
+		return err
+	}
+	defer os.Remove(msiPath)
+
+	// Install
+	fmt.Println("  Installing Node.js (this may take a few minutes)...")
+	cmd := exec.Command("msiexec", "/i", msiPath, "/qn", "ALLUSERS=1")
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: false}
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("installation failed: %s\n%s", err, string(output))
+	}
+
+	time.Sleep(2 * time.Second)
+	return nil
+}
+
+func (a *App) installGitBashCLI() error {
+	gitVersion := "2.47.1"
+	fullVersion := "v2.47.1.windows.1"
+	fileName := fmt.Sprintf("Git-%s-64-bit.exe", gitVersion)
+
+	downloadURL := fmt.Sprintf("https://github.com/git-for-windows/git/releases/download/%s/%s", fullVersion, fileName)
+	fmt.Printf("  Downloading from: %s\n", downloadURL)
+
+	tempDir := os.TempDir()
+	exePath := filepath.Join(tempDir, fileName)
+
+	if err := a.downloadFileCLI(exePath, downloadURL); err != nil {
+		return err
+	}
+	defer os.Remove(exePath)
+
+	fmt.Println("  Installing Git (this may take a few minutes)...")
+	cmd := exec.Command(exePath, "/VERYSILENT", "/NORESTART", "/NOCANCEL", "/SP-")
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: false}
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("installation failed: %s\n%s", err, string(output))
+	}
+
+	time.Sleep(2 * time.Second)
+	return nil
+}
+
+func (a *App) downloadFileCLI(filepath string, url string) error {
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("User-Agent", "Mozilla/5.0")
+
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("download failed: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("download failed with status: %s", resp.Status)
+	}
+
+	size := resp.ContentLength
+	out, err := os.Create(filepath)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	var downloaded int64
+	buffer := make([]byte, 32768)
+	lastReport := time.Now()
+
+	for {
+		n, err := resp.Body.Read(buffer)
+		if n > 0 {
+			out.Write(buffer[:n])
+			downloaded += int64(n)
+			if size > 0 && time.Since(lastReport) > 1*time.Second {
+				percent := float64(downloaded) / float64(size) * 100
+				fmt.Printf("  Progress: %.1f%% (%d/%d bytes)\n", percent, downloaded, size)
+				lastReport = time.Now()
+			}
+		}
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+	}
+
+	fmt.Println("  Download complete.")
+	return nil
+}
+
 func (a *App) updatePathForNode() {
 	nodePath := `C:\Program Files\nodejs`
 	npmPath := filepath.Join(os.Getenv("AppData"), "npm")
@@ -73,22 +321,36 @@ func (a *App) updatePathForNode() {
 
 func (a *App) CheckEnvironment(force bool) {
 	go func() {
-		// Check config first
-		config, err := a.LoadConfig()
-		if err == nil {
-			// Skip if:
-			// 1. Not a forced check AND
-			// 2. PauseEnvCheck is true AND
-			// 3. EnvCheckDone is true (meaning it's not the first run)
-			if !force && config.PauseEnvCheck && config.EnvCheckDone {
-				a.log(a.tr("Skipping environment check and installation."))
-				a.emitEvent("env-check-done")
-				return
-			}
+		// If in init mode, always force
+		if a.IsInitMode {
+			force = true
+			a.log(a.tr("Init mode: Forcing environment check (ignoring configuration)."))
+		}
+
+		// If .cceasy directory doesn't exist, force environment check
+		home := a.GetUserHomeDir()
+		ccDir := filepath.Join(home, ".cceasy")
+		if _, err := os.Stat(ccDir); os.IsNotExist(err) {
+			force = true
+			a.log(a.tr("Detected missing .cceasy directory. Forcing environment check..."))
 		}
 
 		if force {
-			a.log(a.tr("Manual environment check triggered."))
+			a.log(a.tr("Forced environment check triggered (ignoring configuration)."))
+		} else {
+			// Check config first
+			config, err := a.LoadConfig()
+			if err == nil {
+				// Skip if:
+				// 1. Not a forced check AND
+				// 2. PauseEnvCheck is true AND
+				// 3. EnvCheckDone is true (meaning it's not the first run)
+				if config.PauseEnvCheck && config.EnvCheckDone {
+					a.log(a.tr("Skipping environment check and installation."))
+					a.emitEvent("env-check-done")
+					return
+				}
+			}
 		}
 
 		a.log(a.tr("Checking Node.js installation..."))
@@ -151,7 +413,7 @@ func (a *App) CheckEnvironment(force bool) {
 			npmExec = "npm"
 		}
 
-		tools := []string{"claude", "gemini", "codex", "opencode", "codebuddy", "qoder", "iflow"}
+		tools := []string{"claude", "gemini", "codex", "opencode", "codebuddy", "qoder", "iflow", "kiro"}
 
 		for _, tool := range tools {
 			a.log(a.tr("Checking %s in private directory...", tool))
@@ -177,7 +439,7 @@ func (a *App) CheckEnvironment(force bool) {
 
 				a.log(a.tr("%s found in private directory at %s (version: %s).", tool, status.Path, status.Version))
 				// Check for updates ONLY for tools in private directory
-				if tool == "codex" || tool == "opencode" || tool == "codebuddy" || tool == "qoder" || tool == "iflow" || tool == "gemini" || tool == "claude" {
+				if tool == "codex" || tool == "opencode" || tool == "codebuddy" || tool == "qoder" || tool == "iflow" || tool == "gemini" || tool == "claude" || tool == "kiro" {
 					a.log(a.tr("Checking for %s updates in private directory...", tool))
 					latest, err := a.getLatestNpmVersion(npmExec, tm.GetPackageName(tool))
 					if err == nil && latest != "" && latest != status.Version {
@@ -571,14 +833,15 @@ func (a *App) platformLaunch(binaryName string, yoloMode bool, adminMode bool, p
 		batchContent += fmt.Sprintf("\"%s\"%s\r\n", binaryPath, cmdArgs)
 	}
 	
-	// Pause on error
+	// Pause on error or normal exit to keep window open
 	batchContent += "if errorlevel 1 (\r\n"
 	batchContent += "  echo.\r\n"
 	batchContent += "  echo Process exited with error code %errorlevel%.\r\n"
 	batchContent += "  pause\r\n"
-	batchContent += "  exit /b %errorlevel%\r\n"
+	batchContent += ") else (\r\n"
+	batchContent += "  REM Keep window open for TUI applications like kilo\r\n"
+	batchContent += "  REM Window will stay open due to cmd /k\r\n"
 	batchContent += ")\r\n"
-	batchContent += "exit /b 0\r\n"
 
 	// Create a temporary batch file
 	tempBatchPath := filepath.Join(os.TempDir(), fmt.Sprintf("aicoder_launch_%d.bat", time.Now().UnixNano()))
@@ -882,6 +1145,12 @@ func createUpdateCmd(path string) *exec.Cmd {
 		CmdLine:    fmt.Sprintf(`cmd /c ""%s" update"`, path),
 		HideWindow: true,
 	}
+	return cmd
+}
+
+func createHiddenCmd(name string, args ...string) *exec.Cmd {
+	cmd := exec.Command(name, args...)
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 	return cmd
 }
 

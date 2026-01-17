@@ -1,4 +1,5 @@
 //go:build darwin
+// +build darwin
 
 package main
 
@@ -17,47 +18,66 @@ import (
 )
 
 func (a *App) platformStartup() {
-	// No terminal to hide on macOS
+}
+
+// platformInitConsole is a no-op on macOS (console is already available)
+func (a *App) platformInitConsole() {
+	// No-op on macOS
+}
+
+// RunEnvironmentCheckCLI runs environment check in command-line mode
+func (a *App) RunEnvironmentCheckCLI() {
+	fmt.Println("Init mode not fully implemented for macOS yet.")
+	// TODO: Port logic from CheckEnvironment
 }
 
 func (a *App) CheckEnvironment(force bool) {
 	go func() {
-		// Check config first
-		config, err := a.LoadConfig()
-		if !force && err == nil && config.PauseEnvCheck {
-			a.log(a.tr("Skipping environment check and installation."))
-			a.emitEvent("env-check-done")
-			return
+		// If in init mode, always force
+		if a.IsInitMode {
+			force = true
+			a.log(a.tr("Init mode: Forcing environment check (ignoring configuration)."))
+		}
+
+		// If .cceasy directory doesn't exist, force environment check
+		home := a.GetUserHomeDir()
+		ccDir := filepath.Join(home, ".cceasy")
+		if _, err := os.Stat(ccDir); os.IsNotExist(err) {
+			force = true
+			a.log(a.tr("Detected missing .cceasy directory. Forcing environment check..."))
 		}
 
 		if force {
-			a.log(a.tr("Manual environment check triggered."))
+			a.log(a.tr("Forced environment check triggered."))
+		} else {
+			config, err := a.LoadConfig()
+			if err == nil && config.PauseEnvCheck {
+				a.log(a.tr("Skipping environment check and installation."))
+				a.emitEvent("env-check-done")
+				return
+			}
 		}
 
 		a.log(a.tr("Checking Node.js installation..."))
-		
+
 		home, _ := os.UserHomeDir()
 		localNodeDir := filepath.Join(home, ".cceasy", "tools")
 		localBinDir := filepath.Join(localNodeDir, "bin")
 
-		// 1. Setup PATH correctly for GUI apps on macOS
-		envPath := os.Getenv("PATH")
-		commonPaths := []string{"/usr/local/bin", "/opt/homebrew/bin", "/usr/bin", "/bin", "/usr/sbin", "/sbin"}
-		
-		commonPaths = append(commonPaths, filepath.Join(home, ".npm-global/bin"))
-		
-		// Add local node bin to PATH
+		// 1. Setup PATH
+	envPath := os.Getenv("PATH")
+		commonPaths := []string{"/usr/local/bin", "/usr/bin", "/bin", "/usr/sbin", "/sbin"}
 		commonPaths = append([]string{localBinDir}, commonPaths...)
 
 		newPathParts := strings.Split(envPath, ":")
 		pathChanged := false
 		for _, p := range commonPaths {
 			if !contains(newPathParts, p) {
-				newPathParts = append([]string{p}, newPathParts...) // Prepend for priority
+				newPathParts = append([]string{p}, newPathParts...)
 				pathChanged = true
 			}
 		}
-		
+
 		if pathChanged {
 			envPath = strings.Join(newPathParts, ":")
 			os.Setenv("PATH", envPath)
@@ -76,48 +96,19 @@ func (a *App) CheckEnvironment(force bool) {
 			}
 		}
 
-		// 3. If still not found, try to install
+		// 3. Install if missing
 		if nodePath == "" {
-			a.log(a.tr("Node.js not found. Checking for Homebrew..."))
-			
-			brewExec, _ := exec.LookPath("brew")
-			if brewExec == "" {
-				for _, p := range []string{"/opt/homebrew/bin/brew", "/usr/local/bin/brew"} {
-					if _, err := os.Stat(p); err == nil {
-						brewExec = p
-						break
-					}
-				}
+			a.log(a.tr("Node.js not found. Attempting manual installation..."))
+			if err := a.installNodeJSManually(localNodeDir); err != nil {
+				a.log(a.tr("Manual installation failed: ") + err.Error())
+				wails_runtime.EventsEmit(a.ctx, "env-check-done")
+				return
 			}
-
-			if brewExec != "" {
-				a.log(a.tr("Installing Node.js via Homebrew..."))
-				cmd := exec.Command(brewExec, "install", "node")
-				if err := cmd.Run(); err != nil {
-					a.log(a.tr("Homebrew installation failed."))
-				} else {
-					a.log(a.tr("Node.js installed via Homebrew."))
-				}
-			} else {
-				a.log(a.tr("Homebrew not found. Attempting manual installation..."))
-				if err := a.installNodeJSManually(localNodeDir); err != nil {
-					a.log(a.tr("Manual installation failed: ") + err.Error())
-					wails_runtime.EventsEmit(a.ctx, "env-check-done")
-					return
-				}
-				a.log(a.tr("Node.js manually installed to ") + localNodeDir)
-			}
+			a.log(a.tr("Node.js manually installed to ") + localNodeDir)
 			
-			a.log(a.tr("Verifying Node.js installation..."))
-			
-			// Re-check for node
-			nodePath, err = exec.LookPath("node")
-			if err != nil {
-				// Check explicitly in local bin if LookPath fails
-				localNodePath := filepath.Join(localBinDir, "node")
-				if _, err := os.Stat(localNodePath); err == nil {
-					nodePath = localNodePath
-				}
+			localNodePath := filepath.Join(localBinDir, "node")
+			if _, err := os.Stat(localNodePath); err == nil {
+				nodePath = localNodePath
 			}
 			
 			if nodePath == "" {
@@ -126,60 +117,50 @@ func (a *App) CheckEnvironment(force bool) {
 				return
 			}
 		}
-
 		a.log(a.tr("Node.js found at: ") + nodePath)
 
-		// 4. Search for npm
-		npmExec, err := exec.LookPath("npm")
+		// 4. Check npm
+		npmPath, err := exec.LookPath("npm")
 		if err != nil {
 			localNpmPath := filepath.Join(localBinDir, "npm")
 			if _, err := os.Stat(localNpmPath); err == nil {
-				npmExec = localNpmPath
+				npmPath = localNpmPath
 			}
 		}
-		
-		if npmExec == "" {
-			a.log(a.tr("npm not found."))
+
+		if npmPath == "" {
+			a.log(a.tr("npm not found. Check Node.js installation."))
 			wails_runtime.EventsEmit(a.ctx, "env-check-done")
 			return
 		}
 
-		// 5. Check and Install AI Tools in private ~/.cceasy directory ONLY
+		// 5. Check AI Tools
 		tm := NewToolManager(a)
-		tools := []string{"claude", "gemini", "codex", "opencode", "codebuddy", "qoder", "iflow"}
+		tools := []string{"claude", "gemini", "codex", "opencode", "codebuddy", "qoder", "iflow", "kiro"}
 
 		for _, tool := range tools {
-			a.log(a.tr("Checking %s in private directory...", tool))
+			a.log(a.tr("Checking %s...", tool))
 			status := tm.GetToolStatus(tool)
 
 			if !status.Installed {
-				a.log(a.tr("%s not found in private directory. Attempting automatic installation...", tool))
+				a.log(a.tr("%s not found. Installing...", tool))
 				if err := tm.InstallTool(tool); err != nil {
 					a.log(a.tr("ERROR: Failed to install %s: %v", tool, err))
-					// We continue to other tools even if one fails, allowing manual intervention later
 				} else {
-					a.log(a.tr("%s installed successfully to private directory.", tool))
+					a.log(a.tr("%s installed successfully.", tool))
 				}
 			} else {
-				// Tool is installed - verify it's in our private directory
-				home, _ := os.UserHomeDir()
-				expectedPrefix := filepath.Join(home, ".cceasy", "tools")
-				if !strings.HasPrefix(status.Path, expectedPrefix) {
-					a.log(a.tr("WARNING: %s found at %s (not in private directory, skipping)", tool, status.Path))
-					continue
-				}
-
-				a.log(a.tr("%s found in private directory at %s (version: %s).", tool, status.Path, status.Version))
-				// Check for updates ONLY for tools in private directory
-				if tool == "codex" || tool == "opencode" || tool == "codebuddy" || tool == "qoder" || tool == "iflow" || tool == "gemini" || tool == "claude" {
-					a.log(a.tr("Checking for %s updates in private directory...", tool))
-					latest, err := a.getLatestNpmVersion(npmExec, tm.GetPackageName(tool))
+				a.log(a.tr("%s found at %s (version: %s).", tool, status.Path, status.Version))
+				
+				if tool == "codex" || tool == "opencode" || tool == "codebuddy" || tool == "qoder" || tool == "iflow" || tool == "gemini" || tool == "claude" || tool == "kiro" {
+					a.log(a.tr("Checking for %s updates...", tool))
+					latest, err := a.getLatestNpmVersion(npmPath, tm.GetPackageName(tool))
 					if err == nil && latest != "" && latest != status.Version {
-						a.log(a.tr("New version available for %s: %s (current: %s). Updating private version...", tool, latest, status.Version))
+						a.log(a.tr("New version available for %s: %s (current: %s). Updating...", tool, latest, status.Version))
 						if err := tm.UpdateTool(tool); err != nil {
 							a.log(a.tr("ERROR: Failed to update %s: %v", tool, err))
 						} else {
-							a.log(a.tr("%s updated successfully to %s in private directory.", tool, latest))
+							a.log(a.tr("%s updated successfully to %s.", tool, latest))
 						}
 					}
 				}
@@ -187,86 +168,65 @@ func (a *App) CheckEnvironment(force bool) {
 		}
 
 		a.log(a.tr("Environment check complete."))
-		wails_runtime.EventsEmit(a.ctx, "env-check-done")
+		a.emitEvent("env-check-done")
 	}()
 }
 
-func (a *App) installNodeJSManually(destDir string) error {
-	arch := runtime.GOARCH
-	if arch == "amd64" {
-		arch = "x64" // Node uses x64 for amd64
+func (a *App) installNodeJSManually(targetDir string) error {
+	nodeVersion := RequiredNodeVersion
+	arch := "x64"
+	if runtime.GOARCH == "arm64" {
+		arch = "arm64"
 	}
 	
-	version := "v" + RequiredNodeVersion
-	fileName := fmt.Sprintf("node-%s-darwin-%s.tar.gz", version, arch)
-	url := fmt.Sprintf("https://nodejs.org/dist/%s/%s", version, fileName)
-	
-	a.log(a.tr("Downloading Node.js from %s", url))
-	
-	resp, err := http.Get(url)
+	fileName := fmt.Sprintf("node-v%s-darwin-%s.tar.gz", nodeVersion, arch)
+	url := fmt.Sprintf("https://nodejs.org/dist/v%s/%s", nodeVersion, fileName)
+	if strings.HasPrefix(strings.ToLower(a.CurrentLanguage), "zh") {
+		url = fmt.Sprintf("https://mirrors.tuna.tsinghua.edu.cn/nodejs-release/v%s/%s", nodeVersion, fileName)
+	}
+
+	a.log(a.tr("Downloading Node.js from %s...", url))
+	tempDir := os.TempDir()
+	tarPath := filepath.Join(tempDir, fileName)
+
+	if err := a.downloadFile(tarPath, url); err != nil {
+		return err
+	}
+	defer os.Remove(tarPath)
+
+	a.log(a.tr("Extracting Node.js..."))
+	os.MkdirAll(targetDir, 0755)
+
+	cmd := exec.Command("tar", "-xzf", tarPath, "--strip-components=1", "-C", targetDir)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("tar failed: %s\n%s", err, string(output))
+	}
+
+	return nil
+}
+
+func (a *App) downloadFile(filepath string, url string) error {
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("User-Agent", "Mozilla/5.0")
+	client := &http.Client{Timeout: 300 * time.Second}
+	resp, err := client.Do(req)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
-	
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("bad status: %s", resp.Status)
-	}
 
-	// Create a temp file for the tarball
-	tempFile, err := os.CreateTemp("", "node-*.tar.gz")
+	out, err := os.Create(filepath)
 	if err != nil {
-		return fmt.Errorf("failed to create temp file: %v", err)
-	}
-	defer os.Remove(tempFile.Name())
-	defer tempFile.Close()
-
-	a.log("Saving download to temp file...")
-	if _, err := io.Copy(tempFile, resp.Body); err != nil {
-		return fmt.Errorf("failed to save download: %v", err)
-	}
-	
-	// Close file to ensure all data is flushed before tar reads it
-	tempFile.Close()
-
-	// Clean destination directory if it exists to avoid conflicts
-	if _, err := os.Stat(destDir); err == nil {
-		a.log("Cleaning existing Node.js directory...")
-		os.RemoveAll(destDir)
-	}
-
-	if err := os.MkdirAll(destDir, 0755); err != nil {
 		return err
 	}
-	
-	a.log(a.tr("Extracting Node.js (this should be fast)..."))
-	
-	// Using native tar command on the file
-	// -x: extract, -z: gunzip, -f: file, -C: directory, --strip-components 1: remove root folder
-	cmd := exec.Command("tar", "-xzf", tempFile.Name(), "-C", destDir, "--strip-components", "1")
-	
-	var stderr strings.Builder
-	cmd.Stderr = &stderr
-	
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("tar extraction failed: %v, stderr: %s", err, stderr.String())
-	}
+	defer out.Close()
 
-	// Final verification: check if bin/node exists
-	if _, err := os.Stat(filepath.Join(destDir, "bin", "node")); err != nil {
-		return fmt.Errorf("verification failed: bin/node not found after extraction")
-	}
-	
-	return nil
-}
-
-func contains(slice []string, item string) bool {
-	for _, s := range slice {
-		if s == item {
-			return true
-		}
-	}
-	return false
+	_, err = io.Copy(out, resp.Body)
+	return err
 }
 
 func (a *App) restartApp() {
@@ -274,12 +234,7 @@ func (a *App) restartApp() {
 	if err != nil {
 		return
 	}
-	appBundle := filepath.Dir(filepath.Dir(filepath.Dir(executable)))
-	if !strings.HasSuffix(appBundle, ".app") {
-		wails_runtime.Quit(a.ctx)
-		return
-	}
-	exec.Command("open", "-n", appBundle).Start()
+	exec.Command(executable).Start()
 	wails_runtime.Quit(a.ctx)
 }
 
@@ -288,173 +243,57 @@ func (a *App) GetDownloadsFolder() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	downloads := filepath.Join(home, "Downloads")
-	if _, err := os.Stat(downloads); err == nil {
-		return downloads, nil
-	}
-	return home, nil
+	return filepath.Join(home, "Downloads"), nil
 }
 
 func (a *App) platformLaunch(binaryName string, yoloMode bool, adminMode bool, pythonEnv string, projectDir string, env map[string]string, modelId string) {
-	a.log(fmt.Sprintf("Launching %s...", binaryName))
-
-	// Activate Python environment if specified
-	if pythonEnv != "" && pythonEnv != "None (Default)" {
-		a.log(fmt.Sprintf("Using Python environment: %s", pythonEnv))
-	}
-
 	tm := NewToolManager(a)
 	status := tm.GetToolStatus(binaryName)
-	
-	binaryPath := ""
-	if status.Installed {
-		binaryPath = status.Path
-	}
-
-	if binaryPath == "" {
-		msg := fmt.Sprintf("Tool %s not found. Please ensure it is installed.", binaryName)
-		a.log(msg)
-		a.ShowMessage("Launch Error", msg)
+	if !status.Installed {
+		a.ShowMessage("Error", "Tool not installed")
 		return
 	}
-	a.log("Using binary at: " + binaryPath)
-
-	// Prepare the launch script
-	home, _ := os.UserHomeDir()
-	localBinDir := filepath.Join(home, ".cceasy", "tools", "bin")
-	scriptsDir := filepath.Join(home, ".cceasy", "scripts")
-	if err := os.MkdirAll(scriptsDir, 0755); err != nil {
-		a.log("Failed to create scripts dir: " + err.Error())
-		return
-	}
-	launchScriptPath := filepath.Join(scriptsDir, "launch.sh")
-
-	var sb strings.Builder
-	sb.WriteString("#!/bin/bash\n")
-	// Export local bin to PATH
-	sb.WriteString(fmt.Sprintf("export PATH=\"%s:$PATH\"\n", localBinDir))
-
-	// Export env variables
-	for k, v := range env {
-		sb.WriteString(fmt.Sprintf("export %s=\"%s\"\n", k, v))
-	}
-
-	// Navigate to project directory
-	if projectDir != "" {
-		safeProjectDir := strings.ReplaceAll(projectDir, "\"", "\\\"")
-		sb.WriteString(fmt.Sprintf("echo \"Switching to project directory: %s\"\n", safeProjectDir))
-		sb.WriteString(fmt.Sprintf("cd \"%s\" || { echo \"Failed to change directory to %s\"; exit 1; }\n", safeProjectDir, safeProjectDir))
-	}
-
-	sb.WriteString("clear\n")
 	
-	finalCmd := fmt.Sprintf("\"%s\"", binaryPath)
-	
-	// Add model argument for codebuddy
+	cmdArgs := []string{}
 	if binaryName == "codebuddy" && modelId != "" {
-		finalCmd += fmt.Sprintf(" --model %s", modelId)
+		cmdArgs = append(cmdArgs, "--model", modelId)
 	}
 
 	if yoloMode {
 		switch binaryName {
 		case "claude":
-			finalCmd += " --dangerously-skip-permissions"
+			cmdArgs = append(cmdArgs, "--dangerously-skip-permissions")
 		case "gemini":
-			finalCmd += " --yolo"
+			cmdArgs = append(cmdArgs, "--yolo")
 		case "codex":
-			finalCmd += " --full-auto"
+			cmdArgs = append(cmdArgs, "--full-auto")
 		case "codebuddy":
-			finalCmd += " -y"
+			cmdArgs = append(cmdArgs, "-y")
 		case "iflow":
-			finalCmd += " -y"
+			cmdArgs = append(cmdArgs, "-y")
 		case "qodercli", "qoder":
-			finalCmd += " --yolo"
+			cmdArgs = append(cmdArgs, "--yolo")
 		}
 	}
-	sb.WriteString(fmt.Sprintf("exec %s", finalCmd))
-	sb.WriteString("\n")
-
-	if err := os.WriteFile(launchScriptPath, []byte(sb.String()), 0700); err != nil {
-		a.log("Failed to write launch script: " + err.Error())
-		return
-	}
-
-	safeLaunchPath := strings.ReplaceAll(launchScriptPath, "\"", "\\\"")
-	var terminalCmd string
 	
-	cmdPrefix := ""
-	if adminMode {
-		cmdPrefix = "sudo "
+	scriptPath := filepath.Join(os.TempDir(), fmt.Sprintf("aicoder_launch_%d.sh", time.Now().UnixNano()))
+	scriptContent := "#!/bin/bash\n"
+	scriptContent += fmt.Sprintf("cd \"%s\"\n", projectDir)
+	for k, v := range env {
+		scriptContent += fmt.Sprintf("export %s=\"%s\"\n", k, v)
 	}
-
-	if projectDir != "" {
-		safeProjectDir := strings.ReplaceAll(projectDir, "\"", "\\\"")
-		// Construct command: cd "projectDir" && [sudo] "launchScriptPath"
-		// We use backslash escaping for the AppleScript string context
-		terminalCmd = fmt.Sprintf("cd \\\"%s\\\" && %s\\\"%s\\\"", safeProjectDir, cmdPrefix, safeLaunchPath)
-	} else {
-		terminalCmd = fmt.Sprintf("%s\\\"%s\\\"", cmdPrefix, safeLaunchPath)
-	}
-
-	appleScript := fmt.Sprintf(`try
-	tell application "Terminal" to do script "%s"
-	tell application "Terminal" to activate
-on error errMsg
-	display dialog "Failed to launch Terminal: " & errMsg
-end try`, terminalCmd)
-
-	a.log("Executing AppleScript to launch Terminal...")
-	cmd := exec.Command("osascript", "-e", appleScript)
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		a.log(fmt.Sprintf("Failed to launch Terminal: %v, Output: %s", err, string(out)))
-		a.ShowMessage("Launch Error", fmt.Sprintf("Failed to launch Terminal: %v\n\n%s", err, string(out)))
-	} else {
-		a.log("Terminal launch command executed successfully")
-	}
+	
+	home, _ := os.UserHomeDir()
+	localBin := filepath.Join(home, ".cceasy", "tools", "bin")
+	scriptContent += fmt.Sprintf("export PATH=\"%s:$PATH\"\n", localBin)
+	
+	scriptContent += fmt.Sprintf("\"%s\" %s\n", status.Path, strings.Join(cmdArgs, " "))
+	
+os.WriteFile(scriptPath, []byte(scriptContent), 0755)
+	
+	cmd := exec.Command("open", "-a", "Terminal", scriptPath)
+	cmd.Start()
 }
 
 func (a *App) syncToSystemEnv(config AppConfig) {
-	// On macOS, we do not persist environment variables to system-wide configuration (like .zshrc)
-	// to avoid intrusive changes. LaunchTool handles process-level environment setup.
-}
-
-func createVersionCmd(path string) *exec.Cmd {
-	return exec.Command(path, "--version")
-}
-
-func createNpmInstallCmd(npmPath string, args []string) *exec.Cmd {
-	return exec.Command(npmPath, args...)
-}
-
-func createCondaEnvListCmd(condaCmd string) *exec.Cmd {
-	return exec.Command(condaCmd, "env", "list")
-}
-
-func (a *App) LaunchInstallerAndExit(installerPath string) error {
-	a.log(fmt.Sprintf("Launching installer: %s", installerPath))
-
-	// Use open command to launch the .pkg installer
-	cmd := exec.Command("open", installerPath)
-
-	err := cmd.Start()
-	if err != nil {
-		return fmt.Errorf("failed to launch installer: %w", err)
-	}
-
-	// Wait a tiny bit and then quit
-	go func() {
-		time.Sleep(500 * time.Millisecond)
-		wails_runtime.Quit(a.ctx)
-	}()
-
-	return nil
-}
-
-func getWindowsVersionHidden() string {
-	return ""
-}
-
-func createUpdateCmd(path string) *exec.Cmd {
-	return exec.Command(path, "update")
 }

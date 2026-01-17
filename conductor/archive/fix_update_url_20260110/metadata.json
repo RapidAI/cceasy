@@ -1,0 +1,8 @@
+{
+  "track_id": "fix_update_url_20260110",
+  "type": "bug",
+  "status": "new",
+  "created_at": "2026-01-10T12:28:00Z",
+  "updated_at": "2026-01-10T12:28:00Z",
+  "description": "Fix Windows Online Update Download URL: Correctly construct the direct download link for AICoder-Setup.exe and add download validation."
+}

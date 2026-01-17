@@ -203,6 +203,30 @@ func setupTray(app *App, appOptions *options.App) {
 					})
 				}
 
+		// 8. Kilo Code CLI Submenu
+		mKiro := systray.AddMenuItem("Kilo Code CLI", "Kilo Code Models")
+		for _, model := range config.Kiro.Models {
+			m := mKiro.AddSubMenuItemCheckbox(model.ModelName, "Switch to "+model.ModelName, model.ModelName == config.Kiro.CurrentModel && config.ActiveTool == "kiro")
+			toolItems["kiro-"+model.ModelName] = m
+
+			modelName := model.ModelName
+			m.Click(func() {
+				go func() {
+					currentConfig, _ := app.LoadConfig()
+					currentConfig.Kiro.CurrentModel = modelName
+					currentConfig.ActiveTool = "kiro"
+					app.SaveConfig(currentConfig)
+
+					for _, m := range currentConfig.Kiro.Models {
+						if m.ModelName == modelName && m.ApiKey == "" {
+							runtime.WindowShow(app.ctx)
+							break
+						}
+					}
+				}()
+			})
+		}
+
 				systray.AddSeparator()
 				mQuit := systray.AddMenuItem("Quit", "Quit Application")
 

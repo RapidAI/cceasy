@@ -43,6 +43,9 @@ func (tm *ToolManager) GetToolStatus(name string) ToolStatus {
 	if name == "iflow" {
 		binaryNames = []string{"iflow"}
 	}
+	if name == "kiro" {
+		binaryNames = []string{"kilocode"}
+	}
 
 	var path string
 
@@ -169,6 +172,8 @@ func (tm *ToolManager) InstallTool(name string) error {
 		packageName = "@qoder-ai/qodercli"
 	case "iflow":
 		packageName = "@iflow-ai/iflow-cli"
+	case "kiro":
+		packageName = "kilocode"
 	default:
 		return fmt.Errorf("unknown tool: %s", name)
 	}
@@ -272,57 +277,51 @@ func (tm *ToolManager) InstallTool(name string) error {
 }
 
 func (tm *ToolManager) UpdateTool(name string) error {
-	var cmd *exec.Cmd
-
-	switch name {
-	case "codebuddy", "claude", "qoder":
-		status := tm.GetToolStatus(name)
-		if !status.Installed {
-			return fmt.Errorf("tool %s is not installed", name)
-		}
-
-		// ONLY update private version in ~/.cceasy, do NOT update system version
-		// Verify the tool is installed in our private directory
-		home, _ := os.UserHomeDir()
-		expectedPrefix := filepath.Join(home, ".cceasy", "tools")
-		if !strings.HasPrefix(status.Path, expectedPrefix) {
-			return fmt.Errorf("tool %s is not installed in private directory (%s), cannot update", name, status.Path)
-		}
-
-		cmd = createUpdateCmd(status.Path)
-
-		// Set up environment variables with proper PATH
-		localNodeDir := filepath.Join(home, ".cceasy", "tools")
-		localBinDir := filepath.Join(localNodeDir, "bin")
-
-		env := os.Environ()
-		pathFound := false
-		for i, e := range env {
-			if strings.HasPrefix(strings.ToUpper(e), "PATH=") {
-				env[i] = fmt.Sprintf("PATH=%s%c%s", localBinDir, os.PathListSeparator, e[5:])
-				pathFound = true
-				break
-			}
-		}
-		if !pathFound {
-			env = append(env, "PATH="+localBinDir)
-		}
-		cmd.Env = env
-
-	case "iflow":
-		return tm.InstallTool(name)
-
-	default:
-		return tm.InstallTool(name)
+	// Verify the tool is installed in our private directory first
+	status := tm.GetToolStatus(name)
+	if !status.Installed {
+		return fmt.Errorf("tool %s is not installed", name)
 	}
 
-	if cmd != nil {
-		tm.app.log(tm.app.tr("Running update: %s %s", cmd.Path, strings.Join(cmd.Args[1:], " ")))
-		out, err := cmd.CombinedOutput()
+	home, _ := os.UserHomeDir()
+	expectedPrefix := filepath.Join(home, ".cceasy", "tools")
+	if !strings.HasPrefix(status.Path, expectedPrefix) {
+		return fmt.Errorf("tool %s is not installed in private directory (%s), cannot update. Only private installations can be updated.", name, status.Path)
+	}
+
+	// Use npm to update the package in private directory
+	// This avoids calling the tool's own update command which might try to update global installations
+	packageName := tm.GetPackageName(name)
+	if packageName == "" {
+		return fmt.Errorf("unknown package name for tool %s", name)
+	}
+
+	tm.app.log(tm.app.tr("Updating %s in private directory using npm...", name))
+
+	// Find npm
+	npmExec, err := exec.LookPath("npm")
+	if err != nil {
+		npmExec, err = exec.LookPath("npm.cmd")
 		if err != nil {
-			return fmt.Errorf("failed to update %s: %v\nOutput: %s", name, err, string(out))
+			return fmt.Errorf("npm not found")
 		}
 	}
+
+	// Set up npm prefix to private directory
+	localToolsDir := filepath.Join(home, ".cceasy", "tools")
+
+	// Use npm install with latest version to update
+	args := []string{"install", "-g", "--prefix", localToolsDir, packageName + "@latest"}
+
+	cmd := createNpmInstallCmd(npmExec, args)
+
+	tm.app.log(tm.app.tr("Running: npm %s", strings.Join(args, " ")))
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to update %s: %v\nOutput: %s", name, err, string(out))
+	}
+
+	tm.app.log(tm.app.tr("Successfully updated %s in private directory", name))
 	return nil
 }
 
@@ -345,6 +344,8 @@ func (tm *ToolManager) GetPackageName(name string) string {
 		return "@qoder-ai/qodercli"
 	case "iflow":
 		return "@iflow-ai/iflow-cli"
+	case "kiro":
+		return "kilocode"
 	default:
 		return ""
 	}
@@ -385,7 +386,7 @@ func (a *App) UpdateTool(name string) error {
 
 func (a *App) CheckToolsStatus() []ToolStatus {
 	tm := NewToolManager(a)
-	tools := []string{"claude", "gemini", "codex", "opencode", "codebuddy", "qoder", "iflow"}
+	tools := []string{"claude", "gemini", "codex", "opencode", "codebuddy", "qoder", "iflow", "kiro"}
 	statuses := make([]ToolStatus, len(tools))
 	for i, name := range tools {
 		statuses[i] = tm.GetToolStatus(name)

@@ -58,3 +58,8 @@ AICoder 是一款基于 Wails + Go + React 开发的桌面 AI 编程辅助工具
 
 ---
 *本工具仅作为配置管理辅助，请确保遵守各模型厂商的服务条款。*
+
+
+ kilo cli : 
+
+ https://github.com/Kilo-Org/kilocode/blob/main/cli/docs/PROVIDER_CONFIGURATION.md

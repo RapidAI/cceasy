@@ -10,7 +10,6 @@ echo [INFO] Starting the build process...
 REM -- Set Environment Variables --
 set "APP_NAME=AICoder"
 set "OUTPUT_DIR=%~dp0dist"
-set "BIN_DIR=%~dp0build\bin"
 set "NSIS_PATH=C:\Program Files (x86)\NSIS\makensis.exe"
 
 REM -- Ensure Go tools are in PATH --
@@ -21,9 +20,6 @@ REM -- Clean previous build artifacts --
 echo [Step 1/8] Cleaning previous build...
 if exist "%OUTPUT_DIR%" (
     rmdir /s /q "%OUTPUT_DIR%"
-)
-if not exist "%BIN_DIR%" (
-    mkdir "%BIN_DIR%"
 )
 mkdir "%OUTPUT_DIR%"
 
@@ -154,11 +150,8 @@ if !errorlevel! neq 0 (
     goto :error
 )
 
-REM -- Move Installer to Dist --
-echo   - Moving installer to dist directory...
-move /Y "%BIN_DIR%\%APP_NAME%-Setup.exe" "%OUTPUT_DIR%\%APP_NAME%-Setup.exe" >nul
 if exist "%OUTPUT_DIR%\%APP_NAME%-Setup.exe" (
-    echo [SUCCESS] Windows installer moved to: %OUTPUT_DIR%\%APP_NAME%-Setup.exe
+    echo [SUCCESS] Windows installer created at: %OUTPUT_DIR%\%APP_NAME%-Setup.exe
 )
 
 REM -- Copy/Rename Main Binary for convenience --
@@ -186,6 +179,7 @@ goto :eof
 :error
 echo.
 echo [FAILED] The build process failed. Please check the output above for errors.
+pause
 exit /b 1
 
 endlocal

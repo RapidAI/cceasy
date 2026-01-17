@@ -634,6 +634,11 @@ body {
     animation: toast-in-out 3s ease-in-out forwards;
 }
 
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
 @keyframes toast-in-out {
     0% { opacity: 0; bottom: 20px; }
     15% { opacity: 1; bottom: 30px; }

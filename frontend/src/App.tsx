@@ -8,8 +8,9 @@ import codexIcon from './assets/images/Codex.png';
 import geminiIcon from './assets/images/gemincli.png';
 import iflowIcon from './assets/images/iflow.png';
 import opencodeIcon from './assets/images/opencode.png';
+import kiroIcon from './assets/images/kiro.png';
 import qoderIcon from './assets/images/qodercli.png';
-import { CheckToolsStatus, InstallTool, LoadConfig, SaveConfig, CheckEnvironment, ResizeWindow, WindowHide, LaunchTool, SelectProjectDir, SetLanguage, GetUserHomeDir, CheckUpdate, ShowMessage, ReadBBS, ReadTutorial, ReadThanks, ClipboardGetText, ListPythonEnvironments, PackLog, ShowItemInFolder, GetSystemInfo, OpenSystemUrl, DownloadUpdate, CancelDownload, LaunchInstallerAndExit, ListSkills, AddSkill, DeleteSkill, SelectSkillFile, GetSkillsDir, SetEnvCheckInterval, GetEnvCheckInterval, ShouldCheckEnvironment, UpdateLastEnvCheckTime } from "../wailsjs/go/main/App";
+import { CheckToolsStatus, InstallTool, LoadConfig, SaveConfig, CheckEnvironment, ResizeWindow, WindowHide, LaunchTool, SelectProjectDir, SetLanguage, GetUserHomeDir, CheckUpdate, ShowMessage, ReadBBS, ReadTutorial, ReadThanks, ClipboardGetText, ListPythonEnvironments, PackLog, ShowItemInFolder, GetSystemInfo, OpenSystemUrl, DownloadUpdate, CancelDownload, LaunchInstallerAndExit, ListSkills, ListSkillsWithInstallStatus, AddSkill, DeleteSkill, SelectSkillFile, GetSkillsDir, SetEnvCheckInterval, GetEnvCheckInterval, ShouldCheckEnvironment, UpdateLastEnvCheckTime, InstallDefaultMarketplace, InstallSkill } from "../wailsjs/go/main/App";
 import { EventsOn, EventsOff, BrowserOpenURL, Quit } from "../wailsjs/runtime";
 import { main } from "../wailsjs/go/models";
 import ReactMarkdown from 'react-markdown';
@@ -25,6 +26,7 @@ const subscriptionUrls: { [key: string]: string } = {
     "Gemini": "https://www.aicodemirror.com/register?invitecode=CZPPWZ",
     "AiCodeMirror": "https://www.aicodemirror.com/register?invitecode=CZPPWZ",
     "AIgoCode": "https://aigocode.com/invite/TCFQQCCK",
+    "Noin.AI": "https://ai.ourines.com",
     "GACCode": "https://gaccode.com/signup?ref=FVMCU97H",
     "DeepSeek": "https://platform.deepseek.com/api_keys",
     "CodeRelay": "https://api.code-relay.com/register?aff=0ZtO",
@@ -115,6 +117,8 @@ const translations: any = {
         "qoderDesc": "Qoder AI Programming Assistant",
         "iflow": "iFlow CLI",
         "iflowDesc": "iFlow AI Programming Assistant",
+        "kiro": "Kilo Code CLI",
+        "kiroDesc": "Kilo Code AI Programming Assistant",
         "bugReport": "Problem Feedback",
         "businessCooperation": "Business: WeChat znsoft",
         "original": "Original",
@@ -174,8 +178,9 @@ const translations: any = {
         "skillName": "Skill Name",
         "skillDesc": "Description",
         "skillType": "Type",
-        "skillAddress": "Address",
+        "skillAddress": "Skill ID",
         "skillZip": "Zip Package",
+        "skillPath": "Path",
         "skillValue": "Value/Path",
         "browse": "Browse",
         "skillAdded": "Skill added successfully",
@@ -183,8 +188,13 @@ const translations: any = {
         "confirmDeleteSkill": "Are you sure you want to delete this skill?",
         "noSkills": "No skills added yet.",
         "installSkills": "Install Skills",
-        "selectSkillsToInstall": "Select Skills to Install",
+        "installLocation": "Install Location:",
+        "userLocation": "User",
+        "projectLocation": "Project",
+        "selectSkillsToInstall": "Skill Installation",
+        "installDefaultMarketplace": "Install Default Marketplace",
         "install": "Install",
+        "installed": "Installed",
         "installing": "Installing...",
         "installNotImplemented": "Installation functionality is not yet implemented.",
         "pauseEnvCheck": "Skip Env Check",
@@ -193,7 +203,8 @@ const translations: any = {
         "envCheckDueTitle": "Environment Check Reminder",
         "envCheckDueMessage": "It has been {days} days since the last environment check. Would you like to check now?",
         "recheckEnv": "Manual Check & Update Environment",
-        "skillRequiredError": "Name and Value are required!",
+        "skillRequiredError": "Name and Address/Path are required!",
+        "skillZipOnlyError": "Gemini and Codex only support zip package skills.",
         "skillAddError": "Error adding skill: {error}",
         "skillDeleteError": "Error deleting skill: {error}",
         "copyLog": "Copy Log",
@@ -202,10 +213,14 @@ const translations: any = {
         "latestVersion": "Latest Version",
         "foundNewVersionMsg": "New version found. Download and update now?",
         "isLatestVersion": "Already up to date",
+        "billing": "Billing",
         "placeholderName": "e.g., Frontend Design",
         "placeholderDesc": "Description...",
         "placeholderAddress": "@anthropics/...",
-        "placeholderZip": "Select .zip file"
+        "placeholderZip": "Select .zip file",
+        "cannotDeleteSystemSkill": "System skill package cannot be deleted.",
+        "systemDefault": "System Default",
+        "envCheckTitle": "AICoder Environment Setup"
     },
     "zh-Hans": {
         "title": "AICoder",
@@ -287,6 +302,8 @@ const translations: any = {
         "qoderDesc": "Qoder AI 辅助编程",
         "iflow": "iFlow CLI",
         "iflowDesc": "iFlow AI 辅助编程",
+        "kiro": "Kilo Code CLI",
+        "kiroDesc": "Kilo Code AI 辅助编程",
         "bugReport": "问题反馈",
         "businessCooperation": "商业合作：微信 znsoft",
         "original": "原厂",
@@ -306,7 +323,7 @@ const translations: any = {
         "refreshSuccess": "✅ 获取新消息成功",
         "refreshFailed": "❌ 刷新失败：",
         "lastUpdate": "最后更新：",
-        "forward": "转发服务",
+        "forward": "转发",
         "customized": "定制",
         "originalFlag": "原生",
         "monthly": "包月",
@@ -345,8 +362,9 @@ const translations: any = {
         "skillName": "技能名称",
         "skillDesc": "描述",
         "skillType": "类型",
-        "skillAddress": "Skills包名",
+        "skillAddress": "Skill ID",
         "skillZip": "Zip包",
+        "skillPath": "路径",
         "skillValue": "值/路径",
         "browse": "浏览",
         "skillAdded": "技能添加成功",
@@ -354,8 +372,13 @@ const translations: any = {
         "confirmDeleteSkill": "确定要删除此技能吗？",
         "noSkills": "暂无技能。",
         "installSkills": "安装技能",
-        "selectSkillsToInstall": "选择要安装的技能",
+        "installLocation": "安装位置:",
+        "userLocation": "用户",
+        "projectLocation": "项目",
+        "selectSkillsToInstall": "技能安装",
+        "installDefaultMarketplace": "安装默认市场",
         "install": "安装",
+        "installed": "已安装",
         "installing": "正在安装...",
         "installNotImplemented": "安装功能暂未实现。",
         "pauseEnvCheck": "跳过环境检测",
@@ -365,6 +388,7 @@ const translations: any = {
         "envCheckDueMessage": "距离上次环境检测已过{days}天，是否现在检测？",
         "recheckEnv": "手动检测更新运行环境",
         "skillRequiredError": "名称和地址/路径是必填项！",
+        "skillZipOnlyError": "Gemini 和 Codex 仅支持 Zip 包式技能。",
         "skillAddError": "添加技能出错: {error}",
         "skillDeleteError": "删除技能出错: {error}",
         "copyLog": "复制日志",
@@ -373,10 +397,14 @@ const translations: any = {
         "latestVersion": "最新版本",
         "foundNewVersionMsg": "检查到新版本，是否立即下载更新？",
         "isLatestVersion": "已是最新版本",
+        "billing": "计费",
         "placeholderName": "例如：前端设计",
         "placeholderDesc": "描述...",
         "placeholderAddress": "@anthropics/...",
-        "placeholderZip": "选择 .zip 文件"
+        "placeholderZip": "选择 .zip 文件",
+        "cannotDeleteSystemSkill": "系统技能包不能删除。",
+        "systemDefault": "系统默认",
+        "envCheckTitle": "AICoder 运行环境检测安装"
     },
     "zh-Hant": {
         "title": "AICoder",
@@ -456,6 +484,8 @@ const translations: any = {
         "qoderDesc": "Qoder AI 輔助編程",
         "iflow": "iFlow CLI",
         "iflowDesc": "iFlow AI 輔助編程",
+        "kiro": "Kilo Code CLI",
+        "kiroDesc": "Kilo Code AI 輔助編程",
         "bugReport": "問題反饋",
         "businessCooperation": "商業合作：微信 znsoft",
         "original": "原廠",
@@ -475,7 +505,7 @@ const translations: any = {
         "refreshSuccess": "✅ 獲取新消息成功",
         "refreshFailed": "❌ 刷新失敗：",
         "lastUpdate": "最後更新：",
-        "forward": "轉發服務",
+        "forward": "轉發",
         "customized": "定制",
         "originalFlag": "原生",
         "monthly": "包月",
@@ -514,8 +544,9 @@ const translations: any = {
         "skillName": "技能名稱",
         "skillDesc": "描述",
         "skillType": "類型",
-        "skillAddress": "Skills包名",
+        "skillAddress": "Skill ID",
         "skillZip": "Zip包",
+        "skillPath": "路徑",
         "skillValue": "值/路徑",
         "browse": "瀏覽",
         "skillAdded": "技能新增成功",
@@ -523,8 +554,13 @@ const translations: any = {
         "confirmDeleteSkill": "確定要刪除此技能嗎？",
         "noSkills": "暫無技能。",
         "installSkills": "安裝技能",
-        "selectSkillsToInstall": "選擇要安裝的技能",
+        "installLocation": "安裝位置:",
+        "userLocation": "用戶",
+        "projectLocation": "項目",
+        "selectSkillsToInstall": "技能安裝",
+        "installDefaultMarketplace": "安裝默認市場",
         "install": "安裝",
+        "installed": "已安裝",
         "installing": "正在安裝...",
         "installNotImplemented": "安裝功能暫未實現。",
         "pauseEnvCheck": "跳過環境檢測",
@@ -534,7 +570,8 @@ const translations: any = {
         "envCheckDueMessage": "距離上次環境檢測已過{days}天，是否現在檢測？",
         "recheckEnv": "手動檢測更新運行環境",
         "skillRequiredError": "名稱和地址/路徑是必填項！",
-        "skillAddError": "新增技能出錯: {error}",
+        "skillZipOnlyError": "Gemini 和 Codex 僅支持 Zip 包式技能。",
+        "skillAddError": "添加技能出錯: {error}",
         "skillDeleteError": "刪除技能出錯: {error}",
         "copyLog": "複製日誌",
         "logsCopied": "日誌已複製到剪貼板",
@@ -542,10 +579,14 @@ const translations: any = {
         "latestVersion": "最新版本",
         "foundNewVersionMsg": "檢查到新版本，是否立即下載更新？",
         "isLatestVersion": "已是最新版本",
+        "billing": "計費",
         "placeholderName": "例如：前端設計",
         "placeholderDesc": "描述...",
         "placeholderAddress": "@anthropics/...",
-        "placeholderZip": "選擇 .zip 文件"
+        "placeholderZip": "選擇 .zip 文件",
+        "cannotDeleteSystemSkill": "系統技能包不能刪除。",
+        "systemDefault": "系統默認",
+        "envCheckTitle": "AICoder 運行環境檢測安裝"
     }
 };
 
@@ -688,6 +729,7 @@ const ToolConfiguration = ({
                         ) : (
                             (model.model_name.toLowerCase().includes("aicodemirror") ||
                                 model.model_name.toLowerCase().includes("aigocode") ||
+                                model.model_name.toLowerCase().includes("noin.ai") ||
                                 model.model_name.toLowerCase().includes("gaccode") ||
                                 model.model_name.toLowerCase().includes("chatfire") ||
                                 model.model_name.toLowerCase().includes("coderelay")) && (
@@ -730,6 +772,10 @@ function App() {
     const [status, setStatus] = useState("");
     const [activeTab, setActiveTab] = useState(0);
     const [tabStartIndex, setTabStartIndex] = useState(0);
+    const [installLocation, setInstallLocation] = useState<'user' | 'project'>('user');
+    const [installProject, setInstallProject] = useState<string>("");
+    const [isBatchInstalling, setIsBatchInstalling] = useState(false);
+    const [isMarketplaceInstalling, setIsMarketplaceInstalling] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [isManualCheck, setIsManualCheck] = useState(false);
     const [showStartupPopup, setShowStartupPopup] = useState(false);
@@ -763,6 +809,32 @@ function App() {
 
     const [showInstallSkillModal, setShowInstallSkillModal] = useState(false);
     const [selectedSkillsToInstall, setSelectedSkillsToInstall] = useState<string[]>([]);
+
+    // Load skills with install status when install modal is shown or location/project changes
+    useEffect(() => {
+        if (showInstallSkillModal && config) {
+            // Get project path for project installations
+            let targetProjectPath = "";
+            if (installLocation === 'project' && installProject) {
+                const p = config.projects?.find((proj: any) => proj.id === installProject);
+                if (p) targetProjectPath = p.path;
+            }
+
+            // Load skills with install status
+            ListSkillsWithInstallStatus(activeTool, installLocation, targetProjectPath)
+                .then(list => setSkills(list || []))
+                .catch(err => console.error('Failed to load skills:', err));
+        }
+    }, [showInstallSkillModal, installLocation, installProject, activeTool, config]);
+
+    // Load skills when navigating to skills tab
+    useEffect(() => {
+        if (navTab === 'skills') {
+            ListSkills(activeTool)
+                .then(list => setSkills(list || []))
+                .catch(err => console.error('Failed to load skills:', err));
+        }
+    }, [navTab, activeTool]);
 
     const [toolStatuses, setToolStatuses] = useState<any[]>([]);
     const [envLogs, setEnvLogs] = useState<string[]>([]);
@@ -846,14 +918,19 @@ function App() {
     };
 
     const handleDeleteSkill = async (name: string) => {
+        if (name === "Claude Official Documentation Skill Package" || name === "超能力技能包") {
+            showToastMessage(t("cannotDeleteSystemSkill"));
+            return;
+        }
+
         setConfirmDialog({
             show: true,
             title: t("confirmDelete"),
             message: t("confirmDeleteSkill"),
             onConfirm: async () => {
                 try {
-                    await DeleteSkill(name);
-                    const list = await ListSkills();
+                    await DeleteSkill(name, activeTool);
+                    const list = await ListSkills(activeTool);
                     setSkills(list || []);
                     if (selectedSkill === name) setSelectedSkill(null);
                     showToastMessage(t("skillDeleted"));
@@ -1014,7 +1091,7 @@ function App() {
         // Environment Check Logic
         const logHandler = (msg: string) => {
             setEnvLogs(prev => [...prev, msg]);
-            if (msg.toLowerCase().includes("failed") || msg.toLowerCase().includes("error")) {
+            if (msg.toLowerCase().includes("failed") || msg.toLowerCase().includes("error") || msg.includes(".cceasy")) {
                 setShowLogs(true);
             }
         };
@@ -1026,6 +1103,11 @@ function App() {
 
         EventsOn("env-log", logHandler);
         EventsOn("env-check-done", doneHandler);
+        EventsOn("show-env-logs", () => {
+            setEnvLogs([]);
+            setShowLogs(true);
+            setIsManualCheck(true);
+        });
 
         EventsOn("download-progress", (data: any) => {
             console.log("Download progress event:", data);
@@ -1114,7 +1196,7 @@ function App() {
 
                 // Keep track of the last active tool for settings/launch logic
                 const lastActiveTool = cfg.active_tool || "claude";
-                if (lastActiveTool === 'claude' || lastActiveTool === 'gemini' || lastActiveTool === 'codex' || lastActiveTool === 'opencode' || lastActiveTool === 'codebuddy' || lastActiveTool === 'qoder' || lastActiveTool === 'iflow') {
+                if (lastActiveTool === 'claude' || lastActiveTool === 'gemini' || lastActiveTool === 'codex' || lastActiveTool === 'opencode' || lastActiveTool === 'codebuddy' || lastActiveTool === 'qoder' || lastActiveTool === 'iflow' || lastActiveTool === 'kiro') {
                     setActiveTool(lastActiveTool);
                 }
 
@@ -1126,7 +1208,7 @@ function App() {
                     if (idx !== -1) setActiveTab(idx);
 
                     // Check if any model has an API key configured for the active tool
-                    if (lastActiveTool === 'claude' || lastActiveTool === 'gemini' || lastActiveTool === 'codex' || lastActiveTool === 'opencode' || lastActiveTool === 'codebuddy' || lastActiveTool === 'qoder' || lastActiveTool === 'iflow') {
+                    if (lastActiveTool === 'claude' || lastActiveTool === 'gemini' || lastActiveTool === 'codex' || lastActiveTool === 'opencode' || lastActiveTool === 'codebuddy' || lastActiveTool === 'qoder' || lastActiveTool === 'iflow' || lastActiveTool === 'kiro') {
                         const hasAnyApiKey = toolCfg.models.some((m: any) => m.api_key && m.api_key.trim() !== "");
                         if (!hasAnyApiKey) {
                             setShowModelSettings(true);
@@ -1144,7 +1226,7 @@ function App() {
             // Sync with tray menu changes
             const tool = cfg.active_tool || "message";
             setNavTab(tool);
-            if (tool === 'claude' || tool === 'gemini' || tool === 'codex' || tool === 'opencode' || tool === 'codebuddy' || tool === 'iflow') {
+            if (tool === 'claude' || tool === 'gemini' || tool === 'codex' || tool === 'opencode' || tool === 'codebuddy' || tool === 'iflow' || tool === 'kiro') {
                 setActiveTool(tool);
                 const toolCfg = (cfg as any)[tool];
                 if (toolCfg && toolCfg.models) {
@@ -1206,6 +1288,15 @@ function App() {
                 await InstallTool("iflow");
             }
 
+            // Add kiro check and installation if missing
+            const kiroStatus = statuses?.find((s: any) => s.name === "kiro");
+            if (kiroStatus && !kiroStatus.installed) {
+                setEnvLogs(prev => [...prev, lang === 'zh-Hans' ? "正在安装 Kilo Code CLI..." :
+                    lang === 'zh-Hant' ? "正在安裝 Kilo Code CLI..." :
+                        "Installing Kilo Code CLI..."]);
+                await InstallTool("kiro");
+            }
+
             // Re-check after installation
             const updatedStatuses = await CheckToolsStatus();
             setToolStatuses(updatedStatuses);
@@ -1227,7 +1318,7 @@ function App() {
 
     const switchTool = (tool: string) => {
         setNavTab(tool);
-        if (tool === 'claude' || tool === 'gemini' || tool === 'codex' || tool === 'opencode' || tool === 'codebuddy' || tool === 'qoder' || tool === 'iflow') {
+        if (tool === 'claude' || tool === 'gemini' || tool === 'codex' || tool === 'opencode' || tool === 'codebuddy' || tool === 'qoder' || tool === 'iflow' || tool === 'kiro') {
             setActiveTool(tool);
             setActiveTab(0); // Reset to Original when switching tools
         }
@@ -1244,7 +1335,7 @@ function App() {
 
         if (tool === 'skills') {
             setShowModelSettings(false);
-            ListSkills().then(list => setSkills(list || [])).catch(err => console.error(err));
+            ListSkills(activeTool).then(list => setSkills(list || [])).catch(err => console.error(err));
         }
 
         if (config) {
@@ -1263,6 +1354,11 @@ function App() {
     const handleSkillContext = (e: React.MouseEvent, skillName: string) => {
         e.preventDefault();
         e.stopPropagation();
+
+        if (skillName === "Claude Official Documentation Skill Package" || skillName === "超能力技能包") {
+             return;
+        }
+
         setSelectedSkill(skillName);
         setSkillContextMenu({
             x: e.clientX,
@@ -1308,7 +1404,7 @@ function App() {
 
         // Skip syncing for "Original" model and custom models
         if (providerPrefix !== "Original" && !isCurrentCustom) {
-            const tools = ['claude', 'gemini', 'codex', 'opencode', 'codebuddy', 'qoder', 'iflow'];
+            const tools = ['claude', 'gemini', 'codex', 'opencode', 'codebuddy', 'qoder', 'iflow', 'kiro'];
             let syncCount = 0;
 
             tools.forEach(tool => {
@@ -1424,7 +1520,7 @@ function App() {
             if (p.includes("doubao")) return "doubao-seed-code-preview-latest";
             if (p.includes("kimi")) return "kimi-for-coding";
             if (p.includes("minimax")) return "MiniMax-M2.1";
-        } else if (tool === "opencode" || tool === "codebuddy" || tool === "qoder" || tool === "iflow") {
+        } else if (tool === "opencode" || tool === "codebuddy" || tool === "qoder" || tool === "iflow" || tool === "kiro") {
             if (p.includes("deepseek")) return "deepseek-chat";
             if (p.includes("glm")) return "glm-4.7";
             if (p.includes("doubao")) return "doubao-seed-code-preview-latest";
@@ -1658,7 +1754,7 @@ ${instruction}`;
                     marginBottom: '20px',
                     display: 'inline-block',
                     fontWeight: 'bold'
-                }}>AICoder</h2>
+                }}>{t("envCheckTitle")}</h2>
                 <div style={{ width: '100%', height: '4px', backgroundColor: '#e2e8f0', borderRadius: '2px', overflow: 'hidden', marginBottom: '15px' }}>
                     <div style={{
                         width: '50%',
@@ -1738,7 +1834,7 @@ ${instruction}`;
 
     if (!config) return <div className="main-content" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>{t("loadingConfig")}</div>;
 
-    const toolCfg = (navTab === 'claude' || navTab === 'gemini' || navTab === 'codex' || navTab === 'opencode' || navTab === 'codebuddy' || navTab === 'qoder' || navTab === 'iflow')
+    const toolCfg = (navTab === 'claude' || navTab === 'gemini' || navTab === 'codex' || navTab === 'opencode' || navTab === 'codebuddy' || navTab === 'qoder' || navTab === 'iflow' || navTab === 'kiro')
         ? (config as any)[navTab]
         : null;
 
@@ -1884,6 +1980,13 @@ ${instruction}`;
                                 </span> <span>iFlow CLI</span>
                             </div>
                         )}
+                        {config?.show_kiro !== false && (
+                            <div className={`sidebar-item ${navTab === 'kiro' ? 'active' : ''}`} onClick={() => switchTool('kiro')}>
+                                <span className="sidebar-icon">
+                                    <img src={kiroIcon} style={{ width: '1.1em', height: '1.1em', verticalAlign: 'middle' }} alt="Kilo Code" />
+                                </span> <span>Kilo Code</span>
+                            </div>
+                        )}
                         {config?.show_qoder !== false && (
                             <div className={`sidebar-item ${navTab === 'qoder' ? 'active' : ''}`} onClick={() => switchTool('qoder')}>
                                 <span className="sidebar-icon">
@@ -1908,7 +2011,8 @@ ${instruction}`;
                                                     navTab === 'codebuddy' ? 'CodeBuddy AI' :
                                                         navTab === 'qoder' ? 'Qoder CLI' :
                                                             navTab === 'iflow' ? 'iFlow CLI' :
-                                                                navTab === 'projects' ? t("projectManagement") :
+                                                                navTab === 'kiro' ? 'Kilo Code CLI' :
+                                                                    navTab === 'projects' ? t("projectManagement") :
                                                                     navTab === 'skills' ? t("skills") :
                                                                         navTab === 'tutorial' ? t("tutorial") :
                                                                             navTab === 'api-store' ? t("apiStore") :
@@ -1973,7 +2077,7 @@ ${instruction}`;
                                     {t("refreshMessage")}
                                 </button>
                             )}
-                            {(navTab === 'claude' || navTab === 'gemini' || navTab === 'codex' || navTab === 'opencode' || navTab === 'codebuddy' || navTab === 'qoder' || navTab === 'iflow') && (
+                            {(navTab === 'claude' || navTab === 'gemini' || navTab === 'codex' || navTab === 'opencode' || navTab === 'codebuddy' || navTab === 'qoder' || navTab === 'iflow' || navTab === 'kiro') && (
                                 <>
                                     <button
                                         className="btn-link"
@@ -1989,7 +2093,7 @@ ${instruction}`;
                                     >
                                         {lang === 'zh-Hans' || lang === 'zh-Hant' ? '服务商配置' : 'Provider Config'}
                                     </button>
-                                    {navTab === 'claude' && (
+                                    {(navTab === 'claude' || navTab === 'gemini' || navTab === 'codex') && (
                                         <button
                                             className="btn-link"
                                             onClick={() => {
@@ -2017,7 +2121,9 @@ ${instruction}`;
                                         onClick={() => {
                                             setNewSkillName("");
                                             setNewSkillDesc("");
-                                            setNewSkillType("address");
+                                            // Default to zip for gemini/codex
+                                            const isGeminiOrCodex = activeTool?.toLowerCase() === 'gemini' || activeTool?.toLowerCase() === 'codex';
+                                            setNewSkillType(isGeminiOrCodex ? "zip" : "address");
                                             setNewSkillValue("");
                                             setShowAddSkillModal(true);
                                         }}
@@ -2253,11 +2359,11 @@ ${instruction}`;
                                     display: 'grid',
                                     gridTemplateColumns: 'repeat(3, 1fr)',
                                     gap: '15px',
-                                    overflowY: 'auto',
                                     paddingBottom: '20px'
                                 }}>
                                     {[
                                         { name: 'AIgoCode', url: 'https://aigocode.com/invite/TCFQQCCK', isRelay: true, hasSubscription: false },
+                                        { name: 'Noin.AI', url: 'https://ai.ourines.com', isRelay: true, hasSubscription: false },
                                         { name: 'AiCodeMirror', url: 'https://www.aicodemirror.com/register?invitecode=CZPPWZ', isRelay: true, hasSubscription: false },
                                         { name: 'GACCode', url: 'https://gaccode.com/signup?ref=FVMCU97H', isRelay: true, hasSubscription: false },
                                         { name: 'CodeRelay', url: 'https://api.code-relay.com/register?aff=0ZtO', isRelay: true, hasSubscription: false },
@@ -2266,7 +2372,7 @@ ${instruction}`;
                                         { name: '月之暗面', url: 'https://www.kimi.com/membership/pricing?from=upgrade_plan&track_id=1d2446f5-f45f-4ae5-961e-c0afe936a115', isRelay: false, hasSubscription: true },
                                         { name: '豆包', url: 'https://www.volcengine.com/activity/codingplan', isRelay: false, hasSubscription: true },
                                         { name: 'MiniMax', url: 'https://platform.minimaxi.com/user-center/payment/coding-plan', isRelay: false, hasSubscription: true },
-                                        { name: 'DeepSeek', url: 'https://platform.deepseek.com', isRelay: false, hasSubscription: false },
+                                        { name: 'DeepSeek', url: 'https://platform.deepseek.com', isRelay: false, hasSubscription: false, isBilling: true },
                                     ].map((provider, index) => (
                                         <div
                                             key={index}
@@ -2274,14 +2380,14 @@ ${instruction}`;
                                                 backgroundColor: '#fff',
                                                 border: '1px solid var(--border-color)',
                                                 borderRadius: '8px',
-                                                padding: '12px 16px',
+                                                padding: '9px 16px',
                                                 display: 'flex',
                                                 flexDirection: 'column',
                                                 justifyContent: 'center',
                                                 transition: 'all 0.2s ease',
                                                 cursor: 'pointer',
                                                 position: 'relative',
-                                                minHeight: '60px'
+                                                minHeight: '48px'
                                             }}
                                             onMouseEnter={(e) => {
                                                 e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
@@ -2325,6 +2431,22 @@ ${instruction}`;
                                                     {t("subscription")}
                                                 </div>
                                             )}
+                                            {(provider as any).isBilling && (
+                                                <div style={{
+                                                    position: 'absolute',
+                                                    top: '-6px',
+                                                    right: '-6px',
+                                                    backgroundColor: '#f59e0b',
+                                                    color: '#fff',
+                                                    padding: '3px 10px',
+                                                    borderRadius: '4px',
+                                                    fontSize: '0.65rem',
+                                                    fontWeight: 'bold',
+                                                    boxShadow: '0 2px 4px rgba(0,0,0,0.15)'
+                                                }}>
+                                                    {t("billing")}
+                                                </div>
+                                            )}
                                             <div style={{
                                                 fontSize: '1rem',
                                                 fontWeight: 600,
@@ -2357,6 +2479,7 @@ ${instruction}`;
                                                 key={idx}
                                                 onClick={() => setSelectedSkill(skill.name)}
                                                 onContextMenu={(e) => handleSkillContext(e, skill.name)}
+                                                title={skill.description}
                                                 style={{
                                                     border: selectedSkill === skill.name ? '2px solid var(--primary-color)' : '1px solid var(--border-color)',
                                                     borderRadius: '8px',
@@ -2366,23 +2489,31 @@ ${instruction}`;
                                                     flexDirection: 'column',
                                                     gap: '4px',
                                                     cursor: 'default',
-                                                    transition: 'all 0.2s'
+                                                    transition: 'all 0.2s',
+                                                    position: 'relative',
+                                                    marginTop: (skill.name === "Claude Official Documentation Skill Package" || skill.name === "超能力技能包") ? '6px' : '0px'
                                                 }}
                                             >
+                                                {(skill.name === "Claude Official Documentation Skill Package" || skill.name === "超能力技能包") && (
+                                                    <span style={{
+                                                        position: 'absolute',
+                                                        top: '-8px',
+                                                        right: '4px',
+                                                        backgroundColor: '#3b82f6',
+                                                        color: 'white',
+                                                        fontSize: '10px',
+                                                        padding: '1px 6px',
+                                                        borderRadius: '4px',
+                                                        fontWeight: 'bold',
+                                                        zIndex: 10,
+                                                        boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                                                        transform: 'scale(0.9)'
+                                                    }}>
+                                                        {t("systemDefault")}
+                                                    </span>
+                                                )}
                                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                                     <span style={{ fontWeight: 'bold', fontSize: '1.05rem' }}>{skill.name}</span>
-                                                </div>
-                                                <div
-                                                    style={{
-                                                        fontSize: '0.85rem',
-                                                        color: '#6b7280',
-                                                        whiteSpace: 'nowrap',
-                                                        overflow: 'hidden',
-                                                        textOverflow: 'ellipsis'
-                                                    }}
-                                                    title={skill.description}
-                                                >
-                                                    {skill.description}
                                                 </div>
                                                 <div style={{ fontSize: '0.75rem', color: '#9ca3af', display: 'flex', gap: '10px', marginTop: '2px' }}>
                                                     <span style={{ backgroundColor: '#f3f4f6', padding: '2px 6px', borderRadius: '4px' }}>
@@ -2431,13 +2562,15 @@ ${instruction}`;
                                             <div className="form-group">
                                                 <label>{t("skillType")}</label>
                                                 <div style={{ display: 'flex', gap: '20px', marginTop: '5px' }}>
-                                                    <label style={{ display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer' }}>
-                                                        <input
-                                                            type="radio"
-                                                            checked={newSkillType === 'address'}
-                                                            onChange={() => setNewSkillType('address')}
-                                                        /> {t("skillAddress")}
-                                                    </label>
+                                                    {(activeTool?.toLowerCase() !== 'gemini' && activeTool?.toLowerCase() !== 'codex') && (
+                                                        <label style={{ display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer' }}>
+                                                            <input
+                                                                type="radio"
+                                                                checked={newSkillType === 'address'}
+                                                                onChange={() => setNewSkillType('address')}
+                                                            /> {t("skillAddress")}
+                                                        </label>
+                                                    )}
                                                     <label style={{ display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer' }}>
                                                         <input
                                                             type="radio"
@@ -2471,7 +2604,7 @@ ${instruction}`;
                                             </div>
 
                                             <div className="form-group">
-                                                <label>{t("skillValue")}</label>
+                                                <label>{newSkillType === 'address' ? t("skillAddress") : t("skillPath")}</label>
                                                 {newSkillType === 'address' ? (
                                                     <input
                                                         type="text"
@@ -2485,12 +2618,14 @@ ${instruction}`;
                                                         <input
                                                             type="text"
                                                             className="form-input"
+                                                            style={{ flex: 1, minWidth: '0' }}
                                                             value={newSkillValue}
                                                             readOnly
                                                             placeholder={t("placeholderZip")}
                                                         />
                                                         <button
                                                             className="btn-secondary"
+                                                            style={{ flexShrink: 0 }}
                                                             onClick={async () => {
                                                                 const path = await SelectSkillFile();
                                                                 if (path) setNewSkillValue(path);
@@ -2510,9 +2645,9 @@ ${instruction}`;
                                                     return;
                                                 }
                                                 try {
-                                                    await AddSkill(newSkillName, newSkillDesc, newSkillType, newSkillValue);
+                                                    await AddSkill(newSkillName, newSkillDesc, newSkillType, newSkillValue, activeTool);
                                                     setShowAddSkillModal(false);
-                                                    const list = await ListSkills();
+                                                    const list = await ListSkills(activeTool);
                                                     setSkills(list || []);
                                                     showToastMessage(t("skillAdded"));
                                                 } catch (err) {
@@ -2525,7 +2660,7 @@ ${instruction}`;
                             )}
                         </div>
                     )}
-                    {(navTab === 'claude' || navTab === 'gemini' || navTab === 'codex' || navTab === 'opencode' || navTab === 'codebuddy' || navTab === 'qoder' || navTab === 'iflow') && (
+                    {(navTab === 'claude' || navTab === 'gemini' || navTab === 'codex' || navTab === 'opencode' || navTab === 'codebuddy' || navTab === 'qoder' || navTab === 'iflow' || navTab === 'kiro') && (
                         <ToolConfiguration
                             toolName={navTab}
                             toolCfg={toolCfg}
@@ -2619,7 +2754,7 @@ ${instruction}`;
 
                     {navTab === 'settings' && (
                         <div style={{ padding: '10px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '20px', marginBottom: '25px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '20px', marginBottom: '15px' }}>
                                 <div className="form-group" style={{ flex: '1', marginBottom: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
                                     <label className="form-label" style={{ marginBottom: 0, whiteSpace: 'nowrap', fontSize: '0.8rem' }}>{t("language")}</label>
                                     <select value={lang} onChange={handleLangChange} className="form-input" style={{ width: 'auto', fontSize: '0.8rem', padding: '2px 8px', height: '28px' }}>
@@ -2649,7 +2784,7 @@ ${instruction}`;
                                 )}
                             </div>
 
-                            <div className="form-group" style={{ marginTop: '15px', borderTop: '1px solid #f1f5f9', paddingTop: '15px' }}>
+                            <div className="form-group" style={{ marginTop: '10px', borderTop: '1px solid #f1f5f9', paddingTop: '10px' }}>
                                 <h4 style={{ fontSize: '0.8rem', color: '#60a5fa', marginBottom: '12px', marginTop: 0, textTransform: 'uppercase', letterSpacing: '0.025em' }}>{lang === 'zh-Hans' ? '工具显示' : lang === 'zh-Hant' ? '工具顯示' : 'Tool Visibility'}</h4>
                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
                                     <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
@@ -2742,10 +2877,25 @@ ${instruction}`;
                                         />
                                         <span style={{ fontSize: '0.8rem', color: '#4b5563' }}>iFlow CLI</span>
                                     </label>
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                                        <input
+                                            type="checkbox"
+                                            checked={config?.show_kiro !== false}
+                                            onChange={(e) => {
+                                                if (config) {
+                                                    const newConfig = new main.AppConfig({ ...config, show_kiro: e.target.checked });
+                                                    setConfig(newConfig);
+                                                    SaveConfig(newConfig);
+                                                }
+                                            }}
+                                            style={{ width: '16px', height: '16px' }}
+                                        />
+                                        <span style={{ fontSize: '0.8rem', color: '#4b5563' }}>Kilo Code CLI</span>
+                                    </label>
                                 </div>
                             </div>
 
-                            <div className="form-group" style={{ marginTop: '20px', borderTop: '1px solid #f1f5f9', paddingTop: '15px' }}>
+                            <div className="form-group" style={{ marginTop: '10px', borderTop: '1px solid #f1f5f9', paddingTop: '10px' }}>
                                 <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
                                     <input
                                         type="checkbox"
@@ -2768,7 +2918,7 @@ ${instruction}`;
                                 </p>
                             </div>
 
-                            <div className="form-group" style={{ marginTop: '15px', borderTop: '1px solid #f1f5f9', paddingTop: '15px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                            <div className="form-group" style={{ marginTop: '10px', borderTop: '1px solid #f1f5f9', paddingTop: '10px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
                                     <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
                                         <input
@@ -2917,7 +3067,7 @@ ${instruction}`;
                 </div>
 
                 {/* Global Action Bar (Footer) */}
-                {config && (navTab === 'claude' || navTab === 'gemini' || navTab === 'codex' || navTab === 'opencode' || navTab === 'codebuddy' || navTab === 'qoder' || navTab === 'iflow') && (
+                {config && (navTab === 'claude' || navTab === 'gemini' || navTab === 'codex' || navTab === 'opencode' || navTab === 'codebuddy' || navTab === 'qoder' || navTab === 'iflow' || navTab === 'kiro') && (
                     <div className="global-action-bar">
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', width: '100%', padding: '2px 0' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '20px', justifyContent: 'flex-start' }}>
@@ -2935,47 +3085,49 @@ ${instruction}`;
                                         })()}
                                     </span>
                                 </div>
-                                <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', fontSize: '0.8rem', color: '#6b7280' }}>
-                                    <input
-                                        type="checkbox"
-                                        checked={config?.projects?.find((p: any) => p.id === selectedProjectForLaunch)?.yolo_mode || false}
-                                        onChange={(e) => {
-                                            const proj = config?.projects?.find((p: any) => p.id === selectedProjectForLaunch);
-                                            if (proj) {
-                                                const isWindows = /window/i.test(navigator.userAgent);
-                                                const newProjects = config.projects.map((p: any) => {
-                                                    if (p.id === proj.id) {
-                                                        const updated = { ...p, yolo_mode: e.target.checked };
-                                                        // On non-Windows, yolo and admin are mutually exclusive
-                                                        if (!isWindows && e.target.checked) {
-                                                            updated.admin_mode = false;
+                                {activeTool !== 'kiro' && (
+                                    <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', fontSize: '0.8rem', color: '#6b7280' }}>
+                                        <input
+                                            type="checkbox"
+                                            checked={config?.projects?.find((p: any) => p.id === selectedProjectForLaunch)?.yolo_mode || false}
+                                            onChange={(e) => {
+                                                const proj = config?.projects?.find((p: any) => p.id === selectedProjectForLaunch);
+                                                if (proj) {
+                                                    const isWindows = /window/i.test(navigator.userAgent);
+                                                    const newProjects = config.projects.map((p: any) => {
+                                                        if (p.id === proj.id) {
+                                                            const updated = { ...p, yolo_mode: e.target.checked };
+                                                            // On non-Windows, yolo and admin are mutually exclusive
+                                                            if (!isWindows && e.target.checked) {
+                                                                updated.admin_mode = false;
+                                                            }
+                                                            return updated;
                                                         }
-                                                        return updated;
-                                                    }
-                                                    return p;
-                                                });
-                                                const newConfig = new main.AppConfig({ ...config, projects: newProjects });
-                                                setConfig(newConfig);
-                                                SaveConfig(newConfig);
-                                            }
-                                        }}
-                                        style={{ marginRight: '6px' }}
-                                    />
-                                    <span>{t("yoloModeLabel")}</span>
-                                    {config?.projects?.find((p: any) => p.id === selectedProjectForLaunch)?.yolo_mode && (
-                                        <span style={{
-                                            marginLeft: '2px',
-                                            backgroundColor: '#fee2e2',
-                                            color: '#ef4444',
-                                            padding: '0 4px',
-                                            borderRadius: '3px',
-                                            fontSize: '0.6rem',
-                                            fontWeight: 'bold'
-                                        }}>
-                                            {t("danger")}
-                                        </span>
-                                    )}
-                                </label>
+                                                        return p;
+                                                    });
+                                                    const newConfig = new main.AppConfig({ ...config, projects: newProjects });
+                                                    setConfig(newConfig);
+                                                    SaveConfig(newConfig);
+                                                }
+                                            }}
+                                            style={{ marginRight: '6px' }}
+                                        />
+                                        <span>{t("yoloModeLabel")}</span>
+                                        {config?.projects?.find((p: any) => p.id === selectedProjectForLaunch)?.yolo_mode && (
+                                            <span style={{
+                                                marginLeft: '2px',
+                                                backgroundColor: '#fee2e2',
+                                                color: '#ef4444',
+                                                padding: '0 4px',
+                                                borderRadius: '3px',
+                                                fontSize: '0.6rem',
+                                                fontWeight: 'bold'
+                                            }}>
+                                                {t("danger")}
+                                            </span>
+                                        )}
+                                    </label>
+                                )}
                                 {!isWindows && (
                                     <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', fontSize: '0.8rem', color: '#6b7280' }}>
                                         <input
@@ -4100,65 +4252,251 @@ ${instruction}`;
                 </div>
             )}
 
-            {/* Install Skills Modal */}
             {showInstallSkillModal && (
                 <div className="modal-overlay">
-                    <div className="modal-content" style={{ width: '500px', maxWidth: '90vw' }}>
-                        <div className="modal-header">
-                            <h3 style={{ margin: 0, color: '#10b981' }}>{t("selectSkillsToInstall")}</h3>
-                            <button onClick={() => setShowInstallSkillModal(false)} className="btn-close">&times;</button>
+                    <div className="modal-content" style={{ width: '500px', maxWidth: '95vw' }}>
+                        <div className="modal-header" style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'center' }}>
+                            <h3 style={{ margin: 0, color: '#10b981', whiteSpace: 'nowrap' }}>{t("selectSkillsToInstall")}</h3>
+                            
+                            <div style={{ 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                gap: '12px', 
+                                padding: '4px 12px', 
+                                backgroundColor: '#f3f4f6', 
+                                borderRadius: '20px',
+                                fontSize: '0.8rem',
+                                marginLeft: '5px'
+                            }}>
+                                <span style={{ color: '#6b7280', fontWeight: '500' }}>{t("installLocation")}</span>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', color: installLocation === 'user' ? '#10b981' : '#4b5563', fontWeight: installLocation === 'user' ? 'bold' : 'normal' }}>
+                                    <input 
+                                        type="radio" 
+                                        name="installLocation" 
+                                        checked={installLocation === 'user'} 
+                                        onChange={() => setInstallLocation('user')}
+                                        style={{ margin: 0 }}
+                                    /> {t("userLocation")}
+                                </label>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', color: installLocation === 'project' ? '#10b981' : '#4b5563', fontWeight: installLocation === 'project' ? 'bold' : 'normal' }}>
+                                    <input 
+                                        type="radio" 
+                                        name="installLocation" 
+                                        checked={installLocation === 'project'} 
+                                        onChange={() => {
+                                            setInstallLocation('project');
+                                            if (config && config.current_project) {
+                                                setInstallProject(config.current_project);
+                                            }
+                                        }}
+                                        style={{ margin: 0 }}
+                                    /> {t("projectLocation")}
+                                </label>
+                                {installLocation === 'project' && config?.projects && (
+                                    <select
+                                        value={installProject}
+                                        onChange={(e) => setInstallProject(e.target.value)}
+                                        style={{
+                                            padding: '2px 4px',
+                                            borderRadius: '4px',
+                                            border: '1px solid #d1d5db',
+                                            fontSize: '0.8rem',
+                                            maxWidth: '120px'
+                                        }}
+                                    >
+                                        {config.projects.map((proj: any) => (
+                                            <option key={proj.id} value={proj.id}>
+                                                {proj.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                )}
+                            </div>
+
+                            <button onClick={() => setShowInstallSkillModal(false)} className="btn-close" style={{ marginLeft: 'auto' }}>&times;</button>
                         </div>
                         <div className="modal-body" style={{ maxHeight: '300px', overflowY: 'auto', padding: '10px 0' }}>
-                            {skills.length === 0 ? (
-                                <div style={{ textAlign: 'center', color: '#6b7280', padding: '20px' }}>
-                                    {t("noSkills")}
-                                </div>
-                            ) : (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                    {skills.map((skill, idx) => (
-                                        <label key={idx} style={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            padding: '8px 12px',
-                                            border: '1px solid var(--border-color)',
-                                            borderRadius: '6px',
-                                            cursor: 'pointer',
-                                            backgroundColor: selectedSkillsToInstall.includes(skill.name) ? '#f0fdf4' : '#fff'
-                                        }}>
-                                            <input
-                                                type="checkbox"
-                                                checked={selectedSkillsToInstall.includes(skill.name)}
-                                                onChange={(e) => {
-                                                    if (e.target.checked) {
-                                                        setSelectedSkillsToInstall([...selectedSkillsToInstall, skill.name]);
-                                                    } else {
-                                                        setSelectedSkillsToInstall(selectedSkillsToInstall.filter(n => n !== skill.name));
-                                                    }
-                                                }}
-                                                style={{ marginRight: '10px' }}
-                                            />
-                                            <div style={{ flex: 1 }}>
-                                                <div style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>{skill.name}</div>
-                                                <div style={{ fontSize: '0.8rem', color: '#6b7280', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '350px' }} title={skill.description}>{skill.description}</div>
-                                            </div>
-                                        </label>
-                                    ))}
-                                </div>
-                            )}
+                            {(() => {
+                                const filtered = installLocation === 'project' 
+                                    ? skills.filter(s => s.type !== 'address') 
+                                    : skills;
+                                
+                                if (filtered.length === 0) {
+                                    return (
+                                        <div style={{ textAlign: 'center', color: '#6b7280', padding: '20px' }}>
+                                            {t("noSkills")}
+                                        </div>
+                                    );
+                                }
+
+                                return (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                        {filtered.map((skill, idx) => (
+                                            <label key={idx} style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                padding: '8px 12px',
+                                                border: '1px solid var(--border-color)',
+                                                borderRadius: '6px',
+                                                cursor: skill.installed ? 'not-allowed' : 'pointer',
+                                                backgroundColor: selectedSkillsToInstall.includes(skill.name) ? '#f0fdf4' : '#fff',
+                                                opacity: skill.installed ? 0.5 : 1,
+                                                position: 'relative'
+                                            }}>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedSkillsToInstall.includes(skill.name)}
+                                                    disabled={skill.installed}
+                                                    onChange={(e) => {
+                                                        if (e.target.checked) {
+                                                            setSelectedSkillsToInstall([...selectedSkillsToInstall, skill.name]);
+                                                        } else {
+                                                            setSelectedSkillsToInstall(selectedSkillsToInstall.filter(n => n !== skill.name));
+                                                        }
+                                                    }}
+                                                    style={{ marginRight: '10px' }}
+                                                />
+                                                <div style={{ flex: 1 }} title={skill.description}>
+                                                    <div style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>
+                                                        {skill.name}
+                                                        {skill.installed && (
+                                                            <span style={{
+                                                                marginLeft: '8px',
+                                                                fontSize: '0.75rem',
+                                                                color: '#10b981',
+                                                                backgroundColor: '#d1fae5',
+                                                                padding: '2px 6px',
+                                                                borderRadius: '4px',
+                                                                fontWeight: 'normal'
+                                                            }}>
+                                                                {t("installed")}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </label>
+                                        ))}
+                                    </div>
+                                );
+                            })()}
                         </div>
-                        <div className="modal-footer" style={{ marginTop: '15px' }}>
-                            <button className="btn-secondary" onClick={() => setShowInstallSkillModal(false)}>{t("cancel")}</button>
-                            <button
-                                className="btn-primary"
-                                style={{ backgroundColor: '#10b981', borderColor: '#10b981' }}
-                                disabled={selectedSkillsToInstall.length === 0}
-                                onClick={() => {
-                                    setShowInstallSkillModal(false);
-                                    showToastMessage(t("installNotImplemented") + " (" + selectedSkillsToInstall.join(", ") + ")");
-                                }}
-                            >
-                                {t("install")}
-                            </button>
+                        <div className="modal-footer" style={{ marginTop: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            {activeTool === 'claude' ? (
+                                <button 
+                                    className="btn-link" 
+                                    style={{ 
+                                        color: '#3b82f6', 
+                                        fontSize: '0.85rem', 
+                                        padding: '4px 15px', 
+                                        display: 'flex', 
+                                        alignItems: 'center', 
+                                        gap: '6px', 
+                                        opacity: isMarketplaceInstalling ? 0.6 : 1,
+                                        minWidth: '120px',
+                                        justifyContent: 'center'
+                                    }}
+                                    disabled={isMarketplaceInstalling}
+                                    onClick={async () => {
+                                        setIsMarketplaceInstalling(true);
+                                        try {
+                                            await InstallDefaultMarketplace();
+                                            showToastMessage("Marketplace installed successfully!");
+                                        } catch (err) {
+                                            showToastMessage("Error installing marketplace: " + err);
+                                        } finally {
+                                            setIsMarketplaceInstalling(false);
+                                        }
+                                    }}
+                                >
+                                    {isMarketplaceInstalling && (
+                                        <div style={{
+                                            width: '12px',
+                                            height: '12px',
+                                            border: '2px solid #3b82f6',
+                                            borderTopColor: 'transparent',
+                                            borderRadius: '50%',
+                                            animation: 'spin 1s linear infinite'
+                                        }}></div>
+                                    )}
+                                    {t("installDefaultMarketplace")}
+                                </button>
+                            ) : (
+                                <div></div>
+                            )}
+                            <div style={{ display: 'flex', gap: '10px' }}>
+                                <button className="btn-secondary" onClick={() => setShowInstallSkillModal(false)}>{t("cancel")}</button>
+                                <button
+                                    className="btn-primary"
+                                    style={{ 
+                                        backgroundColor: '#10b981', 
+                                        borderColor: '#10b981',
+                                        display: 'flex', 
+                                        alignItems: 'center', 
+                                        gap: '6px', 
+                                        opacity: (selectedSkillsToInstall.length === 0 || isBatchInstalling) ? 0.6 : 1 
+                                    }}
+                                    disabled={selectedSkillsToInstall.length === 0 || isBatchInstalling}
+                                    onClick={async () => {
+                                        setIsBatchInstalling(true);
+                                        let successCount = 0;
+                                        let failCount = 0;
+                                        
+                                        // Get project path if needed
+                                        let targetProjectPath = "";
+                                        if (installLocation === 'project') {
+                                            const p = config?.projects?.find((proj: any) => proj.id === installProject);
+                                            if (p) targetProjectPath = p.path;
+                                        }
+
+                                        for (const name of selectedSkillsToInstall) {
+                                            const skill = skills.find(s => s.name === name);
+                                            if (skill) {
+                                                // Check for incompatibility
+                                                const isGeminiOrCodex = activeTool?.toLowerCase() === 'gemini' || activeTool?.toLowerCase() === 'codex';
+                                                if (isGeminiOrCodex && skill.type === 'address') {
+                                                    console.warn(`Skill ${skill.name} is not supported for ${activeTool}`);
+                                                    failCount++;
+                                                    continue;
+                                                }
+
+                                                try {
+                                                    await InstallSkill(skill.name, skill.description, skill.type, skill.value, installLocation, targetProjectPath, activeTool);
+                                                    successCount++;
+                                                } catch (e) {
+                                                    console.error(e);
+                                                    failCount++;
+                                                }
+                                            }
+                                        }
+                                        
+                                        setIsBatchInstalling(false);
+                                        setShowInstallSkillModal(false);
+                                        
+                                        if (failCount > 0) {
+                                            const isGeminiOrCodex = activeTool?.toLowerCase() === 'gemini' || activeTool?.toLowerCase() === 'codex';
+                                            if (isGeminiOrCodex && selectedSkillsToInstall.some(name => skills.find(s => s.name === name)?.type === 'address')) {
+                                                showToastMessage(t("skillZipOnlyError"));
+                                            } else {
+                                                showToastMessage(`${successCount} installed, ${failCount} failed.`);
+                                            }
+                                        } else {
+                                            showToastMessage(`${successCount} skills installed successfully.`);
+                                        }
+                                    }}
+                                >
+                                    {isBatchInstalling && (
+                                        <div style={{
+                                            width: '12px',
+                                            height: '12px',
+                                            border: '2px solid white',
+                                            borderTopColor: 'transparent',
+                                            borderRadius: '50%',
+                                            animation: 'spin 1s linear infinite'
+                                        }}></div>
+                                    )}
+                                    {t("install")}
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

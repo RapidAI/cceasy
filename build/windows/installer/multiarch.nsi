@@ -24,10 +24,10 @@ Unicode true
 
 # Define Wails binaries (passed from command line or hardcoded here for manual build)
 !ifndef ARG_WAILS_AMD64_BINARY
-    !define ARG_WAILS_AMD64_BINARY "..\..\bin\AICoder-x64.exe"
+    !define ARG_WAILS_AMD64_BINARY "..\..\..\dist\AICoder_amd64.exe"
 !endif
 !ifndef ARG_WAILS_ARM64_BINARY
-    !define ARG_WAILS_ARM64_BINARY "..\..\bin\AICoder-arm64.exe"
+    !define ARG_WAILS_ARM64_BINARY "..\..\..\dist\AICoder_arm64.exe"
 !endif
 
 VIProductVersion "${INFO_PRODUCTVERSION}"
@@ -47,11 +47,10 @@ ManifestDPIAware true
 !define MUI_ICON "..\icon.ico"
 !define MUI_UNICON "..\icon.ico"
 !define MUI_FINISHPAGE_NOAUTOCLOSE
-!define MUI_ABORTWARNING
-
-# Launch application after installation (checked by default)
 !define MUI_FINISHPAGE_RUN "$INSTDIR\${PRODUCT_EXECUTABLE}"
-!define MUI_FINISHPAGE_RUN_TEXT "Launch ${INFO_PRODUCTNAME}"
+!define MUI_FINISHPAGE_RUN_PARAMETERS "init"
+!define MUI_FINISHPAGE_RUN_TEXT "Launch ${INFO_PRODUCTNAME} and setup environment"
+!define MUI_ABORTWARNING
 
 !insertmacro MUI_PAGE_WELCOME
 !insertmacro MUI_PAGE_DIRECTORY
@@ -62,7 +61,7 @@ ManifestDPIAware true
 !insertmacro MUI_LANGUAGE "SimpChinese"
 
 Name "${INFO_PRODUCTNAME}"
-OutFile "..\..\bin\${INFO_PROJECTNAME}-Setup.exe"
+OutFile "..\..\..\dist\${INFO_PROJECTNAME}-Setup.exe"
 InstallDir "$PROGRAMFILES64\${INFO_COMPANYNAME}\${INFO_PRODUCTNAME}"
 ShowInstDetails show
 

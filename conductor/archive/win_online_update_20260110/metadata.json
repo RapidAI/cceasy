@@ -1,0 +1,8 @@
+{
+  "track_id": "win_online_update_20260110",
+  "type": "feature",
+  "status": "new",
+  "created_at": "2026-01-10T11:53:00Z",
+  "updated_at": "2026-01-10T11:53:00Z",
+  "description": "实现一个自动更新功能。在Windows平台上，关于中 将检查更新 改为 “在线更新”。从github上的更新信息页面获取最新版本号，如果发现服务器上更新，下载安装包 AICoder-Setup.exe ，启动安装 包，然后退出本程序。让用户继续安装新版本。"
+}

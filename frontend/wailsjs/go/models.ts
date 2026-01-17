@@ -96,6 +96,7 @@ export namespace main {
 	    codebuddy: ToolConfig;
 	    qoder: ToolConfig;
 	    iflow: ToolConfig;
+	    kiro: ToolConfig;
 	    projects: ProjectConfig[];
 	    current_project: string;
 	    active_tool: string;
@@ -106,6 +107,7 @@ export namespace main {
 	    show_codebuddy: boolean;
 	    show_qoder: boolean;
 	    show_iflow: boolean;
+	    show_kiro: boolean;
 	    language: string;
 	    check_update_on_startup: boolean;
 	    pause_env_check: boolean;
@@ -130,6 +132,7 @@ export namespace main {
 	        this.codebuddy = this.convertValues(source["codebuddy"], ToolConfig);
 	        this.qoder = this.convertValues(source["qoder"], ToolConfig);
 	        this.iflow = this.convertValues(source["iflow"], ToolConfig);
+	        this.kiro = this.convertValues(source["kiro"], ToolConfig);
 	        this.projects = this.convertValues(source["projects"], ProjectConfig);
 	        this.current_project = source["current_project"];
 	        this.active_tool = source["active_tool"];
@@ -140,6 +143,7 @@ export namespace main {
 	        this.show_codebuddy = source["show_codebuddy"];
 	        this.show_qoder = source["show_qoder"];
 	        this.show_iflow = source["show_iflow"];
+	        this.show_kiro = source["show_kiro"];
 	        this.language = source["language"];
 	        this.check_update_on_startup = source["check_update_on_startup"];
 	        this.pause_env_check = source["pause_env_check"];
@@ -193,6 +197,7 @@ export namespace main {
 	    description: string;
 	    type: string;
 	    value: string;
+	    installed: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new Skill(source);
@@ -204,6 +209,7 @@ export namespace main {
 	        this.description = source["description"];
 	        this.type = source["type"];
 	        this.value = source["value"];
+	        this.installed = source["installed"];
 	    }
 	}
 	export class SystemInfo {

@@ -1,5 +1,4 @@
 package main
-
 import (
 	"archive/zip"
 	"bytes"
@@ -16,11 +15,9 @@ import (
 	"strings"
 	"sync"
 	"time"
-
 	"github.com/fsnotify/fsnotify"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
-
 // App struct
 type App struct {
 	ctx               context.Context
@@ -29,12 +26,11 @@ type App struct {
 	testHomeDir       string // For testing purposes
 	downloadCancelers map[string]context.CancelFunc
 	downloadMutex     sync.Mutex
+	IsInitMode        bool
 }
-
 var OnConfigChanged func(AppConfig)
 var UpdateTrayMenu func(string)
 var UpdateTrayVisibility func(bool)
-
 type ModelConfig struct {
 	ModelName string `json:"model_name"`
 	ModelId   string `json:"model_id"`
@@ -43,7 +39,6 @@ type ModelConfig struct {
 	WireApi   string `json:"wire_api"`
 	IsCustom  bool   `json:"is_custom"`
 }
-
 type ProjectConfig struct {
 	Id            string `json:"id"`
 	Name          string `json:"name"`
@@ -59,18 +54,15 @@ type ProjectConfig struct {
 	ProxyUsername string `json:"proxy_username"`
 	ProxyPassword string `json:"proxy_password"`
 }
-
 type PythonEnvironment struct {
-	Name string `json:"name"` // Environment name (e.g., "base", "myenv")
+	Name string `json:"name"` // Environment name (e.g.", "base", "myenv")
 	Path string `json:"path"` // Full path to the environment
 	Type string `json:"type"` // "conda", "venv", or "system"
 }
-
 type ToolConfig struct {
 	CurrentModel string        `json:"current_model"`
 	Models       []ModelConfig `json:"models"`
 }
-
 type CodeBuddyModel struct {
 	Id               string `json:"id"`
 	Name             string `json:"name"`
@@ -82,58 +74,56 @@ type CodeBuddyModel struct {
 	SupportsToolCall bool   `json:"supportsToolCall"`
 	SupportsImages   bool   `json:"supportsImages"`
 }
-
 type CodeBuddyFileConfig struct {
 	Models          []CodeBuddyModel `json:"Models"`
 	AvailableModels []string         `json:"availableModels"`
 }
-
 type AppConfig struct {
-	Claude           ToolConfig      `json:"claude"`
-	Gemini           ToolConfig      `json:"gemini"`
-	Codex            ToolConfig      `json:"codex"`
-	Opencode         ToolConfig      `json:"opencode"`
-	CodeBuddy        ToolConfig      `json:"codebuddy"`
-	Qoder            ToolConfig      `json:"qoder"`
-	IFlow            ToolConfig      `json:"iflow"`
-	Projects         []ProjectConfig `json:"projects"`
-	CurrentProject   string          `json:"current_project"` // ID of the current project
-	ActiveTool       string          `json:"active_tool"`     // "claude", "gemini", or "codex"
-	HideStartupPopup bool            `json:"hide_startup_popup"`
-	ShowGemini       bool            `json:"show_gemini"`
-	ShowCodex        bool            `json:"show_codex"`
-	ShowOpenCode     bool            `json:"show_opencode"`
-	ShowCodeBuddy    bool            `json:"show_codebuddy"`
-	ShowQoder        bool            `json:"show_qoder"`
-	ShowIFlow        bool            `json:"show_iflow"`
-	Language         string          `json:"language"`
-	CheckUpdateOnStartup bool        `json:"check_update_on_startup"`
+	Claude               ToolConfig      `json:"claude"`
+	Gemini               ToolConfig      `json:"gemini"`
+	Codex                ToolConfig      `json:"codex"`
+	Opencode             ToolConfig      `json:"opencode"`
+	CodeBuddy            ToolConfig      `json:"codebuddy"`
+	Qoder                ToolConfig      `json:"qoder"`
+	IFlow                ToolConfig      `json:"iflow"`
+	Kiro                 ToolConfig      `json:"kiro"`
+	Projects             []ProjectConfig `json:"projects"`
+	CurrentProject       string          `json:"current_project"` // ID of the current project
+	ActiveTool           string          `json:"active_tool"`     // "claude", "gemini", or "codex"
+	HideStartupPopup     bool            `json:"hide_startup_popup"`
+	ShowGemini           bool            `json:"show_gemini"`
+	ShowCodex            bool            `json:"show_codex"`
+	ShowOpenCode         bool            `json:"show_opencode"`
+	ShowCodeBuddy        bool            `json:"show_codebuddy"`
+	ShowQoder            bool            `json:"show_qoder"`
+	ShowIFlow            bool            `json:"show_iflow"`
+	ShowKiro             bool            `json:"show_kiro"`
+	Language             string          `json:"language"`
+	CheckUpdateOnStartup bool            `json:"check_update_on_startup"`
 	// Environment check settings
-	PauseEnvCheck      bool   `json:"pause_env_check"`       // Whether to skip environment checks
-	EnvCheckDone       bool   `json:"env_check_done"`        // Whether the first environment check has been completed
-	EnvCheckInterval   int    `json:"env_check_interval"`    // Days between environment check reminders (2-30)
-	LastEnvCheckTime   string `json:"last_env_check_time"`   // Last environment check time (RFC3339 format)
+	PauseEnvCheck    bool   `json:"pause_env_check"`     // Whether to skip environment checks
+	EnvCheckDone     bool   `json:"env_check_done"`      // Whether the first environment check has been completed
+	EnvCheckInterval int    `json:"env_check_interval"`  // Days between environment check reminders (2-30)
+	LastEnvCheckTime string `json:"last_env_check_time"` // Last environment check time (RFC3339 format)
 	// Proxy settings (global default)
 	DefaultProxyHost     string `json:"default_proxy_host"`
 	DefaultProxyPort     string `json:"default_proxy_port"`
 	DefaultProxyUsername string `json:"default_proxy_username"`
 	DefaultProxyPassword string `json:"default_proxy_password"`
 }
-
 type Skill struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
-	Type        string `json:"type"` // "address" or "zip"
-	Value       string `json:"value"` // Address string or zip filename
+	Type        string `json:"type"`     // "address" or "zip"
+	Value       string `json:"value"`    // Address string or zip filename
+	Installed   bool   `json:"installed"` // Whether this skill is already installed
 }
-
 // NewApp creates a new App application struct
 func NewApp() *App {
 	return &App{
 		downloadCancelers: make(map[string]context.CancelFunc),
 	}
 }
-
 // startup is called when the app starts. The context is saved
 // so we can call the runtime methods
 func (a *App) startup(ctx context.Context) {
@@ -141,16 +131,20 @@ func (a *App) startup(ctx context.Context) {
 	// Platform specific initialization
 	a.platformStartup()
 	a.startConfigWatcher()
-
 	// Initialize CodeBuddy config in project directory
 	if config, err := a.LoadConfig(); err == nil {
-		// a.syncToCodeBuddySettings(config, "")
+		// a.syncToCodeBuddySettings(config, ")
 		if config.Language != "" {
 			a.SetLanguage(config.Language)
 		}
 	}
 }
-
+// domReady is called after the frontend Dom has been loaded
+func (a *App) domReady(ctx context.Context) {
+	// Trigger environment check on startup
+	// IsInitMode and PauseEnvCheck logic is handled inside CheckEnvironment
+	a.CheckEnvironment(false)
+}
 func (a *App) startConfigWatcher() {
 	var err error
 	a.watcher, err = fsnotify.NewWatcher()
@@ -158,7 +152,6 @@ func (a *App) startConfigWatcher() {
 		a.log("Failed to create file watcher: " + err.Error())
 		return
 	}
-
 	go func() {
 		for {
 			select {
@@ -169,16 +162,15 @@ func (a *App) startConfigWatcher() {
 				if event.Op&fsnotify.Write == fsnotify.Write {
 					a.log(a.tr("Config file modified: ") + event.Name)
 					// Reload config and emit event
-					// We use a debounce-like approach or just reload. 
+					// We use a debounce-like approach or just reload.
 					// Since Wails events are async, it should be fine.
 					// However, writing the config (SaveConfig) also triggers a write event.
-					// We should probably check if the change was internal or external, 
-					// but that's hard. For now, simply reloading might be okay, 
+					// We should probably check if the change was internal or external,
+					// but that's hard. For now, simply reloading might be okay,
 					// but it could cause a loop if we are not careful.
 					// Actually, if we just emit 'config-updated', the frontend updates.
-					// But if the frontend updates, it might save... 
+					// But if the frontend updates, it might save...
 					// Let's assume for now this is for external edits.
-					
 					config, err := a.LoadConfig()
 					if err == nil {
 						a.emitEvent("config-updated", config)
@@ -192,7 +184,6 @@ func (a *App) startConfigWatcher() {
 			}
 		}
 	}()
-
 	configPath, err := a.getConfigPath()
 	if err == nil {
 		if err := a.watcher.Add(configPath); err != nil {
@@ -202,31 +193,26 @@ func (a *App) startConfigWatcher() {
 		}
 	}
 }
-
 func (a *App) SetLanguage(lang string) {
 	a.CurrentLanguage = lang
 	if UpdateTrayMenu != nil {
 		UpdateTrayMenu(lang)
 	}
 }
-
 // Greet returns a greeting for the given name
 func (a *App) Greet(name string) string {
 	return fmt.Sprintf("Hello %s, It's show time!", name)
 }
-
 func (a *App) ResizeWindow(width, height int) {
 	runtime.WindowSetSize(a.ctx, width, height)
 	runtime.WindowCenter(a.ctx)
 }
-
 func (a *App) WindowHide() {
 	runtime.WindowHide(a.ctx)
 	if UpdateTrayVisibility != nil {
 		UpdateTrayVisibility(false)
 	}
 }
-
 func (a *App) SelectProjectDir() string {
 	selection, err := runtime.OpenDirectoryDialog(a.ctx, runtime.OpenDialogOptions{
 		Title: "Select Project Directory",
@@ -236,7 +222,6 @@ func (a *App) SelectProjectDir() string {
 	}
 	return selection
 }
-
 func (a *App) GetUserHomeDir() string {
 	if a.testHomeDir != "" {
 		return a.testHomeDir
@@ -244,32 +229,26 @@ func (a *App) GetUserHomeDir() string {
 	home, _ := os.UserHomeDir()
 	return home
 }
-
 func (a *App) GetLocalCacheDir() string {
 	home := a.GetUserHomeDir()
 	return filepath.Join(home, ".cceasy", "npm_cache")
 }
-
 func (a *App) GetCurrentProjectPath() string {
 	config, err := a.LoadConfig()
 	if err != nil {
 		return ""
 	}
-	
 	for _, p := range config.Projects {
 		if p.Id == config.CurrentProject {
 			return p.Path
 		}
 	}
-	
 	if len(config.Projects) > 0 {
 		return config.Projects[0].Path
 	}
-	
 	home, _ := os.UserHomeDir()
 	return home // Fallback
 }
-
 func (a *App) getClaudeConfigPaths() (string, string, string) {
 	home, _ := os.UserHomeDir()
 	dir := filepath.Join(home, ".claude")
@@ -277,7 +256,6 @@ func (a *App) getClaudeConfigPaths() (string, string, string) {
 	legacy := filepath.Join(home, ".claude.json")
 	return dir, settings, legacy
 }
-
 func (a *App) getGeminiConfigPaths() (string, string, string) {
 	home, _ := os.UserHomeDir()
 	dir := filepath.Join(home, ".gemini")
@@ -285,7 +263,6 @@ func (a *App) getGeminiConfigPaths() (string, string, string) {
 	legacy := filepath.Join(home, ".geminirc")
 	return dir, config, legacy
 }
-
 func (a *App) getCodexConfigPaths() (string, string) {
 	home, _ := os.UserHomeDir()
 	dir := filepath.Join(home, ".codex")
@@ -293,56 +270,58 @@ func (a *App) getCodexConfigPaths() (string, string) {
 	// config.toml is also used
 	return dir, auth
 }
-
 func (a *App) getOpencodeConfigPaths() (string, string) {
 	home, _ := os.UserHomeDir()
 	dir := filepath.Join(home, ".config", "opencode")
 	config := filepath.Join(dir, "opencode.json")
 	return dir, config
 }
-
 func (a *App) getIFlowConfigPaths() (string, string) {
 	home, _ := os.UserHomeDir()
 	dir := filepath.Join(home, ".iflow")
 	config := filepath.Join(dir, "settings.json")
 	return dir, config
 }
-
 func (a *App) clearClaudeConfig() {
 	dir, _, legacy := a.getClaudeConfigPaths()
 	home, _ := os.UserHomeDir()
-
 	os.RemoveAll(dir)
 	os.Remove(legacy)
 	os.Remove(filepath.Join(home, ".claude.json.backup"))
 	a.log("Cleared Claude configuration files")
 }
-
 func (a *App) clearGeminiConfig() {
 	dir, _, legacy := a.getGeminiConfigPaths()
 	os.RemoveAll(dir)
 	os.Remove(legacy)
 	a.log("Cleared Gemini configuration files")
 }
-
 func (a *App) clearCodexConfig() {
 	dir, _ := a.getCodexConfigPaths()
 	os.RemoveAll(dir)
 	a.log("Cleared Codex configuration directory")
 }
-
 func (a *App) clearOpencodeConfig() {
 	dir, _ := a.getOpencodeConfigPaths()
 	os.RemoveAll(dir)
 	a.log("Cleared Opencode configuration directory")
 }
-
 func (a *App) clearIFlowConfig() {
 	dir, _ := a.getIFlowConfigPaths()
 	os.RemoveAll(dir)
 	a.log("Cleared iFlow configuration directory")
 }
-
+func (a *App) getKiloConfigPaths() (string, string) {
+	home, _ := os.UserHomeDir()
+	dir := filepath.Join(home, ".kilocode", "cli")
+	config := filepath.Join(dir, "config.json")
+	return dir, config
+}
+func (a *App) clearKiloConfig() {
+	_, configPath := a.getKiloConfigPaths()
+	os.Remove(configPath)
+	a.log("Cleared Kilo Code configuration file")
+}
 func (a *App) clearEnvVars() {
 	vars := []string{
 		"ANTHROPIC_API_KEY", "ANTHROPIC_BASE_URL", "ANTHROPIC_AUTH_TOKEN",
@@ -352,12 +331,12 @@ func (a *App) clearEnvVars() {
 		"CODEBUDDY_API_KEY", "CODEBUDDY_BASE_URL", "CODEBUDDY_CODE_MAX_OUTPUT_TOKENS",
 		"QODER_PERSONAL_ACCESS_TOKEN", "QODER_BASE_URL",
 		"IFLOW_API_KEY", "IFLOW_BASE_URL",
+		"KIRO_API_KEY", "KIRO_BASE_URL", "KIRO_MODEL",
 	}
 	for _, v := range vars {
 		os.Unsetenv(v)
 	}
 }
-
 func (a *App) syncToClaudeSettings(config AppConfig) error {
 	var selectedModel *ModelConfig
 	for _, m := range config.Claude.Models {
@@ -366,31 +345,24 @@ func (a *App) syncToClaudeSettings(config AppConfig) error {
 			break
 		}
 	}
-
 	if selectedModel == nil {
 		return fmt.Errorf("selected model not found")
 	}
-
 	dir, settingsPath, legacyPath := a.getClaudeConfigPaths()
-
 	if strings.ToLower(selectedModel.ModelName) == "original" {
 		a.clearClaudeConfig()
 		return nil
 	}
-
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return err
 	}
-
 	settings := make(map[string]interface{})
 	env := make(map[string]string)
-
 	// Exclusively use AUTH_TOKEN for custom providers
 	env["ANTHROPIC_AUTH_TOKEN"] = selectedModel.ApiKey
 	env["CLAUDE_CODE_USE_COLORS"] = "true"
 	env["CLAUDE_CODE_MAX_OUTPUT_TOKENS"] = "64000"
 	env["MAX_THINKING_TOKENS"] = "31999"
-
 	switch strings.ToLower(selectedModel.ModelName) {
 	case "kimi":
 		env["ANTHROPIC_BASE_URL"] = "https://api.kimi.com/coding"
@@ -444,14 +416,11 @@ func (a *App) syncToClaudeSettings(config AppConfig) error {
 		env["ANTHROPIC_BASE_URL"] = selectedModel.ModelUrl
 		env["ANTHROPIC_MODEL"] = selectedModel.ModelId
 	}
-
 	settings["env"] = env
-
 	data, err := json.MarshalIndent(settings, "", "  ")
 	if err != nil {
 		return err
 	}
-
 	// Check if settings file needs update
 	if existingData, err := os.ReadFile(settingsPath); err == nil {
 		if bytes.Equal(existingData, data) {
@@ -460,42 +429,34 @@ func (a *App) syncToClaudeSettings(config AppConfig) error {
 			goto updateLegacyJson
 		}
 	}
-
 	if err := os.WriteFile(settingsPath, data, 0644); err != nil {
 		return err
 	}
-
 	// 2. Sync to ~/.claude.json for customApiKeyResponses
 updateLegacyJson:
 	var claudeJson map[string]interface{}
-
 	if jsonData, err := os.ReadFile(legacyPath); err == nil {
 		json.Unmarshal(jsonData, &claudeJson)
 	}
 	if claudeJson == nil {
 		claudeJson = make(map[string]interface{})
 	}
-
 	claudeJson["customApiKeyResponses"] = map[string]interface{}{
 		"approved": []string{selectedModel.ApiKey},
 		"rejected": []string{},
 	}
-
 	data2, err := json.MarshalIndent(claudeJson, "", "  ")
 	if err != nil {
 		return err
 	}
-
 	// Check if legacy file needs update
 	if existingData, err := os.ReadFile(legacyPath); err == nil {
 		if bytes.Equal(existingData, data2) {
 			return nil
 		}
 	}
-
 	return os.WriteFile(legacyPath, data2, 0644)
 }
-
 func (a *App) syncToCodexSettings(config AppConfig) error {
 	var selectedModel *ModelConfig
 	for _, m := range config.Codex.Models {
@@ -504,22 +465,17 @@ func (a *App) syncToCodexSettings(config AppConfig) error {
 			break
 		}
 	}
-
 	if selectedModel == nil {
 		return fmt.Errorf("selected codex model not found")
 	}
-
 	dir, authPath := a.getCodexConfigPaths()
-
 	if strings.ToLower(selectedModel.ModelName) == "original" {
 		a.clearCodexConfig()
 		return nil
 	}
-
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return err
 	}
-
 	// Create auth.json
 	authData := map[string]string{
 		"OPENAI_API_KEY": selectedModel.ApiKey,
@@ -528,7 +484,6 @@ func (a *App) syncToCodexSettings(config AppConfig) error {
 	if err != nil {
 		return err
 	}
-
 	// Check if auth.json needs update
 	if existingData, err := os.ReadFile(authPath); err == nil {
 		if bytes.Equal(existingData, authJson) {
@@ -536,16 +491,13 @@ func (a *App) syncToCodexSettings(config AppConfig) error {
 			goto writeConfigToml
 		}
 	}
-
 	if err := os.WriteFile(authPath, authJson, 0644); err != nil {
 		return err
 	}
-
 	// Create config.toml
 writeConfigToml:
 	configPath := filepath.Join(dir, "config.toml")
 	baseUrl := selectedModel.ModelUrl
-	
 	var configToml string
 	if strings.ToLower(selectedModel.ModelName) == "aigocode" {
 		if baseUrl == "" {
@@ -560,7 +512,6 @@ model = "%s"
 model_reasoning_effort = "high"
 disable_response_storage = true
 preferred_auth_method = "apikey"
-
 [model_providers.aigocode]
 name = "aigocode"
 base_url = "%s"
@@ -580,7 +531,6 @@ model = "%s"
 model_reasoning_effort = "xhigh"
 disable_response_storage = true
 preferred_auth_method = "apikey"
-
 [model_providers.deepseek]
 name = "deepseek"
 base_url = "%s"
@@ -602,7 +552,6 @@ model = "%s"
 model_reasoning_effort = "xhigh"
 disable_response_storage = true
 preferred_auth_method = "apikey"
-
 [model_providers.glm]
 name = "glm"
 base_url = "%s"
@@ -624,7 +573,6 @@ model = "%s"
 model_reasoning_effort = "xhigh"
 disable_response_storage = true
 preferred_auth_method = "apikey"
-
 [model_providers.doubao]
 name = "doubao"
 base_url = "%s"
@@ -646,7 +594,6 @@ model = "%s"
 model_reasoning_effort = "xhigh"
 disable_response_storage = true
 preferred_auth_method = "apikey"
-
 [model_providers.kimi]
 name = "kimi"
 base_url = "%s"
@@ -668,7 +615,6 @@ model = "%s"
 model_reasoning_effort = "xhigh"
 disable_response_storage = true
 preferred_auth_method = "apikey"
-
 [model_providers.minimax]
 name = "minimax"
 base_url = "%s"
@@ -690,7 +636,6 @@ model = "%s"
 model_reasoning_effort = "xhigh"
 disable_response_storage = true
 preferred_auth_method = "apikey"
-
 [model_providers.coderelay]
 name = "coderelay"
 base_url = "%s"
@@ -709,63 +654,53 @@ model = "%s"
 model_reasoning_effort = "xhigh"
 disable_response_storage = true
 preferred_auth_method = "apikey"
-
 [model_providers.aicodemirror]
 name = "aicodemirror"
 base_url = "%s"
 wire_api = "responses"
 `, modelId, baseUrl)
 	}
-
-	if selectedModel.IsCustom || (strings.ToLower(selectedModel.ModelName) != "aigocode" && 
-		strings.ToLower(selectedModel.ModelName) != "deepseek" && 
-		strings.ToLower(selectedModel.ModelName) != "glm" && 
-		strings.ToLower(selectedModel.ModelName) != "doubao" && 
-		strings.ToLower(selectedModel.ModelName) != "kimi" && 
-		strings.ToLower(selectedModel.ModelName) != "minimax" && 
-		strings.ToLower(selectedModel.ModelName) != "coderelay" && 
+	if selectedModel.IsCustom || (strings.ToLower(selectedModel.ModelName) != "aigocode" &&
+		strings.ToLower(selectedModel.ModelName) != "deepseek" &&
+		strings.ToLower(selectedModel.ModelName) != "glm" &&
+		strings.ToLower(selectedModel.ModelName) != "doubao" &&
+		strings.ToLower(selectedModel.ModelName) != "kimi" &&
+		strings.ToLower(selectedModel.ModelName) != "minimax" &&
+		strings.ToLower(selectedModel.ModelName) != "coderelay" &&
 		strings.ToLower(selectedModel.ModelName) != "aicodemirror") {
 		// --- CUSTOM OR OTHER PROVIDERS ---
 		wireApi := selectedModel.WireApi
 		if wireApi == "" {
 			wireApi = "chat"
 		}
-		
 		providerName := strings.ToLower(selectedModel.ModelName)
 		if providerName == "" || providerName == "custom" {
 			providerName = "custom"
 		}
-
 		modelId := selectedModel.ModelId
 		if modelId == "" {
 			modelId = "gpt-5.2-codex"
 		}
-
 		configToml = fmt.Sprintf(`model_provider = "%s"
 model = "%s"
 model_reasoning_effort = "high"
 disable_response_storage = true
 preferred_auth_method = "apikey"
-
 [model_providers.%s]
 name = "%s"
 base_url = "%s"
 wire_api = "%s"
 `, providerName, modelId, providerName, providerName, baseUrl, wireApi)
 	}
-
 	configBytes := []byte(configToml)
-
 	// Check if config.toml needs update
 	if existingData, err := os.ReadFile(configPath); err == nil {
 		if bytes.Equal(existingData, configBytes) {
 			return nil
 		}
 	}
-
 	return os.WriteFile(configPath, configBytes, 0644)
 }
-
 func (a *App) syncToOpencodeSettings(config AppConfig) error {
 	var selectedModel *ModelConfig
 	for _, m := range config.Opencode.Models {
@@ -774,60 +709,65 @@ func (a *App) syncToOpencodeSettings(config AppConfig) error {
 			break
 		}
 	}
-
 	if selectedModel == nil {
 		return fmt.Errorf("selected opencode model not found")
 	}
-
 	dir, configPath := a.getOpencodeConfigPaths()
-
 	if strings.ToLower(selectedModel.ModelName) == "original" {
 		a.clearOpencodeConfig()
 		return nil
 	}
-
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return err
 	}
-
 	baseUrl := selectedModel.ModelUrl
 	modelId := selectedModel.ModelId
 	providerName := selectedModel.ModelName
-
 	// Fallback logic for Opencode (align with Codex providers)
 	if modelId == "" {
 		switch strings.ToLower(providerName) {
 		case "deepseek":
 			modelId = "deepseek-chat"
-			if baseUrl == "" { baseUrl = "https://api.deepseek.com/v1" }
+			if baseUrl == "" {
+				baseUrl = "https://api.deepseek.com/v1"
+			}
 		case "glm":
 			modelId = "glm-4.7"
-			if baseUrl == "" { baseUrl = "https://open.bigmodel.cn/api/paas/v4" }
+			if baseUrl == "" {
+				baseUrl = "https://open.bigmodel.cn/api/paas/v4"
+			}
 		case "doubao":
 			modelId = "doubao-seed-code-preview-latest"
-			if baseUrl == "" { baseUrl = "https://ark.cn-beijing.volces.com/api/coding/v3" }
+			if baseUrl == "" {
+				baseUrl = "https://ark.cn-beijing.volces.com/api/coding/v3"
+			}
 		case "kimi":
 			modelId = "kimi-for-coding"
-			if baseUrl == "" { baseUrl = "https://api.kimi.com/coding/v1" }
+			if baseUrl == "" {
+				baseUrl = "https://api.kimi.com/coding/v1"
+			}
 		case "minimax":
 			modelId = "MiniMax-M2.1"
-			if baseUrl == "" { baseUrl = "https://api.minimaxi.com/v1" }
+			if baseUrl == "" {
+				baseUrl = "https://api.minimaxi.com/v1"
+			}
 		default:
 			modelId = "opencode-1.0"
-			if baseUrl == "" { baseUrl = "https://api.aicodemirror.com/api/opencode/v1" }
+			if baseUrl == "" {
+				baseUrl = "https://api.aicodemirror.com/api/opencode/v1"
+			}
 		}
 	}
-
 	// Build the JSON structure
 	opencodeJson := map[string]interface{}{
 		"$schema": "https://opencode.ai/config.json",
 		"provider": map[string]interface{}{
 			"myprovider": map[string]interface{}{
-				"npm": "@ai-sdk/openai-compatible",
+				"npm":  "@ai-sdk/openai-compatible",
 				"name": providerName,
 				"options": map[string]interface{}{
-					"baseURL": baseUrl,
-					"apiKey": selectedModel.ApiKey,
+					"baseURL":   baseUrl,
+					"apiKey":    selectedModel.ApiKey,
 					"maxTokens": 8192,
 				},
 				"models": map[string]interface{}{
@@ -842,15 +782,12 @@ func (a *App) syncToOpencodeSettings(config AppConfig) error {
 			},
 		},
 	}
-
 	data, err := json.MarshalIndent(opencodeJson, "", "  ")
 	if err != nil {
 		return err
 	}
-
 	return os.WriteFile(configPath, data, 0644)
 }
-
 func (a *App) syncToGeminiSettings(config AppConfig) error {
 	var selectedModel *ModelConfig
 	for _, m := range config.Gemini.Models {
@@ -859,25 +796,20 @@ func (a *App) syncToGeminiSettings(config AppConfig) error {
 			break
 		}
 	}
-
 	if selectedModel == nil {
 		return fmt.Errorf("selected gemini model not found")
 	}
-
 	dir, configPath, _ := a.getGeminiConfigPaths()
-
 	// If using original (Google official), clear config to use Google account auth
 	if strings.ToLower(selectedModel.ModelName) == "original" {
 		a.clearGeminiConfig()
 		a.log("Gemini: Using Google account authentication (Original mode)")
 		return nil
 	}
-
 	// Non-original mode: Configure to use environment variables
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return err
 	}
-
 	// Create config that tells gemini-cli to use environment variables
 	configData := map[string]interface{}{
 		"useEnvironmentVariables": true,
@@ -885,13 +817,11 @@ func (a *App) syncToGeminiSettings(config AppConfig) error {
 		"apiKey":  "", // Will use GEMINI_API_KEY env var
 		"baseUrl": "", // Will use GOOGLE_GEMINI_BASE_URL env var if set
 	}
-
 	// Use compact JSON format for faster serialization
 	configJson, err := json.Marshal(configData)
 	if err != nil {
 		return err
 	}
-
 	// Check if file exists and has same content to avoid unnecessary writes
 	if existingData, err := os.ReadFile(configPath); err == nil {
 		if bytes.Equal(existingData, configJson) {
@@ -899,11 +829,9 @@ func (a *App) syncToGeminiSettings(config AppConfig) error {
 			return nil
 		}
 	}
-
 	a.log(fmt.Sprintf("Gemini: Configured to use environment variables (API Key from env)"))
 	return os.WriteFile(configPath, configJson, 0644)
 }
-
 func (a *App) syncToIFlowSettings(config AppConfig) error {
 	var selectedModel *ModelConfig
 	for _, m := range config.IFlow.Models {
@@ -912,50 +840,53 @@ func (a *App) syncToIFlowSettings(config AppConfig) error {
 			break
 		}
 	}
-
 	if selectedModel == nil {
 		return fmt.Errorf("selected iflow model not found")
 	}
-
 	dir, configPath := a.getIFlowConfigPaths()
-
 	if strings.ToLower(selectedModel.ModelName) == "original" {
 		a.clearIFlowConfig()
 		return nil
 	}
-
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return err
 	}
-
 	// Prepare defaults
 	baseUrl := selectedModel.ModelUrl
 	modelId := selectedModel.ModelId
 	providerName := strings.ToLower(selectedModel.ModelName)
-
 	// Fallback logic for iFlow (align with Codex providers)
 	if modelId == "" {
 		switch providerName {
 		case "deepseek":
 			modelId = "deepseek-chat"
-			if baseUrl == "" { baseUrl = "https://api.deepseek.com/v1" }
+			if baseUrl == "" {
+				baseUrl = "https://api.deepseek.com/v1"
+			}
 		case "glm":
 			modelId = "glm-4.7"
-			if baseUrl == "" { baseUrl = "https://open.bigmodel.cn/api/paas/v4" }
+			if baseUrl == "" {
+				baseUrl = "https://open.bigmodel.cn/api/paas/v4"
+			}
 		case "doubao":
 			modelId = "doubao-seed-code-preview-latest"
-			if baseUrl == "" { baseUrl = "https://ark.cn-beijing.volces.com/api/coding/v3" }
+			if baseUrl == "" {
+				baseUrl = "https://ark.cn-beijing.volces.com/api/coding/v3"
+			}
 		case "kimi":
 			modelId = "kimi-for-coding"
-			if baseUrl == "" { baseUrl = "https://api.kimi.com/coding/v1" }
+			if baseUrl == "" {
+				baseUrl = "https://api.kimi.com/coding/v1"
+			}
 		case "minimax":
 			modelId = "MiniMax-M2.1"
-			if baseUrl == "" { baseUrl = "https://api.minimaxi.com/v1" }
+			if baseUrl == "" {
+				baseUrl = "https://api.minimaxi.com/v1"
+			}
 		default:
 			modelId = "gpt-4o"
 		}
 	}
-
 	// Build the JSON structure for settings.json
 	settings := map[string]string{
 		"selectedAuthType": "openai-compatible",
@@ -963,46 +894,125 @@ func (a *App) syncToIFlowSettings(config AppConfig) error {
 		"baseUrl":          baseUrl,
 		"modelName":        modelId,
 	}
-
 	data, err := json.MarshalIndent(settings, "", "  ")
 	if err != nil {
 		return err
 	}
-
 	return os.WriteFile(configPath, data, 0644)
 }
-
+func (a *App) syncToKiloSettings(config AppConfig) error {
+	var selectedModel *ModelConfig
+	for _, m := range config.Kiro.Models {
+		if m.ModelName == config.Kiro.CurrentModel {
+			selectedModel = &m
+			break
+		}
+	}
+	if selectedModel == nil {
+		return fmt.Errorf("selected kilo model not found")
+	}
+	dir, configPath := a.getKiloConfigPaths()
+	if strings.ToLower(selectedModel.ModelName) == "original" {
+		a.clearKiloConfig()
+		return nil
+	}
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return err
+	}
+	// Read existing config if it exists
+	var kiloConfig map[string]interface{}
+	existingData, err := os.ReadFile(configPath)
+	if err == nil {
+		// File exists, parse it
+		if err := json.Unmarshal(existingData, &kiloConfig); err != nil {
+			// If parsing fails, create new config
+			kiloConfig = make(map[string]interface{})
+		}
+	} else {
+		// File doesn't exist, create new config
+		kiloConfig = make(map[string]interface{})
+	}
+	// Prepare provider configuration
+	baseUrl := selectedModel.ModelUrl
+	modelId := selectedModel.ModelId
+	providerName := strings.ToLower(selectedModel.ModelName)
+	// Fallback logic for common providers
+	if modelId == "" {
+		switch providerName {
+		case "deepseek":
+			modelId = "deepseek-chat"
+			if baseUrl == "" {
+				baseUrl = "https://api.deepseek.com/v1"
+			}
+		case "glm":
+			modelId = "glm-4.7"
+			if baseUrl == "" {
+				baseUrl = "https://open.bigmodel.cn/api/paas/v4"
+			}
+		case "doubao":
+			modelId = "doubao-seed-code-preview-latest"
+			if baseUrl == "" {
+				baseUrl = "https://ark.cn-beijing.volces.com/api/coding/v3"
+			}
+		case "kimi":
+			modelId = "kimi-for-coding"
+			if baseUrl == "" {
+				baseUrl = "https://api.kimi.com/coding/v1"
+			}
+		case "minimax":
+			modelId = "MiniMax-M2.1"
+			if baseUrl == "" {
+				baseUrl = "https://api.minimaxi.com/v1"
+			}
+		case "xiaomi":
+			modelId = "mimo-v2-flash"
+			if baseUrl == "" {
+				baseUrl = "https://api.xiaomimimo.com/v1"
+			}
+		default:
+			modelId = "gpt-4o"
+		}
+	}
+	// Build provider object
+	provider := map[string]interface{}{
+		"id":            "default",
+		"provider":      "openai",
+		"openAiApiKey":  selectedModel.ApiKey,
+		"openAiModelId": modelId,
+		"openAiBaseUrl": baseUrl,
+	}
+	// Update providers array
+	kiloConfig["providers"] = []interface{}{provider}
+	// Write config file
+	data, err := json.MarshalIndent(kiloConfig, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(configPath, data, 0644)
+}
 func (a *App) syncToCodeBuddySettings(config AppConfig, projectPath string) error {
 	if projectPath == "" {
 		projectPath = a.GetCurrentProjectPath()
 	}
-	
 	if projectPath == "" {
 		return nil
 	}
-
 	cbDir := filepath.Join(projectPath, ".codebuddy")
 	if err := os.MkdirAll(cbDir, 0755); err != nil {
 		return err
 	}
-
 	cbFilePath := filepath.Join(cbDir, "models.json")
-
 	var cbModels []CodeBuddyModel
 	var availableModelIds []string
-
 	for _, m := range config.CodeBuddy.Models {
 		// Only sync the currently selected model
 		if m.ModelName != config.CodeBuddy.CurrentModel {
 			continue
 		}
-
 		if strings.ToLower(m.ModelName) == "original" {
 			continue
 		}
-
 		vendor := strings.ToLower(m.ModelName)
-		
 		idStr := m.ModelId
 		if idStr == "" {
 			switch vendor {
@@ -1020,9 +1030,7 @@ func (a *App) syncToCodeBuddySettings(config AppConfig, projectPath string) erro
 				idStr = vendor + "-model"
 			}
 		}
-
 		modelIds := strings.Split(idStr, ",")
-		
 		modelUrl := m.ModelUrl
 		if modelUrl != "" && !strings.HasSuffix(modelUrl, "/chat/completions") {
 			if strings.HasSuffix(modelUrl, "/") {
@@ -1031,13 +1039,11 @@ func (a *App) syncToCodeBuddySettings(config AppConfig, projectPath string) erro
 				modelUrl += "/chat/completions"
 			}
 		}
-
 		for _, id := range modelIds {
 			id = strings.TrimSpace(id)
 			if id == "" {
 				continue
 			}
-
 			availableModelIds = append(availableModelIds, id)
 			cbModels = append(cbModels, CodeBuddyModel{
 				Id:               id,
@@ -1052,51 +1058,39 @@ func (a *App) syncToCodeBuddySettings(config AppConfig, projectPath string) erro
 			})
 		}
 	}
-
 	cbConfig := CodeBuddyFileConfig{
 		Models:          cbModels,
 		AvailableModels: availableModelIds,
 	}
-
 	data, err := json.MarshalIndent(cbConfig, "", "  ")
 	if err != nil {
 		return err
 	}
-
 	return os.WriteFile(cbFilePath, data, 0644)
 }
-
 func (a *App) syncToQoderSettings(config AppConfig, projectPath string) error {
 	if projectPath == "" {
 		projectPath = a.GetCurrentProjectPath()
 	}
-	
 	if projectPath == "" {
 		return nil
 	}
-
 	qDir := filepath.Join(projectPath, ".qoder")
 	if err := os.MkdirAll(qDir, 0755); err != nil {
 		return err
 	}
-
 	qFilePath := filepath.Join(qDir, "models.json")
-
 	var qModels []CodeBuddyModel
 	var availableModelIds []string
-
 	for _, m := range config.Qoder.Models {
 		// Only sync the currently selected model
 		if m.ModelName != config.Qoder.CurrentModel {
 			continue
 		}
-
 		if strings.ToLower(m.ModelName) == "original" {
 			continue
 		}
-
 		vendor := strings.ToLower(m.ModelName)
-		
 		idStr := m.ModelId
 		if idStr == "" {
 			switch vendor {
@@ -1114,9 +1108,7 @@ func (a *App) syncToQoderSettings(config AppConfig, projectPath string) error {
 				idStr = vendor + "-model"
 			}
 		}
-
 		modelIds := strings.Split(idStr, ",")
-		
 		modelUrl := m.ModelUrl
 		if modelUrl != "" && !strings.HasSuffix(modelUrl, "/chat/completions") {
 			if strings.HasSuffix(modelUrl, "/") {
@@ -1125,13 +1117,11 @@ func (a *App) syncToQoderSettings(config AppConfig, projectPath string) error {
 				modelUrl += "/chat/completions"
 			}
 		}
-
 		for _, id := range modelIds {
 			id = strings.TrimSpace(id)
 			if id == "" {
 				continue
 			}
-
 			availableModelIds = append(availableModelIds, id)
 			qModels = append(qModels, CodeBuddyModel{
 				Id:               id,
@@ -1146,27 +1136,21 @@ func (a *App) syncToQoderSettings(config AppConfig, projectPath string) error {
 			})
 		}
 	}
-
 	qConfig := CodeBuddyFileConfig{
 		Models:          qModels,
 		AvailableModels: availableModelIds,
 	}
-
 	data, err := json.MarshalIndent(qConfig, "", "  ")
 	if err != nil {
 		return err
 	}
-
 	return os.WriteFile(qFilePath, data, 0644)
 }
-
-
 func getBaseUrl(selectedModel *ModelConfig) string {
 	// If user provided a URL for the selected model, always prefer it.
 	if selectedModel.ModelUrl != "" {
 		return selectedModel.ModelUrl
 	}
-
 	// Otherwise, fall back to hardcoded defaults for known providers that have them.
 	baseUrl := "" // Default to empty string
 	switch strings.ToLower(selectedModel.ModelName) {
@@ -1185,12 +1169,10 @@ func getBaseUrl(selectedModel *ModelConfig) string {
 	}
 	return baseUrl
 }
-
 func (a *App) LaunchTool(toolName string, yoloMode bool, adminMode bool, pythonProject bool, pythonEnv string, projectDir string, useProxy bool) {
-	a.log(fmt.Sprintf("LaunchTool called: %s, yolo=%v, admin=%v, py=%v, pyenv=%s, dir=%s, proxy=%v", 
+	a.log(fmt.Sprintf("LaunchTool called: %s, yolo=%v, admin=%v, py=%v, pyenv=%s, dir=%s, proxy=%v",
 		toolName, yoloMode, adminMode, pythonProject, pythonEnv, projectDir, useProxy))
 	a.log(fmt.Sprintf("Launching %s...", toolName))
-
 	// Only process Python environment if pythonProject is true
 	if pythonProject && pythonEnv != "" && pythonEnv != "None (Default)" {
 		a.log(fmt.Sprintf("Python project: using Python environment: %s", pythonEnv))
@@ -1198,21 +1180,17 @@ func (a *App) LaunchTool(toolName string, yoloMode bool, adminMode bool, pythonP
 		// Clear pythonEnv if not a Python project
 		pythonEnv = ""
 	}
-	
 	if projectDir == "" {
 		projectDir = a.GetCurrentProjectPath()
 	}
-
 	config, err := a.LoadConfig()
 	if err != nil {
 		a.log("Error loading config: " + err.Error())
 		return
 	}
-
 	var toolCfg ToolConfig
 	var envKey, envBaseUrl string
 	var binaryName string
-
 	switch strings.ToLower(toolName) {
 	case "claude":
 		toolCfg = config.Claude
@@ -1234,6 +1212,11 @@ func (a *App) LaunchTool(toolName string, yoloMode bool, adminMode bool, pythonP
 		envKey = "IFLOW_API_KEY"
 		envBaseUrl = "IFLOW_BASE_URL"
 		binaryName = "iflow"
+	case "kiro":
+		toolCfg = config.Kiro
+		envKey = "KIRO_API_KEY"
+		envBaseUrl = "KIRO_BASE_URL"
+		binaryName = "kilocode"
 	case "opencode":
 		toolCfg = config.Opencode
 		envKey = "OPENCODE_API_KEY"
@@ -1252,7 +1235,6 @@ func (a *App) LaunchTool(toolName string, yoloMode bool, adminMode bool, pythonP
 	default:
 		return
 	}
-
 	var selectedModel *ModelConfig
 	for _, m := range toolCfg.Models {
 		if m.ModelName == toolCfg.CurrentModel {
@@ -1260,10 +1242,9 @@ func (a *App) LaunchTool(toolName string, yoloMode bool, adminMode bool, pythonP
 			break
 		}
 	}
-
 	if selectedModel == nil || toolCfg.CurrentModel == "" {
 		title := "提示"
-		message := "请先选择一个服务商。"
+        message := "请先选择一个服务商。"
 		if a.CurrentLanguage == "en" {
 			title = "Notice"
 			message = "Please select a provider first."
@@ -1271,20 +1252,15 @@ func (a *App) LaunchTool(toolName string, yoloMode bool, adminMode bool, pythonP
 		a.ShowMessage(title, message)
 		return
 	}
-
 	// Ensure ActiveTool is set correctly for syncToSystemEnv
 	config.ActiveTool = strings.ToLower(toolName)
 	a.syncToSystemEnv(config)
-
 	// 1. CLEAR PROCESS ENV VARS (Safety First - avoid leaks from current process)
 	a.clearEnvVars()
-
 	env := make(map[string]string)
-
 	// Proxy settings
 	if useProxy && goruntime.GOOS != "windows" {
 		var proxyHost, proxyPort, proxyUsername, proxyPassword string
-
 		// Get proxy configuration (matching project path > global default)
 		var targetProj *ProjectConfig
 		for i := range config.Projects {
@@ -1293,7 +1269,6 @@ func (a *App) LaunchTool(toolName string, yoloMode bool, adminMode bool, pythonP
 				break
 			}
 		}
-		
 		// Fallback to CurrentProject if path match not found
 		if targetProj == nil {
 			for i := range config.Projects {
@@ -1303,14 +1278,12 @@ func (a *App) LaunchTool(toolName string, yoloMode bool, adminMode bool, pythonP
 				}
 			}
 		}
-
 		if targetProj != nil {
 			proxyHost = targetProj.ProxyHost
 			proxyPort = targetProj.ProxyPort
 			proxyUsername = targetProj.ProxyUsername
 			proxyPassword = targetProj.ProxyPassword
 		}
-
 		// Use global default if project not configured
 		if proxyHost == "" {
 			proxyHost = config.DefaultProxyHost
@@ -1318,7 +1291,6 @@ func (a *App) LaunchTool(toolName string, yoloMode bool, adminMode bool, pythonP
 			proxyUsername = config.DefaultProxyUsername
 			proxyPassword = config.DefaultProxyPassword
 		}
-
 		if proxyHost != "" && proxyPort != "" {
 			var proxyURL string
 			if proxyUsername != "" && proxyPassword != "" {
@@ -1327,25 +1299,20 @@ func (a *App) LaunchTool(toolName string, yoloMode bool, adminMode bool, pythonP
 			} else {
 				proxyURL = fmt.Sprintf("http://%s:%s", proxyHost, proxyPort)
 			}
-
 			// Set proxy environment variables (both cases for compatibility)
 			os.Setenv("HTTP_PROXY", proxyURL)
 			os.Setenv("HTTPS_PROXY", proxyURL)
 			os.Setenv("http_proxy", proxyURL)
 			os.Setenv("https_proxy", proxyURL)
-
 			env["HTTP_PROXY"] = proxyURL
 			env["HTTPS_PROXY"] = proxyURL
 			env["http_proxy"] = proxyURL
 			env["https_proxy"] = proxyURL
-
 			a.log(fmt.Sprintf("Proxy enabled: %s:%s", proxyHost, proxyPort))
 		}
 	}
-
 	if strings.ToLower(selectedModel.ModelName) != "original" {
 		// --- OTHER PROVIDER MODE: WRITE CONFIG & SET ENV ---
-		
 		// Set process environment variables
 		os.Setenv(envKey, selectedModel.ApiKey)
 		env[envKey] = selectedModel.ApiKey
@@ -1353,13 +1320,11 @@ func (a *App) LaunchTool(toolName string, yoloMode bool, adminMode bool, pythonP
 			os.Setenv(envBaseUrl, selectedModel.ModelUrl)
 			env[envBaseUrl] = selectedModel.ModelUrl
 		}
-
 		// Add CODEBUDDY_CODE_MAX_OUTPUT_TOKENS for DeepSeek
 		if strings.ToLower(selectedModel.ModelName) == "deepseek" {
 			os.Setenv("CODEBUDDY_CODE_MAX_OUTPUT_TOKENS", "8192")
 			env["CODEBUDDY_CODE_MAX_OUTPUT_TOKENS"] = "8192"
 		}
-		
 		// Set generic model name env var if applicable
 		if selectedModel.ModelId != "" {
 			switch strings.ToLower(toolName) {
@@ -1384,9 +1349,11 @@ func (a *App) LaunchTool(toolName string, yoloMode bool, adminMode bool, pythonP
 				// iFlow uses settings.json, but maybe env var too?
 				os.Setenv("IFLOW_MODEL", selectedModel.ModelId)
 				env["IFLOW_MODEL"] = selectedModel.ModelId
+			case "kiro":
+				os.Setenv("KIRO_MODEL", selectedModel.ModelId)
+				env["KIRO_MODEL"] = selectedModel.ModelId
 			}
 		}
-
 		// Tool-specific configurations
 		switch strings.ToLower(toolName) {
 		case "claude":
@@ -1421,10 +1388,12 @@ func (a *App) LaunchTool(toolName string, yoloMode bool, adminMode bool, pythonP
 				env["OPENAI_BASE_URL"] = selectedModel.ModelUrl
 			}
 			a.syncToIFlowSettings(config)
+		case "kiro":
+			// Configure Kilo Code settings
+			a.syncToKiloSettings(config)
 		}
 	} else {
 		// --- ORIGINAL MODE: CLEANUP SPECIFIC TOOL ONLY ---
-
 		// Clear process environment variables for this tool
 		os.Unsetenv(envKey)
 		os.Unsetenv(envBaseUrl)
@@ -1458,21 +1427,23 @@ func (a *App) LaunchTool(toolName string, yoloMode bool, adminMode bool, pythonP
 		} else if strings.ToLower(toolName) == "iflow" {
 			os.Unsetenv("IFLOW_MODEL")
 			a.clearIFlowConfig()
+		} else if strings.ToLower(toolName) == "kiro" {
+			os.Unsetenv("KIRO_MODEL")
+			a.clearKiloConfig()
 		}
-
 		a.log(fmt.Sprintf("Running %s in Original mode: Custom configurations cleared.", toolName))
 	}
-
 	// Platform specific launch
-
-		a.platformLaunch(binaryName, yoloMode, adminMode, pythonEnv, projectDir, env, selectedModel.ModelId)
-
-	}
-
-func (a *App) log(message string) {
-	a.emitEvent("env-log", message)
+	a.platformLaunch(binaryName, yoloMode, adminMode, pythonEnv, projectDir, env, selectedModel.ModelId)
 }
-
+func (a *App) log(message string) {
+	if a.IsInitMode {
+		fmt.Println(message)
+	}
+	if a.ctx != nil {
+		a.emitEvent("env-log", message)
+	}
+}
 func (a *App) getConfigPath() (string, error) {
 	if a.testHomeDir != "" {
 		return filepath.Join(a.testHomeDir, ".aicoder_config.json"), nil
@@ -1483,13 +1454,11 @@ func (a *App) getConfigPath() (string, error) {
 	}
 	return filepath.Join(home, ".aicoder_config.json"), nil
 }
-
 func (a *App) LoadConfig() (AppConfig, error) {
 	path, err := a.getConfigPath()
 	if err != nil {
 		return AppConfig{}, err
 	}
-
 	// Helper for default models
 	defaultClaudeModels := []ModelConfig{
 		{ModelName: "Original", ModelId: "", ModelUrl: "", ApiKey: ""},
@@ -1499,6 +1468,7 @@ func (a *App) LoadConfig() (AppConfig, error) {
 		{ModelName: "MiniMax", ModelId: "MiniMax-M2.1", ModelUrl: "https://api.minimaxi.com/anthropic", ApiKey: ""},
 		{ModelName: "DeepSeek", ModelId: "deepseek-chat", ModelUrl: "https://api.deepseek.com/anthropic", ApiKey: ""},
 		{ModelName: "AIgoCode", ModelId: "sonnet", ModelUrl: "https://api.aigocode.com/api", ApiKey: ""},
+		{ModelName: "Noin.AI", ModelId: "sonnet", ModelUrl: "https://ai.ourines.com/api", ApiKey: ""},
 		{ModelName: "AiCodeMirror", ModelId: "sonnet", ModelUrl: "https://api.aicodemirror.com/api/claudecode", ApiKey: ""},
 		{ModelName: "GACCode", ModelId: "sonnet", ModelUrl: "https://gaccode.com/claudecode", ApiKey: ""},
 		{ModelName: "CodeRelay", ModelId: "claude-3-5-sonnet-20241022", ModelUrl: "https://api.code-relay.com/", ApiKey: ""},
@@ -1549,7 +1519,17 @@ func (a *App) LoadConfig() (AppConfig, error) {
 		{ModelName: "XiaoMi", ModelId: "mimo-v2-flash", ModelUrl: "https://api.xiaomimimo.com/v1", ApiKey: ""},
 		{ModelName: "Custom", ModelId: "", ModelUrl: "", ApiKey: "", IsCustom: true},
 	}
-
+	defaultKiroModels := []ModelConfig{
+		{ModelName: "Original", ModelId: "", ModelUrl: "", ApiKey: ""},
+		{ModelName: "ChatFire", ModelId: "gpt-4o", ModelUrl: "https://api.chatfire.cn/v1", ApiKey: ""},
+		{ModelName: "DeepSeek", ModelId: "deepseek-chat", ModelUrl: "https://api.deepseek.com/v1", ApiKey: ""},
+		{ModelName: "GLM", ModelId: "glm-4.7", ModelUrl: "https://open.bigmodel.cn/api/paas/v4", ApiKey: ""},
+		{ModelName: "Doubao", ModelId: "doubao-seed-code-preview-latest", ModelUrl: "https://ark.cn-beijing.volces.com/api/coding/v3", ApiKey: ""},
+		{ModelName: "Kimi", ModelId: "kimi-for-coding", ModelUrl: "https://api.kimi.com/coding/v1", ApiKey: ""},
+		{ModelName: "MiniMax", ModelId: "MiniMax-M2.1", ModelUrl: "https://api.minimaxi.com/v1", ApiKey: ""},
+		{ModelName: "XiaoMi", ModelId: "mimo-v2-flash", ModelUrl: "https://api.xiaomimimo.com/v1", ApiKey: ""},
+		{ModelName: "Custom", ModelId: "", ModelUrl: "", ApiKey: "", IsCustom: true},
+	}
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		// Check for old config file for migration
 		home, _ := os.UserHomeDir()
@@ -1594,6 +1574,10 @@ func (a *App) LoadConfig() (AppConfig, error) {
 							CurrentModel: "Original",
 							Models:       defaultIFlowModels,
 						},
+						Kiro: ToolConfig{
+							CurrentModel: "AiCodeMirror",
+							Models:       defaultKiroModels,
+						},
 						Projects:       oldConfig.Projects,
 						CurrentProject: oldConfig.CurrentProj,
 						ActiveTool:     "claude",
@@ -1603,6 +1587,7 @@ func (a *App) LoadConfig() (AppConfig, error) {
 						ShowCodeBuddy:  true,
 						ShowQoder:      true,
 						ShowIFlow:      true,
+						ShowKiro:       true,
 					}
 					a.SaveConfig(config)
 					// Optional: os.Remove(oldPath)
@@ -1610,7 +1595,6 @@ func (a *App) LoadConfig() (AppConfig, error) {
 				}
 			}
 		}
-
 		// Create default config
 		defaultConfig := AppConfig{
 			Claude: ToolConfig{
@@ -1641,6 +1625,10 @@ func (a *App) LoadConfig() (AppConfig, error) {
 				CurrentModel: "Original",
 				Models:       defaultIFlowModels,
 			},
+			Kiro: ToolConfig{
+				CurrentModel: "AiCodeMirror",
+				Models:       defaultKiroModels,
+			},
 			Projects: []ProjectConfig{
 				{
 					Id:       "default",
@@ -1659,11 +1647,9 @@ func (a *App) LoadConfig() (AppConfig, error) {
 			ShowIFlow:        true,
 			EnvCheckInterval: 7, // Default to 7 days
 		}
-
 		err = a.SaveConfig(defaultConfig)
 		return defaultConfig, err
 	}
-
 	config := AppConfig{
 		ShowGemini:    true,
 		ShowCodex:     true,
@@ -1671,41 +1657,43 @@ func (a *App) LoadConfig() (AppConfig, error) {
 		ShowCodeBuddy: true,
 		ShowQoder:     true,
 		ShowIFlow:     true,
+		ShowKiro:      true,
 	}
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return config, err
 	}
-
 	err = json.Unmarshal(data, &config)
 	if err != nil {
 		return config, err
 	}
-
 	// Set default values for new fields if not present or invalid
 	if config.EnvCheckInterval < 2 || config.EnvCheckInterval > 30 {
 		config.EnvCheckInterval = 7 // Default to 7 days
 	}
-
 	// Ensure defaults for new fields
 	if config.Claude.CurrentModel == "" && len(config.Claude.Models) > 0 {
 		config.Claude.CurrentModel = config.Claude.Models[0].ModelName
 	}
-	
 	// Helper to ensure a model exists in the list
 	ensureModel := func(models *[]ModelConfig, name, url, id, wireApi string) {
 		for i := range *models {
 			if strings.EqualFold((*models)[i].ModelName, name) {
 				(*models)[i].ModelName = name // Update to canonical casing
-				if url != "" { (*models)[i].ModelUrl = url }
-				if id != "" { (*models)[i].ModelId = id }
-				if wireApi != "" { (*models)[i].WireApi = wireApi }
+				if url != "" {
+					(*models)[i].ModelUrl = url
+				}
+				if id != "" {
+					(*models)[i].ModelId = id
+				}
+				if wireApi != "" {
+					(*models)[i].WireApi = wireApi
+				}
 				return
 			}
 		}
 		*models = append(*models, ModelConfig{ModelName: name, ModelUrl: url, ModelId: id, WireApi: wireApi, ApiKey: ""})
 	}
-
 	if config.Gemini.Models == nil || len(config.Gemini.Models) == 0 {
 		config.Gemini.Models = defaultGeminiModels
 		config.Gemini.CurrentModel = "AiCodeMirror"
@@ -1730,8 +1718,13 @@ func (a *App) LoadConfig() (AppConfig, error) {
 		config.IFlow.Models = defaultIFlowModels
 		config.IFlow.CurrentModel = "Original"
 	}
-
+	if config.Kiro.Models == nil || len(config.Kiro.Models) == 0 {
+		config.Kiro.Models = defaultKiroModels
+		config.Kiro.CurrentModel = "AiCodeMirror"
+	}
 	ensureModel(&config.Claude.Models, "AiCodeMirror", "https://api.aicodemirror.com/api/claudecode", "sonnet", "")
+	ensureModel(&config.Claude.Models, "Noin.AI", "https://ai.ourines.com/api", "sonnet", "")
+	ensureModel(&config.Claude.Models, "AIgoCode", "https://api.aigocode.com/api", "sonnet", "")
 	ensureModel(&config.Claude.Models, "CodeRelay", "https://api.code-relay.com/", "claude-3-5-sonnet-20241022", "")
 	ensureModel(&config.Claude.Models, "ChatFire", "https://api.chatfire.cn", "sonnet", "")
 	ensureModel(&config.Claude.Models, "GACCode", "https://gaccode.com/claudecode", "sonnet", "")
@@ -1741,7 +1734,6 @@ func (a *App) LoadConfig() (AppConfig, error) {
 	ensureModel(&config.Claude.Models, "GLM", "https://open.bigmodel.cn/api/anthropic", "glm-4.7", "")
 	ensureModel(&config.Claude.Models, "MiniMax", "https://api.minimaxi.com/anthropic", "MiniMax-M2.1", "")
 	ensureModel(&config.Claude.Models, "XiaoMi", "https://api.xiaomimimo.com/anthropic", "mimo-v2-flash", "")
-	
 	// Deduplicate AiCodeMirror for Claude if both AICodeMirror and AiCodeMirror exist
 	dedupeAiCodeMirror := func(models *[]ModelConfig) {
 		var newModels []ModelConfig
@@ -1760,7 +1752,6 @@ func (a *App) LoadConfig() (AppConfig, error) {
 		*models = newModels
 	}
 	dedupeAiCodeMirror(&config.Claude.Models)
-
 	ensureModel(&config.Gemini.Models, "AiCodeMirror", "https://api.aicodemirror.com/api/gemini", "gemini-2.0-flash-exp", "")
 	ensureModel(&config.Gemini.Models, "ChatFire", "https://api.chatfire.cn/v1beta/models/gemini-2.5-pro:generateContent", "gemini-2.5-pro", "")
 	ensureModel(&config.Codex.Models, "AiCodeMirror", "https://api.aicodemirror.com/api/codex/backend-api/codex", "gpt-5.2-codex", "responses")
@@ -1772,7 +1763,6 @@ func (a *App) LoadConfig() (AppConfig, error) {
 	ensureModel(&config.Codex.Models, "Kimi", "https://api.kimi.com/coding/v1", "kimi-for-coding", "")
 	ensureModel(&config.Codex.Models, "MiniMax", "https://api.minimaxi.com/v1", "MiniMax-M2.1", "")
 	ensureModel(&config.Codex.Models, "XiaoMi", "https://api.xiaomimimo.com/v1", "mimo-v2-flash", "")
-
 	ensureModel(&config.Opencode.Models, "DeepSeek", "https://api.deepseek.com/v1", "deepseek-chat", "")
 	ensureModel(&config.Opencode.Models, "ChatFire", "https://api.chatfire.cn/v1", "gpt-4o", "")
 	ensureModel(&config.Opencode.Models, "GLM", "https://open.bigmodel.cn/api/paas/v4", "glm-4.7", "")
@@ -1780,7 +1770,6 @@ func (a *App) LoadConfig() (AppConfig, error) {
 	ensureModel(&config.Opencode.Models, "Kimi", "https://api.kimi.com/coding/v1", "kimi-for-coding", "")
 	ensureModel(&config.Opencode.Models, "MiniMax", "https://api.minimaxi.com/v1", "MiniMax-M2.1", "")
 	ensureModel(&config.Opencode.Models, "XiaoMi", "https://api.xiaomimimo.com/v1", "mimo-v2-flash", "")
-
 	ensureModel(&config.CodeBuddy.Models, "DeepSeek", "https://api.deepseek.com/v1", "deepseek-chat", "")
 	ensureModel(&config.CodeBuddy.Models, "GLM", "https://open.bigmodel.cn/api/paas/v4", "glm-4.7", "")
 	ensureModel(&config.CodeBuddy.Models, "Doubao", "https://ark.cn-beijing.volces.com/api/coding/v3", "doubao-seed-code-preview-latest", "")
@@ -1791,27 +1780,23 @@ func (a *App) LoadConfig() (AppConfig, error) {
 	ensureModel(&config.Codex.Models, "Doubao", "https://ark.cn-beijing.volces.com/api/coding/v3", "doubao-seed-code-preview-latest", "")
 	ensureModel(&config.Codex.Models, "Kimi", "https://api.kimi.com/coding/v1", "kimi-for-coding", "")
 	ensureModel(&config.Codex.Models, "MiniMax", "https://api.minimaxi.com/v1", "MiniMax-M2.1", "")
-
 	ensureModel(&config.Opencode.Models, "DeepSeek", "https://api.deepseek.com/v1", "deepseek-chat", "")
 	ensureModel(&config.Opencode.Models, "ChatFire", "https://api.chatfire.cn/v1", "gpt-4o", "")
 	ensureModel(&config.Opencode.Models, "GLM", "https://open.bigmodel.cn/api/paas/v4", "glm-4.7", "")
 	ensureModel(&config.Opencode.Models, "Doubao", "https://ark.cn-beijing.volces.com/api/coding/v3", "doubao-seed-code-preview-latest", "")
 	ensureModel(&config.Opencode.Models, "Kimi", "https://api.kimi.com/coding/v1", "kimi-for-coding", "")
 	ensureModel(&config.Opencode.Models, "MiniMax", "https://api.minimaxi.com/v1", "MiniMax-M2.1", "")
-
 	ensureModel(&config.CodeBuddy.Models, "DeepSeek", "https://api.deepseek.com/v1", "deepseek-chat", "")
 	ensureModel(&config.CodeBuddy.Models, "GLM", "https://open.bigmodel.cn/api/paas/v4", "glm-4.7", "")
 	ensureModel(&config.CodeBuddy.Models, "Doubao", "https://ark.cn-beijing.volces.com/api/coding/v3", "doubao-seed-code-preview-latest", "")
 	ensureModel(&config.CodeBuddy.Models, "Kimi", "https://api.kimi.com/coding/v1", "kimi-for-coding", "")
 	ensureModel(&config.CodeBuddy.Models, "MiniMax", "https://api.minimaxi.com/v1", "MiniMax-M2.1", "")
-
 	ensureModel(&config.IFlow.Models, "DeepSeek", "https://api.deepseek.com/v1", "deepseek-chat", "")
 	ensureModel(&config.IFlow.Models, "GLM", "https://open.bigmodel.cn/api/paas/v4", "glm-4.7", "")
 	ensureModel(&config.IFlow.Models, "Doubao", "https://ark.cn-beijing.volces.com/api/coding/v3", "doubao-seed-code-preview-latest", "")
 	ensureModel(&config.IFlow.Models, "Kimi", "https://api.kimi.com/coding/v1", "kimi-for-coding", "")
 	ensureModel(&config.IFlow.Models, "MiniMax", "https://api.minimaxi.com/v1", "MiniMax-M2.1", "")
 	ensureModel(&config.IFlow.Models, "XiaoMi", "https://api.xiaomimimo.com/v1", "mimo-v2-flash", "")
-
 	// Ensure 'Original' is always present and first
 	ensureOriginal := func(models *[]ModelConfig) {
 		found := false
@@ -1825,7 +1810,6 @@ func (a *App) LoadConfig() (AppConfig, error) {
 			*models = append([]ModelConfig{{ModelName: "Original", ModelUrl: "", ApiKey: ""}}, *models...)
 		}
 	}
-	
 	// Opencode does NOT use common relay providers
 	cleanOpencodeModels := func(models *[]ModelConfig) {
 		var newModels []ModelConfig
@@ -1837,7 +1821,6 @@ func (a *App) LoadConfig() (AppConfig, error) {
 		}
 		*models = newModels
 	}
-
 	ensureOriginal(&config.Claude.Models)
 	ensureOriginal(&config.Gemini.Models)
 	ensureOriginal(&config.Codex.Models)
@@ -1845,11 +1828,10 @@ func (a *App) LoadConfig() (AppConfig, error) {
 	ensureOriginal(&config.CodeBuddy.Models)
 	ensureOriginal(&config.Qoder.Models)
 	ensureOriginal(&config.IFlow.Models)
-
+	ensureOriginal(&config.Kiro.Models)
 	cleanOpencodeModels(&config.Opencode.Models)
 	cleanOpencodeModels(&config.CodeBuddy.Models)
 	cleanOpencodeModels(&config.IFlow.Models)
-
 	// Ensure 'Custom' is always present
 	ensureCustom := func(models *[]ModelConfig) {
 		found := false
@@ -1869,6 +1851,7 @@ func (a *App) LoadConfig() (AppConfig, error) {
 	ensureCustom(&config.Opencode.Models)
 	ensureCustom(&config.CodeBuddy.Models)
 	ensureCustom(&config.IFlow.Models)
+	ensureCustom(&config.Kiro.Models)
 	// Qoder only has Original and Qoder
 	// Preserve existing Qoder key if present
 	var existingQoderKey string
@@ -1887,7 +1870,6 @@ func (a *App) LoadConfig() (AppConfig, error) {
 			}
 		}
 	}
-
 	// Ensure 'Custom' is always last for all tools
 	moveCustomToLast := func(models *[]ModelConfig) {
 		var customModel *ModelConfig
@@ -1905,7 +1887,6 @@ func (a *App) LoadConfig() (AppConfig, error) {
 		}
 		*models = newModels
 	}
-
 	// Ensure 'Original' is always first for all tools
 	ensureOriginalFirst := func(models *[]ModelConfig) {
 		var originalModel *ModelConfig
@@ -1922,14 +1903,13 @@ func (a *App) LoadConfig() (AppConfig, error) {
 			*models = append([]ModelConfig{*originalModel}, newModels...)
 		}
 	}
-
 	moveCustomToLast(&config.Claude.Models)
 	moveCustomToLast(&config.Gemini.Models)
 	moveCustomToLast(&config.Codex.Models)
 	moveCustomToLast(&config.Opencode.Models)
 	moveCustomToLast(&config.CodeBuddy.Models)
 	moveCustomToLast(&config.IFlow.Models)
-
+	moveCustomToLast(&config.Kiro.Models)
 	ensureOriginalFirst(&config.Claude.Models)
 	ensureOriginalFirst(&config.Gemini.Models)
 	ensureOriginalFirst(&config.Codex.Models)
@@ -1937,7 +1917,7 @@ func (a *App) LoadConfig() (AppConfig, error) {
 	ensureOriginalFirst(&config.CodeBuddy.Models)
 	ensureOriginalFirst(&config.Qoder.Models)
 	ensureOriginalFirst(&config.IFlow.Models)
-
+	ensureOriginalFirst(&config.Kiro.Models)
 	// Ensure CurrentModel is valid
 	if config.Gemini.CurrentModel == "" {
 		config.Gemini.CurrentModel = "Original"
@@ -1957,11 +1937,16 @@ func (a *App) LoadConfig() (AppConfig, error) {
 	if config.IFlow.CurrentModel == "" {
 		config.IFlow.CurrentModel = "Original"
 	}
-
+	if config.Kiro.Models == nil || len(config.Kiro.Models) == 0 {
+		config.Kiro.Models = defaultKiroModels
+		config.Kiro.CurrentModel = "AiCodeMirror"
+	}
+	if config.Kiro.CurrentModel == "" {
+		config.Kiro.CurrentModel = "AiCodeMirror"
+	}
 	if config.ActiveTool == "" {
 		config.ActiveTool = "message"
 	}
-
 	// Normalize CurrentModel casing for all tools
 	normalizeCurrentModel := func(toolCfg *ToolConfig) {
 		for _, m := range toolCfg.Models {
@@ -1978,10 +1963,9 @@ func (a *App) LoadConfig() (AppConfig, error) {
 	normalizeCurrentModel(&config.CodeBuddy)
 	normalizeCurrentModel(&config.Qoder)
 	normalizeCurrentModel(&config.IFlow)
-
+	normalizeCurrentModel(&config.Kiro)
 	return config, nil
 }
-
 // getProviderModel gets the model for a specific provider name from a tool config
 func getProviderModel(toolConfig *ToolConfig, providerName string) *ModelConfig {
 	for i := range toolConfig.Models {
@@ -1991,7 +1975,6 @@ func getProviderModel(toolConfig *ToolConfig, providerName string) *ModelConfig 
 	}
 	return nil
 }
-
 // syncAllProviderApiKeys synchronizes apikeys of all providers (except 'Original' and 'Custom') across all tools
 func syncAllProviderApiKeys(a *App, oldConfig, newConfig *AppConfig) {
 	// Map of tools for easy access
@@ -2013,12 +1996,9 @@ func syncAllProviderApiKeys(a *App, oldConfig, newConfig *AppConfig) {
 		"qoder":     &oldConfig.Qoder,
 		"iflow":     &oldConfig.IFlow,
 	}
-
 	// providerName (lower) -> intended API key
 	intentions := make(map[string]string)
-	
 	activeToolName := strings.ToLower(newConfig.ActiveTool)
-
 	// 1. Detect Intent from Active Tool (Highest Priority)
 	if activeTool, ok := tools[activeToolName]; ok {
 		oldActive := oldTools[activeToolName]
@@ -2036,7 +2016,6 @@ func syncAllProviderApiKeys(a *App, oldConfig, newConfig *AppConfig) {
 			}
 		}
 	}
-
 	// 2. Detect Intent from other tools (if not already captured from active tool)
 	for name, tool := range tools {
 		if name == activeToolName {
@@ -2061,7 +2040,6 @@ func syncAllProviderApiKeys(a *App, oldConfig, newConfig *AppConfig) {
 			}
 		}
 	}
-
 	// 3. Propagate all intentions to ALL tools
 	for providerLower, targetKey := range intentions {
 		for _, tool := range tools {
@@ -2075,7 +2053,6 @@ func syncAllProviderApiKeys(a *App, oldConfig, newConfig *AppConfig) {
 		}
 	}
 }
-
 func (a *App) SaveConfig(config AppConfig) error {
 	// Sanitize: Ensure Custom models have a name (prevent empty tab button)
 	sanitizeCustomNames := func(models []ModelConfig) {
@@ -2092,28 +2069,22 @@ func (a *App) SaveConfig(config AppConfig) error {
 	sanitizeCustomNames(config.CodeBuddy.Models)
 	sanitizeCustomNames(config.Qoder.Models)
 	sanitizeCustomNames(config.IFlow.Models)
-
 	// Load old config to compare for sync logic
 	var oldConfig AppConfig
 	path, _ := a.getConfigPath()
 	if data, err := os.ReadFile(path); err == nil {
 		json.Unmarshal(data, &oldConfig)
 	}
-
 	// Sync all apikeys across all tools before saving
 	syncAllProviderApiKeys(a, &oldConfig, &config)
-
 	if err := a.saveToPath(path, config); err != nil {
 		return err
 	}
-
 	if OnConfigChanged != nil {
 		OnConfigChanged(config)
 	}
-
 	return nil
 }
-
 func (a *App) saveToPath(path string, config AppConfig) error {
 	data, err := json.MarshalIndent(config, "", "  ")
 	if err != nil {
@@ -2121,7 +2092,6 @@ func (a *App) saveToPath(path string, config AppConfig) error {
 	}
 	return os.WriteFile(path, data, 0644)
 }
-
 type UpdateResult struct {
 	HasUpdate     bool   `json:"has_update"`
 	LatestVersion string `json:"latest_version"`
@@ -2129,25 +2099,20 @@ type UpdateResult struct {
 	TagName       string `json:"tag_name"`
 	DownloadUrl   string `json:"download_url"`
 }
-
 func (a *App) CheckUpdate(currentVersion string) (UpdateResult, error) {
 	// Use GitHub API instead of web scraping
 	// Updated URL: aicoder instead of cceasy
 	url := "https://api.github.com/repos/RapidAI/aicoder/releases/latest"
-
 	a.log(a.tr("CheckUpdate: Starting check against %s", url))
-
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		a.log(a.tr("CheckUpdate: Failed to create request: %v", err))
 		return UpdateResult{LatestVersion: "检查失败", ReleaseUrl: ""}, err
 	}
 	req.Header.Set("User-Agent", "AICoder")
-
 	// Add GitHub token for authentication (helps avoid rate limiting)
 	// Priority: 1) GITHUB_TOKEN environment variable, 2) Built-in default token (base64 encoded 3 times)
 	const defaultGitHubTokenEncoded = "V2pKb2QxZ3hjREJPVmtZeVVXNXNUV0ZZVmtOaFZFSktWbXBuTWxsWVNrOVNhbWhYWTI1a1ZsRlVUbXBWZWtaUVlsWk9TR1IzUFQwPQ=="
-
 	token := os.Getenv("GITHUB_TOKEN")
 	if token == "" {
 		// Decode the base64 encoded token (3 times)
@@ -2168,11 +2133,9 @@ func (a *App) CheckUpdate(currentVersion string) (UpdateResult, error) {
 	} else {
 		a.log(a.tr("CheckUpdate: Using custom GitHub token from environment variable"))
 	}
-
 	if token != "" {
 		req.Header.Set("Authorization", "Bearer "+token)
 	}
-
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -2180,21 +2143,17 @@ func (a *App) CheckUpdate(currentVersion string) (UpdateResult, error) {
 		return UpdateResult{LatestVersion: "网络错误", ReleaseUrl: ""}, err
 	}
 	defer resp.Body.Close()
-
 	a.log(a.tr("CheckUpdate: HTTP Status: %d", resp.StatusCode))
-
 	// Log rate limit headers for debugging
 	a.log(a.tr("CheckUpdate: Rate Limit: %s/%s, Reset: %s",
 		resp.Header.Get("X-RateLimit-Remaining"),
 		resp.Header.Get("X-RateLimit-Limit"),
 		resp.Header.Get("X-RateLimit-Reset")))
-
 	// Check HTTP status
 	if resp.StatusCode != 200 {
 		a.log(a.tr("CheckUpdate: GitHub API returned status %d", resp.StatusCode))
 		bodyText, _ := io.ReadAll(resp.Body)
 		a.log(a.tr("CheckUpdate: Response: %s", string(bodyText[:min(len(bodyText), 200)])))
-
 		// Provide specific error message for rate limiting
 		if resp.StatusCode == 403 {
 			remaining := resp.Header.Get("X-RateLimit-Remaining")
@@ -2207,20 +2166,16 @@ func (a *App) CheckUpdate(currentVersion string) (UpdateResult, error) {
 			return UpdateResult{LatestVersion: "访问受限", ReleaseUrl: ""},
 				fmt.Errorf("github api access forbidden (status 403)")
 		}
-
 		return UpdateResult{LatestVersion: "API错误", ReleaseUrl: ""}, fmt.Errorf("github api returned status %d", resp.StatusCode)
 	}
-
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		a.log(a.tr("CheckUpdate: Failed to read response body: %v", err))
 		return UpdateResult{LatestVersion: "读取失败", ReleaseUrl: ""}, err
 	}
-
 	// Log raw response for debugging
 	a.log(a.tr("CheckUpdate: Raw response length: %d bytes", len(body)))
 	a.log(a.tr("CheckUpdate: Response body: %s", string(body[:min(len(body), 500)])))
-
 	// Parse JSON response
 	var release map[string]interface{}
 	if err := json.Unmarshal(body, &release); err != nil {
@@ -2228,31 +2183,25 @@ func (a *App) CheckUpdate(currentVersion string) (UpdateResult, error) {
 		a.log(a.tr("CheckUpdate: Response body: %s", string(body[:min(len(body), 500)])))
 		return UpdateResult{LatestVersion: "解析失败", ReleaseUrl: ""}, err
 	}
-
 	// Log parsed keys
 	a.log(a.tr("CheckUpdate: Parsed keys: %v", getMapKeys(release)))
-
 	// Extract version from either 'name' or 'tag_name'
 	var tagName string
-
-	// Try 'tag_name' field first (e.g., "v2.0.0.2")
+	// Try 'tag_name' field first (e.g.", "v2.0.0.2")
 	if tag, ok := release["tag_name"].(string); ok && tag != "" {
 		tagName = tag
 		a.log(a.tr("CheckUpdate: Found version in 'tag_name' field: %s", tagName))
 	} else if name, ok := release["name"].(string); ok && name != "" {
-		// Fallback to 'name' field (e.g., "V2.0.0.2")
+		// Fallback to 'name' field (e.g.", "V2.0.0.2")
 		tagName = name
 		a.log(a.tr("CheckUpdate: Found version in 'name' field: %s", tagName))
 	} else {
 		a.log(a.tr("CheckUpdate: Neither 'name' nor 'tag_name' found. Available: %v", release))
 		return UpdateResult{LatestVersion: "找不到版本号", ReleaseUrl: ""}, fmt.Errorf("no version found in release")
 	}
-
 	a.log(a.tr("CheckUpdate: Using version: %s", tagName))
-
 	// Extract release URL
 	htmlURL, _ := release["html_url"].(string)
-
 	// Extract download URL from assets
 	var downloadUrl string
 	var targetFileName string
@@ -2261,7 +2210,6 @@ func (a *App) CheckUpdate(currentVersion string) (UpdateResult, error) {
 	} else {
 		targetFileName = "AICoder-Setup.exe"
 	}
-
 	// Parse assets array from GitHub API response
 	if assets, ok := release["assets"].([]interface{}); ok && len(assets) > 0 {
 		a.log(a.tr("CheckUpdate: Found %d assets in release", len(assets)))
@@ -2277,27 +2225,22 @@ func (a *App) CheckUpdate(currentVersion string) (UpdateResult, error) {
 			}
 		}
 	}
-
 	// Fallback: construct URL manually if not found in assets
 	if downloadUrl == "" {
 		downloadUrl = fmt.Sprintf("https://github.com/RapidAI/aicoder/releases/download/%s/%s", tagName, targetFileName)
 		a.log(a.tr("CheckUpdate: Assets not found, using constructed URL: %s", downloadUrl))
 	}
-
 	// Keep original version with V prefix for display
 	displayVersion := strings.TrimSpace(tagName)
 	if !strings.HasPrefix(strings.ToUpper(displayVersion), "V") {
 		displayVersion = "V" + displayVersion
 	}
-
 	// Clean version strings for comparison (lowercase, no V prefix)
 	latestVersionForComparison := strings.TrimPrefix(strings.ToLower(tagName), "v")
 	cleanCurrent := strings.TrimPrefix(strings.ToLower(currentVersion), "v")
 	cleanCurrent = strings.Split(cleanCurrent, " ")[0]
-
 	// Log for debugging
 	a.log(a.tr("CheckUpdate: Latest version: %s, Current version: %s, Display version: %s", latestVersionForComparison, cleanCurrent, displayVersion))
-
 	// Compare versions
 	if compareVersions(latestVersionForComparison, cleanCurrent) > 0 {
 		a.log(a.tr("CheckUpdate: Update available! %s > %s", latestVersionForComparison, cleanCurrent))
@@ -2309,7 +2252,6 @@ func (a *App) CheckUpdate(currentVersion string) (UpdateResult, error) {
 			DownloadUrl:   downloadUrl,
 		}, nil
 	}
-
 	a.log(a.tr("CheckUpdate: Already on latest version"))
 	return UpdateResult{
 		HasUpdate:     false,
@@ -2319,7 +2261,6 @@ func (a *App) CheckUpdate(currentVersion string) (UpdateResult, error) {
 		DownloadUrl:   downloadUrl,
 	}, nil
 }
-
 // Helper function to get map keys
 func getMapKeys(m map[string]interface{}) []string {
 	keys := make([]string, 0, len(m))
@@ -2328,7 +2269,6 @@ func getMapKeys(m map[string]interface{}) []string {
 	}
 	return keys
 }
-
 // Helper function for min
 func min(a, b int) int {
 	if a < b {
@@ -2336,7 +2276,6 @@ func min(a, b int) int {
 	}
 	return b
 }
-
 type DownloadProgress struct {
 	Percentage float64 `json:"percentage"`
 	Downloaded int64   `json:"downloaded"`
@@ -2344,70 +2283,57 @@ type DownloadProgress struct {
 	Status     string  `json:"status"` // "downloading", "completed", "error", "cancelled"
 	Error      string  `json:"error,omitempty"`
 }
-
 func (a *App) DownloadUpdate(url string, fileName string) (string, error) {
 	a.log(fmt.Sprintf("DownloadUpdate: Starting download from %s", url))
-
 	downloadsDir, err := a.GetDownloadsFolder()
 	if err != nil {
 		return "", fmt.Errorf("failed to get downloads folder: %w", err)
 	}
-
 	destPath := filepath.Join(downloadsDir, fileName)
-	
 	// Create context with cancel for this download
 	ctx, cancel := context.WithCancel(context.Background())
 	downloadID := fileName
-	
 	a.downloadMutex.Lock()
 	a.downloadCancelers[downloadID] = cancel
 	a.downloadMutex.Unlock()
-	
 	defer func() {
 		a.downloadMutex.Lock()
 		delete(a.downloadCancelers, downloadID)
 		a.downloadMutex.Unlock()
 		cancel()
 	}()
-
 	// If file exists, try to remove it first
 	if _, err := os.Stat(destPath); err == nil {
 		os.Remove(destPath)
 	}
-
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return "", err
 	}
 	req.Header.Set("User-Agent", "AICoder-App")
-
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
 		return "", err
 	}
 	defer resp.Body.Close()
-
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("bad status: %s", resp.Status)
 	}
-
 	// Validation Logic
 	// 1. Check Content-Type
 	contentType := resp.Header.Get("Content-Type")
 	a.log(fmt.Sprintf("DownloadUpdate: Content-Type: %s", contentType))
-	if !strings.Contains(strings.ToLower(contentType), "application/octet-stream") && 
-	   !strings.Contains(strings.ToLower(contentType), "application/x-msdownload") &&
-	   !strings.Contains(strings.ToLower(contentType), "application/x-dosexec") {
+	if !strings.Contains(strings.ToLower(contentType), "application/octet-stream") &&
+		!strings.Contains(strings.ToLower(contentType), "application/x-msdownload") &&
+		!strings.Contains(strings.ToLower(contentType), "application/x-dosexec") {
 		// Just a warning for now, as some servers might send weird types
 		a.log(fmt.Sprintf("Warning: Unexpected Content-Type: %s", contentType))
 	}
-
 	// 2. Check File Size (> 5MB)
 	if resp.ContentLength < 5*1024*1024 {
 		return "", fmt.Errorf("file too small (%d bytes), possibly an error page", resp.ContentLength)
 	}
-
 	// 3. Check Extension
 	expectedExt := ".exe"
 	if goruntime.GOOS == "darwin" {
@@ -2416,18 +2342,15 @@ func (a *App) DownloadUpdate(url string, fileName string) (string, error) {
 	if !strings.HasSuffix(strings.ToLower(fileName), expectedExt) {
 		return "", fmt.Errorf("invalid file extension: %s (expected %s)", fileName, expectedExt)
 	}
-
 	size := resp.ContentLength
 	out, err := os.Create(destPath)
 	if err != nil {
 		return "", err
 	}
 	defer out.Close()
-
 	var downloaded int64
 	buffer := make([]byte, 64*1024)
 	lastReport := time.Now()
-
 	for {
 		n, err := resp.Body.Read(buffer)
 		if n > 0 {
@@ -2436,14 +2359,12 @@ func (a *App) DownloadUpdate(url string, fileName string) (string, error) {
 				return "", writeErr
 			}
 			downloaded += int64(n)
-			
 			// Report progress every 100ms
 			if time.Since(lastReport) > 100*time.Millisecond {
 				percentage := 0.0
 				if size > 0 {
 					percentage = float64(downloaded) / float64(size) * 100
 				}
-				
 				a.emitEvent("download-progress", DownloadProgress{
 					Percentage: percentage,
 					Downloaded: downloaded,
@@ -2470,7 +2391,6 @@ func (a *App) DownloadUpdate(url string, fileName string) (string, error) {
 			return "", err
 		}
 	}
-
 	// Final progress report
 	a.emitEvent("download-progress", DownloadProgress{
 		Percentage: 100,
@@ -2478,29 +2398,23 @@ func (a *App) DownloadUpdate(url string, fileName string) (string, error) {
 		Total:      size,
 		Status:     "completed",
 	})
-
 	return destPath, nil
 }
-
 func (a *App) CancelDownload(downloadID string) {
 	a.downloadMutex.Lock()
 	defer a.downloadMutex.Unlock()
-	
 	if cancel, ok := a.downloadCancelers[downloadID]; ok {
 		cancel()
 		delete(a.downloadCancelers, downloadID)
 	}
 }
-
 func (a *App) RecoverCC() error {
 	a.emitRecoverLog("Starting recovery process...")
-
 	home, err := os.UserHomeDir()
 	if err != nil {
 		a.emitRecoverLog(fmt.Sprintf("Error getting home dir: %v", err))
 		return err
 	}
-
 	// Remove ~/.claude directory
 	claudeDir := filepath.Join(home, ".claude")
 	a.emitRecoverLog(fmt.Sprintf("Checking directory: %s", claudeDir))
@@ -2514,7 +2428,6 @@ func (a *App) RecoverCC() error {
 	} else {
 		a.emitRecoverLog(".claude directory not found, skipping.")
 	}
-
 	// Remove ~/.claude.json file
 	claudeJsonPath := filepath.Join(home, ".claude.json")
 	a.emitRecoverLog(fmt.Sprintf("Checking file: %s", claudeJsonPath))
@@ -2528,7 +2441,6 @@ func (a *App) RecoverCC() error {
 	} else {
 		a.emitRecoverLog(".claude.json file not found, skipping.")
 	}
-
 	// Remove ~/.claude.json.backup file
 	claudeJsonBackupPath := filepath.Join(home, ".claude.json.backup")
 	a.emitRecoverLog(fmt.Sprintf("Checking file: %s", claudeJsonBackupPath))
@@ -2542,15 +2454,12 @@ func (a *App) RecoverCC() error {
 	} else {
 		a.emitRecoverLog(".claude.json.backup file not found, skipping.")
 	}
-
 	a.emitRecoverLog("Recovery process completed successfully.")
 	return nil
 }
-
 func (a *App) emitRecoverLog(msg string) {
 	a.emitEvent("recover-log", msg)
 }
-
 func (a *App) ShowMessage(title, message string) {
 	runtime.MessageDialog(a.ctx, runtime.MessageDialogOptions{
 		Type:    runtime.InfoDialog,
@@ -2558,13 +2467,11 @@ func (a *App) ShowMessage(title, message string) {
 		Message: message,
 	})
 }
-
 func (a *App) emitEvent(name string, data ...interface{}) {
 	if a.ctx != nil {
 		runtime.EventsEmit(a.ctx, name, data...)
 	}
 }
-
 func (a *App) ClipboardGetText() (string, error) {
 	// Try Wails runtime first
 	if a.ctx != nil {
@@ -2573,7 +2480,6 @@ func (a *App) ClipboardGetText() (string, error) {
 			return text, nil
 		}
 	}
-
 	// Fallback for macOS: use pbpaste command
 	cmd := exec.Command("pbpaste")
 	var out bytes.Buffer
@@ -2581,14 +2487,11 @@ func (a *App) ClipboardGetText() (string, error) {
 	if err := cmd.Run(); err == nil {
 		return out.String(), nil
 	}
-
 	return "", nil
 }
-
 func (a *App) fetchRemoteMarkdown(repo, file string) (string, error) {
 	// Use GitHub API with timestamp to bypass all caches
 	url := fmt.Sprintf("https://api.github.com/repos/%s/contents/%s?ref=main&t=%d", repo, file, time.Now().UnixNano())
-
 	// Create a new transport to avoid connection reuse caching
 	transport := &http.Transport{
 		DisableKeepAlives: true,
@@ -2598,22 +2501,18 @@ func (a *App) fetchRemoteMarkdown(repo, file string) (string, error) {
 		Timeout:   15 * time.Second,
 		Transport: transport,
 	}
-
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return "Failed to create request: " + err.Error(), nil
 	}
-
 	// GitHub API headers - request raw content directly
 	req.Header.Set("Accept", "application/vnd.github.v3.raw")
 	req.Header.Set("User-Agent", "AICoder-App")
 	req.Header.Set("Cache-Control", "no-cache, no-store")
 	req.Header.Set("Pragma", "no-cache")
-
 	// Add GitHub token for authentication (helps avoid rate limiting)
 	// Priority: 1) GITHUB_TOKEN environment variable, 2) Built-in default token (base64 encoded 3 times)
 	const defaultGitHubTokenEncoded = "V2pKb2QxZ3hjREJPVmtZeVVXNXNUV0ZZVmtOaFZFSktWbXBuTWxsWVNrOVNhbWhYWTI1a1ZsRlVUbXBWZWtaUVlsWk9TR1IzUFQwPQ=="
-
 	token := os.Getenv("GITHUB_TOKEN")
 	if token == "" {
 		// Decode the base64 encoded token (3 times)
@@ -2633,58 +2532,46 @@ func (a *App) fetchRemoteMarkdown(repo, file string) (string, error) {
 	if token != "" {
 		req.Header.Set("Authorization", "Bearer "+token)
 	}
-
 	resp, err := client.Do(req)
 	if err != nil {
 		return "Failed to fetch remote message: " + err.Error(), nil
 	}
 	defer resp.Body.Close()
-
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Sprintf("Remote content unavailable (Status: %d %s)", resp.StatusCode, resp.Status), nil
 	}
-
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "Error reading remote content: " + err.Error(), nil
 	}
-
 	return string(data), nil
 }
-
 func (a *App) ReadBBS() (string, error) {
 	return a.fetchRemoteMarkdown("rapidaicoder/msg", "bbs.md")
 }
-
 func (a *App) ReadTutorial() (string, error) {
 	return a.fetchRemoteMarkdown("rapidaicoder/msg", "tutorial.md")
 }
-
 func (a *App) ReadThanks() (string, error) {
 	return a.fetchRemoteMarkdown("rapidaicoder/msg", "thanks.md")
 }
-
 // compareVersions returns 1 if v1 > v2, -1 if v1 < v2, 0 if equal
 func compareVersions(v1, v2 string) int {
 	parts1 := strings.Split(v1, ".")
 	parts2 := strings.Split(v2, ".")
-
 	maxLen := len(parts1)
 	if len(parts2) > maxLen {
 		maxLen = len(parts2)
 	}
-
 	for i := 0; i < maxLen; i++ {
 		val1 := 0
 		if i < len(parts1) {
 			fmt.Sscanf(parts1[i], "%d", &val1)
 		}
-
 		val2 := 0
 		if i < len(parts2) {
 			fmt.Sscanf(parts2[i], "%d", &val2)
 		}
-
 		if val1 > val2 {
 			return 1
 		}
@@ -2694,7 +2581,6 @@ func compareVersions(v1, v2 string) int {
 	}
 	return 0
 }
-
 func (a *App) getInstalledClaudeVersion(claudePath string) (string, error) {
 	// Check if the path exists
 	if _, err := os.Stat(claudePath); err != nil {
@@ -2709,10 +2595,8 @@ func (a *App) getInstalledClaudeVersion(claudePath string) (string, error) {
 			return "", err
 		}
 	}
-
 	var cmd *exec.Cmd
 	cmd = createVersionCmd(claudePath)
-	
 	out, err := cmd.Output()
 	if err != nil {
 		return "", err
@@ -2733,7 +2617,6 @@ func (a *App) getInstalledClaudeVersion(claudePath string) (string, error) {
 	}
 	return "", fmt.Errorf("unexpected output format: %s", output)
 }
-
 func (a *App) getLatestNpmVersion(npmPath string, packageName string) (string, error) {
 	var cmd *exec.Cmd
 	// Use npm view <package> version
@@ -2752,32 +2635,25 @@ func (a *App) getLatestNpmVersion(npmPath string, packageName string) (string, e
 	}
 	return strings.TrimSpace(string(out)), nil
 }
-
 // ListPythonEnvironments returns a list of all available Python environments
 func (a *App) ListPythonEnvironments() []PythonEnvironment {
 	envs := []PythonEnvironment{}
-
 	// Add default "None" option
 	envs = append(envs, PythonEnvironment{
 		Name: "None (Default)",
 		Path: "",
 		Type: "system",
 	})
-
 	// Detect Conda environments
 	condaEnvs := a.detectCondaEnvironments()
 	envs = append(envs, condaEnvs...)
-
 	// Could add detection for virtualenv, venv, etc. here
-
 	return envs
 }
-
 // detectCondaEnvironments finds all Anaconda/Miniconda environments
 func (a *App) detectCondaEnvironments() []PythonEnvironment {
 	envs := []PythonEnvironment{}
 	envMap := make(map[string]PythonEnvironment)
-
 	// Helper to add env
 	addEnv := func(name, path string) {
 		if name == "" || path == "" {
@@ -2792,12 +2668,10 @@ func (a *App) detectCondaEnvironments() []PythonEnvironment {
 			}
 		}
 	}
-
 	// 1. Try 'conda env list'
 	condaCmd := a.findCondaCommand()
 	if condaCmd != "" {
 		a.log(a.tr("Using conda command: ") + condaCmd)
-		
 		var cmd *exec.Cmd
 		if goruntime.GOOS == "windows" {
 			// Use platform-specific function to create command with hidden window
@@ -2805,33 +2679,26 @@ func (a *App) detectCondaEnvironments() []PythonEnvironment {
 		} else {
 			cmd = exec.Command(condaCmd, "env", "list")
 		}
-
 		output, err := cmd.CombinedOutput()
 		if err == nil {
 			lines := strings.Split(string(output), "\n")
 			for _, line := range lines {
 				line = strings.TrimSpace(line)
-
 				// Skip comments and empty lines
 				if line == "" || strings.HasPrefix(line, "#") {
 					continue
 				}
-
 				parts := strings.Fields(line)
 				if len(parts) == 0 {
 					continue
 				}
-
 				var name, path string
-				
 				// Handle parsing
 				// Case 1: "* /path" (unnamed, active)
 				// Case 2: "/path" (unnamed)
 				// Case 3: "name * /path" (named, active)
 				// Case 4: "name /path" (named)
-				
 				firstIsPath := strings.Contains(parts[0], "/") || strings.Contains(parts[0], "\\") || (goruntime.GOOS == "windows" && strings.Contains(parts[0], ":"))
-				
 				if parts[0] == "*" {
 					// Case 1
 					if len(parts) > 1 {
@@ -2855,17 +2722,14 @@ func (a *App) detectCondaEnvironments() []PythonEnvironment {
 						}
 					}
 				}
-				
 				addEnv(name, path)
 			}
 		} else {
 			a.log(a.tr("Failed to list conda environments: ") + err.Error())
 		}
 	}
-
 	// 2. Scan common env directories (Fallback/Augment)
 	roots := []string{}
-	
 	// Conda installation root envs
 	condaRoot := a.getCondaRoot()
 	if condaRoot != "" {
@@ -2873,11 +2737,9 @@ func (a *App) detectCondaEnvironments() []PythonEnvironment {
 		// Also add root environment (base)
 		addEnv("base", condaRoot)
 	}
-
 	// User .conda envs
 	home, _ := os.UserHomeDir()
 	roots = append(roots, filepath.Join(home, ".conda", "envs"))
-
 	for _, root := range roots {
 		entries, err := os.ReadDir(root)
 		if err == nil {
@@ -2888,21 +2750,17 @@ func (a *App) detectCondaEnvironments() []PythonEnvironment {
 			}
 		}
 	}
-
 	// Convert map to slice
 	for _, env := range envMap {
 		envs = append(envs, env)
 	}
-
 	a.log(a.tr("Total conda environments found: %d", len(envs)))
 	return envs
 }
-
 // findCondaCommand tries to locate the conda executable
 func (a *App) findCondaCommand() string {
 	// Try common conda command names (include .bat for Windows)
 	condaCmds := []string{"conda.exe", "conda.bat", "conda"}
-
 	// First check CONDA_EXE environment variable
 	if condaExe := os.Getenv("CONDA_EXE"); condaExe != "" {
 		if _, err := os.Stat(condaExe); err == nil {
@@ -2910,7 +2768,6 @@ func (a *App) findCondaCommand() string {
 			return condaExe
 		}
 	}
-
 	for _, cmd := range condaCmds {
 		// Check if command exists in PATH
 		if path, err := exec.LookPath(cmd); err == nil {
@@ -2918,38 +2775,32 @@ func (a *App) findCondaCommand() string {
 			return path
 		}
 	}
-
 	// Try common installation paths
 	commonPaths := a.getCommonCondaPaths()
 	a.log(a.tr("Searching for conda in %d common paths...", len(commonPaths)))
-
 	for _, basePath := range commonPaths {
 		// Check if the base path exists first
 		if _, err := os.Stat(basePath); os.IsNotExist(err) {
 			continue
 		}
-
 		for _, cmd := range condaCmds {
 			fullPath := filepath.Join(basePath, cmd)
 			if _, err := os.Stat(fullPath); err == nil {
 				a.log(a.tr("Found conda at: ") + fullPath)
 				return fullPath
 			}
-
 			// Also check in Scripts subdirectory (Windows)
 			scriptsPath := filepath.Join(basePath, "Scripts", cmd)
 			if _, err := os.Stat(scriptsPath); err == nil {
 				a.log(a.tr("Found conda at: ") + scriptsPath)
 				return scriptsPath
 			}
-
 			// Check in condabin subdirectory (newer Anaconda installations)
 			condabinPath := filepath.Join(basePath, "condabin", cmd)
 			if _, err := os.Stat(condabinPath); err == nil {
 				a.log(a.tr("Found conda at: ") + condabinPath)
 				return condabinPath
 			}
-
 			// Check in bin subdirectory (Linux/macOS)
 			binPath := filepath.Join(basePath, "bin", cmd)
 			if _, err := os.Stat(binPath); err == nil {
@@ -2958,33 +2809,28 @@ func (a *App) findCondaCommand() string {
 			}
 		}
 	}
-
 	a.log(a.tr("Conda not found in any common location"))
 	return ""
 }
-
 // getCommonCondaPaths returns platform-specific common conda installation paths
 func (a *App) getCommonCondaPaths() []string {
 	paths := []string{}
 	homeDir := a.GetUserHomeDir()
-
 	// Check CONDA_PREFIX environment variable first
 	if condaPrefix := os.Getenv("CONDA_PREFIX"); condaPrefix != "" {
 		paths = append(paths, condaPrefix)
 	}
-
 	// Check CONDA_EXE environment variable
 	if condaExe := os.Getenv("CONDA_EXE"); condaExe != "" {
 		// CONDA_EXE points to the conda executable, go up to get root
 		condaDir := filepath.Dir(condaExe)
 		if strings.HasSuffix(strings.ToLower(condaDir), "scripts") ||
-		   strings.HasSuffix(strings.ToLower(condaDir), "library\\bin") {
+			strings.HasSuffix(strings.ToLower(condaDir), "library\\bin") {
 			paths = append(paths, filepath.Dir(condaDir))
 		} else {
 			paths = append(paths, condaDir)
 		}
 	}
-
 	// User home directory paths
 	paths = append(paths,
 		filepath.Join(homeDir, "anaconda3"),
@@ -2992,7 +2838,6 @@ func (a *App) getCommonCondaPaths() []string {
 		filepath.Join(homeDir, "Anaconda3"),
 		filepath.Join(homeDir, "Miniconda3"),
 	)
-
 	// macOS common paths
 	if goruntime.GOOS == "darwin" {
 		paths = append(paths,
@@ -3008,7 +2853,6 @@ func (a *App) getCommonCondaPaths() []string {
 			"/usr/local/Caskroom/anaconda/base",
 		)
 	}
-
 	// AppData Local paths (Windows common location)
 	appDataLocal := os.Getenv("LOCALAPPDATA")
 	if appDataLocal != "" {
@@ -3019,7 +2863,6 @@ func (a *App) getCommonCondaPaths() []string {
 			filepath.Join(appDataLocal, "Continuum", "miniconda3"),
 		)
 	}
-
 	// ProgramData paths (all users installation)
 	programData := os.Getenv("ProgramData")
 	if programData == "" {
@@ -3031,7 +2874,6 @@ func (a *App) getCommonCondaPaths() []string {
 		filepath.Join(programData, "Anaconda3"),
 		filepath.Join(programData, "Miniconda3"),
 	)
-
 	// Common drive root installations
 	for _, drive := range []string{"C:", "D:", "E:"} {
 		root := drive + string(filepath.Separator)
@@ -3044,10 +2886,8 @@ func (a *App) getCommonCondaPaths() []string {
 			filepath.Join(root, "ProgramData", "miniconda3"),
 		)
 	}
-
 	return paths
 }
-
 // getCondaRoot finds the conda installation root directory
 func (a *App) getCondaRoot() string {
 	// First try to get from conda command location
@@ -3056,18 +2896,15 @@ func (a *App) getCondaRoot() string {
 		// If conda is in PATH or found directly, parse its path
 		// Conda executable is usually in [root]/Scripts/conda.exe or [root]/bin/conda
 		condaDir := filepath.Dir(condaCmd)
-
 		// Check if we're in Scripts or bin directory
 		if strings.HasSuffix(strings.ToLower(condaDir), "scripts") ||
-		   strings.HasSuffix(strings.ToLower(condaDir), "bin") {
+			strings.HasSuffix(strings.ToLower(condaDir), "bin") {
 			// Go up one level to get the root
 			return filepath.Dir(condaDir)
 		}
-
 		// Otherwise, condaDir itself might be the root
 		return condaDir
 	}
-
 	// If not found, try common installation paths
 	commonPaths := a.getCommonCondaPaths()
 	for _, path := range commonPaths {
@@ -3076,31 +2913,18 @@ func (a *App) getCondaRoot() string {
 		if _, err := os.Stat(activateScript); err == nil {
 			return path
 		}
-
 		activateScript = filepath.Join(path, "bin", "activate")
-
-				if _, err := os.Stat(activateScript); err == nil {
-
-					return path
-
-				}
-
-			}
-
-		
-
-			return ""
-
+		if _, err := os.Stat(activateScript); err == nil {
+			return path
 		}
-
-		
-
-		type SystemInfo struct {
+	}
+	return ""
+}
+type SystemInfo struct {
 	OS        string `json:"os"`
 	Arch      string `json:"arch"`
 	OSVersion string `json:"os_version"`
 }
-
 func (a *App) GetSystemInfo() SystemInfo {
 	return SystemInfo{
 		OS:        goruntime.GOOS,
@@ -3108,7 +2932,6 @@ func (a *App) GetSystemInfo() SystemInfo {
 		OSVersion: a.getOSVersion(),
 	}
 }
-
 func (a *App) getOSVersion() string {
 	switch goruntime.GOOS {
 	case "darwin":
@@ -3133,3143 +2956,974 @@ func (a *App) getOSVersion() string {
 	}
 	return "Unknown"
 }
-
 func (a *App) PackLog(logContent string) (string, error) {
-
-			// Create a temp file for the zip
-
-			timestamp := time.Now().Format("20060102_150405")
-
-			fileName := fmt.Sprintf("aicoder_log_%s.zip", timestamp)
-
-			tempDir := os.TempDir()
-
-			zipPath := filepath.Join(tempDir, fileName)
-
-		
-
-			// Create the zip file
-
-			zipFile, err := os.Create(zipPath)
-
-			if err != nil {
-
-				return "", fmt.Errorf("failed to create zip file: %w", err)
-
-			}
-
-			defer zipFile.Close()
-
-		
-
-			// Initialize zip writer
-
-			archive := zip.NewWriter(zipFile)
-
-			defer archive.Close()
-
-		
-
-			// Create file inside zip
-
-			f, err := archive.Create("install_log.txt")
-
-			if err != nil {
-
-				return "", fmt.Errorf("failed to create file in zip: %w", err)
-
-			}
-
-		
-
-			// Write content
-
-			_, err = f.Write([]byte(logContent))
-
-			if err != nil {
-
-				return "", fmt.Errorf("failed to write content to zip: %w", err)
-
-			}
-
-		
-
-			return zipPath, nil
-
+	// Create a temp file for the zip
+	timestamp := time.Now().Format("20060102_150405")
+	fileName := fmt.Sprintf("aicoder_log_%s.zip", timestamp)
+	tempDir := os.TempDir()
+	zipPath := filepath.Join(tempDir, fileName)
+	// Create the zip file
+	zipFile, err := os.Create(zipPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to create zip file: %w", err)
+	}
+	defer zipFile.Close()
+	// Initialize zip writer
+	archive := zip.NewWriter(zipFile)
+	defer archive.Close()
+	// Create file inside zip
+	f, err := archive.Create("install_log.txt")
+	if err != nil {
+		return "", fmt.Errorf("failed to create file in zip: %w", err)
+	}
+	// Write content
+	_, err = f.Write([]byte(logContent))
+	if err != nil {
+		return "", fmt.Errorf("failed to write content to zip: %w", err)
+	}
+	return zipPath, nil
+}
+func (a *App) ShowItemInFolder(path string) error {
+	var cmd *exec.Cmd
+	switch goruntime.GOOS {
+	case "darwin":
+		cmd = exec.Command("open", "-R", path)
+	case "windows":
+		path = filepath.FromSlash(path)
+		cmd = exec.Command("explorer", "/select,", path)
+	case "linux":
+		cmd = exec.Command("xdg-open", filepath.Dir(path))
+	default:
+		return fmt.Errorf("unsupported platform")
+	}
+	// Use Start instead of Run to avoid waiting for the process and ignoring exit codes (like 1 on Windows)
+	return cmd.Start()
+}
+func (a *App) GetSkillsDir(toolName string) string {
+	home, _ := os.UserHomeDir()
+	baseDir := filepath.Join(home, ".cceasy", "skills")
+	storageDir := filepath.Join(baseDir, "storage")
+	
+	// Migration: If storage doesn't exist but claude does, rename claude to storage
+	// This ensures existing skills are preserved and shared
+	if _, err := os.Stat(storageDir); os.IsNotExist(err) {
+		oldDir := filepath.Join(baseDir, "claude")
+		if _, err := os.Stat(oldDir); err == nil {
+			os.Rename(oldDir, storageDir)
 		}
+	}
+	
+	return storageDir
+}
+func (a *App) SelectSkillFile() string {
+	selection, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
+		Title: "Select Skill Zip File",
+		Filters: []runtime.FileFilter{
+			{DisplayName: "Zip Files", Pattern: "*.zip"},
+		},
+	})
+	if err != nil {
+		return ""
+	}
+	return selection
+}
+// getInstalledSkillDirs returns a list of installed skill directory names for both user and project locations
+func (a *App) getInstalledSkillDirs(toolName string, location string, projectPath string) []string {
+	var installedDirs []string
+	configDirName := getToolConfigDirName(toolName)
 
+	var skillsDir string
+	if location == "user" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return installedDirs
+		}
+		skillsDir = filepath.Join(home, configDirName, "skills")
+	} else if location == "project" {
+		if projectPath == "" {
+			return installedDirs
+		}
+		skillsDir = filepath.Join(projectPath, configDirName, "skills")
+	} else {
+		return installedDirs
+	}
+
+	// Check if skills directory exists
+	if _, err := os.Stat(skillsDir); os.IsNotExist(err) {
+		return installedDirs
+	}
+
+	// Read all entries in the skills directory
+	entries, err := os.ReadDir(skillsDir)
+	if err != nil {
+		return installedDirs
+	}
+
+	// Collect directory names
+	for _, entry := range entries {
+		if entry.IsDir() {
+			installedDirs = append(installedDirs, entry.Name())
+		}
+	}
+
+	return installedDirs
+}
+
+func (a *App) ListSkills(toolName string) []Skill {
+	skillsDir := a.GetSkillsDir(toolName)
+	metadataPath := filepath.Join(skillsDir, "metadata.json")
+	
+	var defaultSkills []Skill
+	// Add default skills for all tools
+	defaultSkills = append(defaultSkills, Skill{
+		Name: "Claude Official Documentation Skill Package",
+		Description: "Claude Official Documentation Skill Package",
+		Type: "address",
+		Value: "document-skills@anthropic-agent-skills",
+	})
+	defaultSkills = append(defaultSkills, Skill{
+		Name: "超能力技能包",
+		Description: "包含各种方便技能，包括头脑风暴等。",
+		Type: "address",
+		Value: "superpowers@superpowers-marketplace",
+	})
+
+	if _, err := os.Stat(metadataPath); os.IsNotExist(err) {
+		return defaultSkills
+	}
+	data, err := os.ReadFile(metadataPath)
+	if err != nil {
+		return defaultSkills
+	}
+	var skills []Skill
+	json.Unmarshal(data, &skills)
+	
+	// Filter out duplicates of default skills if they exist in JSON
+	// AND filter out 'address' type skills for gemini/codex
+	isGeminiOrCodex := strings.ToLower(toolName) == "gemini" || strings.ToLower(toolName) == "codex"
+	
+	filteredSkills := defaultSkills
+	for _, s := range skills {
+		if isGeminiOrCodex && s.Type == "address" {
+			continue
+		}
 		
+		isDefault := false
+		for _, ds := range defaultSkills {
+			if s.Name == ds.Name {
+				isDefault = true
+				break
+			}
+		}
+		if !isDefault {
+			filteredSkills = append(filteredSkills, s)
+		}
+	}
+	return filteredSkills
+}
 
-		func (a *App) ShowItemInFolder(path string) error {
+// ListSkillsWithInstallStatus returns skills list with installed status marked
+func (a *App) ListSkillsWithInstallStatus(toolName string, location string, projectPath string) []Skill {
+	// Get all available skills
+	allSkills := a.ListSkills(toolName)
 
-		
+	// Get installed skill directories
+	installedDirs := a.getInstalledSkillDirs(toolName, location, projectPath)
+	installedMap := make(map[string]bool)
+	for _, dir := range installedDirs {
+		installedMap[dir] = true
+	}
 
+	// Mark skills as installed based on their type
+	for i := range allSkills {
+		skill := &allSkills[i]
+
+		if skill.Type == "zip" {
+			// For zip skills, extract the skill directory name from the zip filename
+			// The zip file should extract to a directory with the same base name
+			zipName := filepath.Base(skill.Value)
+			// Remove .zip extension
+			dirName := strings.TrimSuffix(zipName, ".zip")
+			dirName = strings.TrimSuffix(dirName, ".rar")
+
+			// Check if this directory exists in installed dirs
+			skill.Installed = installedMap[dirName]
+		} else if skill.Type == "address" {
+			// For address skills, the value is like "document-skills@anthropic-agent-skills"
+			// The installed directory name is the part before @
+			parts := strings.Split(skill.Value, "@")
+			if len(parts) > 0 {
+				dirName := parts[0]
+				skill.Installed = installedMap[dirName]
+			}
+		}
+	}
+
+	return allSkills
+}
+
+func (a *App) validateSkillZip(path string) error {
+	r, err := zip.OpenReader(path)
+	if err != nil {
+		return fmt.Errorf("invalid zip file: %v", err)
+	}
+	defer r.Close()
+	rootDirs := make(map[string]bool)
+	hasSkillMd := make(map[string]bool)
+	for _, f := range r.File {
+		// Normalize separators
+		name := strings.ToValidUTF8(f.Name, "") // Ensure valid UTF8
+		name = filepath.ToSlash(name)
+		parts := strings.Split(name, "/")
+		// Ignore Mac/System junk
+		if len(parts) > 0 && (strings.HasPrefix(parts[0], "__MACOSX") || strings.HasPrefix(parts[0], ".")) {
+			continue
+		}
+		if len(parts) == 1 {
+			if f.FileInfo().IsDir() {
+				rootDirs[parts[0]] = true
+			} else {
+				return fmt.Errorf("skill package root must only contain directories. Found file: %s", parts[0])
+			}
+		} else {
+			// It's inside a directory
+			rootDirs[parts[0]] = true
+			if len(parts) == 2 && strings.EqualFold(parts[1], "SKILL.md") {
+				hasSkillMd[parts[0]] = true
+			}
+		}
+	}
+	if len(rootDirs) == 0 {
+		return fmt.Errorf("skill package is empty or contains no valid directories")
+	}
+	for dir := range rootDirs {
+		if !hasSkillMd[dir] {
+			return fmt.Errorf("directory '%s' is missing SKILL.md", dir)
+		}
+	}
+	return nil
+}
+func getToolConfigDirName(tool string) string {
+	switch strings.ToLower(tool) {
+	case "claude":
+		return ".claude"
+	case "gemini":
+		return ".gemini"
+	case "codex":
+		return ".codex"
+	case "opencode":
+		return ".opencode"
+	case "codebuddy":
+		return ".codebuddy"
+	case "qoder":
+		return ".qoder"
+	case "iflow":
+		return ".iflow"
+	case "kiro", "kilocode":
+		return ".kilocode"
+	default:
+		return "." + strings.ToLower(tool)
+	}
+}
+func (a *App) AddSkill(name, description, skillType, value, toolName string) error {
+	// Prevent address skills for gemini/codex
+	if (strings.ToLower(toolName) == "gemini" || strings.ToLower(toolName) == "codex") && skillType == "address" {
+		return fmt.Errorf("gemini and codex only support zip package skills")
+	}
+	// Validate zip if applicable
+	if skillType == "zip" && strings.Contains(value, string(os.PathSeparator)) {
+		if err := a.validateSkillZip(value); err != nil {
+			return err
+		}
+	}
+	skillsDir := a.GetSkillsDir(toolName)
+	if err := os.MkdirAll(skillsDir, 0755); err != nil {
+		return err
+	}
+	metadataPath := filepath.Join(skillsDir, "metadata.json")
+	// Load existing
+	var skills []Skill
+	if data, err := os.ReadFile(metadataPath); err == nil {
+		json.Unmarshal(data, &skills)
+	}
+	// Check for duplicate name - update if exists
+	found := false
+	for i, s := range skills {
+		if s.Name == name {
+			finalValue := value
+			if skillType == "zip" {
+				// If value is a path (contains separator)", assume it's a new file to copy
+				if strings.Contains(value, string(os.PathSeparator)) {
+					srcFile, err := os.Open(value)
+					if err != nil {
+						return err
+					}
+					defer srcFile.Close()
+					fileName := filepath.Base(value)
+					destPath := filepath.Join(skillsDir, fileName)
+					destFile, err := os.Create(destPath)
+					if err != nil {
+						return err
+					}
+					defer destFile.Close()
+					_, err = io.Copy(destFile, srcFile)
+					if err != nil {
+						return err
+					}
+					finalValue = fileName
+				}
+			}
+			skills[i] = Skill{
+				Name: name,
+				Description: description,
+				Type: skillType,
+				Value: finalValue,
+			}
+			found = true
+			break
+		}
+	}
+	if !found {
+		finalValue := value
+		if skillType == "zip" {
+			// Copy file
+			srcFile, err := os.Open(value)
+			if err != nil {
+				return err
+			}
+			defer srcFile.Close()
+			fileName := filepath.Base(value)
+			destPath := filepath.Join(skillsDir, fileName)
+			destFile, err := os.Create(destPath)
+			if err != nil {
+				return err
+			}
+			defer destFile.Close()
+			_, err = io.Copy(destFile, srcFile)
+			if err != nil {
+				return err
+			}
+			finalValue = fileName
+		}
+		newSkill := Skill{
+			Name: name,
+			Description: description,
+			Type: skillType,
+			Value: finalValue,
+		}
+		skills = append(skills, newSkill)
+	}
+	// Save
+	data, err := json.MarshalIndent(skills, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(metadataPath, data, 0644)
+}
+func (a *App) InstallDefaultMarketplace() error {
+	// Find Claude
+	tm := NewToolManager(a)
+	status := tm.GetToolStatus("claude")
+	if !status.Installed {
+		return fmt.Errorf("claude tool not found or not installed")
+	}
+	// Check existing marketplaces
+	home, _ := os.UserHomeDir()
+	marketplacesFile := filepath.Join(home, ".claude", "plugins", "known_marketplaces.json")
+	var existingMarketplaces string
+	if data, err := os.ReadFile(marketplacesFile); err == nil {
+		existingMarketplaces = string(data)
+	}
+	// Helper to execute claude command
+	execClaude := func(args ...string) error {
+		var cmd *exec.Cmd
+		// If path is a JS file, run with node
+		if strings.HasSuffix(status.Path, ".js") {
+			// Try to find node
+			nodePath, err := exec.LookPath("node")
+			if err != nil {
+				return fmt.Errorf("node not found")
+			}
+			cmdArgs := append([]string{status.Path}, args...)
+			cmd = createHiddenCmd(nodePath, cmdArgs...)
+		} else {
+			cmd = createHiddenCmd(status.Path, args...)
+		}
+		// Ensure environment variables are passed (HOME is crucial)
+		cmd.Env = os.Environ()
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			// For removal, we often ignore errors if it wasn't there
+			if args[2] == "remove" {
+				return nil
+			}
+			return fmt.Errorf("failed to run claude %s: %v\nOutput: %s", strings.Join(args, " "), err, string(out))
+		}
+		return nil
+	}
+	// 1. Re-install anthropics/skills if not present
+	if !strings.Contains(existingMarketplaces, "anthropics/skills") {
+		execClaude("plugin", "marketplace", "remove", "anthropics/skills")
+		if err := execClaude("plugin", "marketplace", "add", "anthropics/skills"); err != nil {
+			return err
+		}
+	}
+	// 2. Re-install obra/superpowers-marketplace if not present
+	if !strings.Contains(existingMarketplaces, "obra/superpowers-marketplace") {
+		execClaude("plugin", "marketplace", "remove", "obra/superpowers-marketplace")
+		if err := execClaude("plugin", "marketplace", "add", "obra/superpowers-marketplace"); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+func (a *App) unzip(src, dest string) error {
+	r, err := zip.OpenReader(src)
+	if err != nil {
+		return err
+	}
+	defer r.Close()
+	// 1. Identify root directories to clean up
+	rootDirs := make(map[string]bool)
+	for _, f := range r.File {
+		path := filepath.ToSlash(f.Name)
+		parts := strings.Split(path, "/")
+		if len(parts) > 0 {
+			rootDir := parts[0]
+			if !strings.HasPrefix(rootDir, "__MACOSX") && !strings.HasPrefix(rootDir, ".") {
+				rootDirs[rootDir] = true
+			}
+		}
+	}
+	// 2. Remove existing directories
+	for dir := range rootDirs {
+		destPath := filepath.Join(dest, dir)
+		if err := os.RemoveAll(destPath); err != nil {
+			return fmt.Errorf("failed to remove existing skill directory %s: %v", destPath, err)
+		}
+	}
+	os.MkdirAll(dest, 0755)
+	for _, f := range r.File {
+		fpath := filepath.Join(dest, f.Name)
+		if !strings.HasPrefix(fpath, filepath.Clean(dest)+string(os.PathSeparator)) {
+			return fmt.Errorf("illegal file path: %s", fpath)
+		}
+		if f.FileInfo().IsDir() {
+			os.MkdirAll(fpath, os.ModePerm)
+			continue
+		}
+		if err = os.MkdirAll(filepath.Dir(fpath), os.ModePerm); err != nil {
+			return err
+		}
+		outFile, err := os.OpenFile(fpath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
+		if err != nil {
+			return err
+		}
+		rc, err := f.Open()
+		if err != nil {
+			outFile.Close()
+			return err
+		}
+		_, err = io.Copy(outFile, rc)
+		outFile.Close()
+		rc.Close()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+func (a *App) InstallSkill(name, description, skillType, value, location, projectPath, toolName string) error {
+	// 1. Validate
+	if location == "project" && skillType == "address" {
+		return fmt.Errorf("project installation only supports zip/rar files")
+	}
+	// For zip validation, we need to know if value is a path or filename
+	var fullPath string
+	if skillType == "zip" {
+		if strings.Contains(value, string(os.PathSeparator)) {
+			fullPath = value
+		} else {
+			fullPath = filepath.Join(a.GetSkillsDir(toolName), value)
+		}
+		if err := a.validateSkillZip(fullPath); err != nil {
+			return err
+		}
+	}
+	configDirName := getToolConfigDirName(toolName)
+	// 2. Install to Tool
+	if location == "user" {
+		if skillType == "address" {
+			// Skill ID installation
+			if strings.ToLower(toolName) != "claude" {
+				return fmt.Errorf("skill ID installation is currently only supported for Claude")
+			}
+			// claude plugin install <value>
+			tm := NewToolManager(a)
+			status := tm.GetToolStatus("claude")
+			if !status.Installed {
+				return fmt.Errorf("claude not installed")
+			}
 			var cmd *exec.Cmd
-
-		
-
-			switch goruntime.GOOS {
-
-		
-
-			case "darwin":
-
-		
-
-				cmd = exec.Command("open", "-R", path)
-
-		
-
-			case "windows":
-
-		
-
-				path = filepath.FromSlash(path)
-
-		
-
-				cmd = exec.Command("explorer", "/select,", path)
-
-		
-
-			case "linux":
-
-		
-
-				cmd = exec.Command("xdg-open", filepath.Dir(path))
-
-		
-
-			default:
-
-		
-
-				return fmt.Errorf("unsupported platform")
-
-		
-
+			if strings.HasSuffix(status.Path, ".js") {
+				nodePath, _ := exec.LookPath("node")
+				cmd = createHiddenCmd(nodePath, status.Path, "plugin", "install", value)
+			} else {
+				cmd = createHiddenCmd(status.Path, "plugin", "install", value)
 			}
-
-		
-
-			// Use Start instead of Run to avoid waiting for the process and ignoring exit codes (like 1 on Windows)
-
-		
-
-								return cmd.Start()
-
-		
-
-							}
-
-		
-
-						
-
-		
-
-						func (a *App) GetSkillsDir() string {
-
-		
-
-							home, _ := os.UserHomeDir()
-
-		
-
-							return filepath.Join(home, ".cceasy", "skills")
-
-		
-
-						}
-
-		
-
-						
-
-		
-
-						func (a *App) SelectSkillFile() string {
-
-		
-
-							selection, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
-
-		
-
-								Title: "Select Skill Zip File",
-
-		
-
-								Filters: []runtime.FileFilter{
-
-		
-
-									{DisplayName: "Zip Files", Pattern: "*.zip"},
-
-		
-
-								},
-
-		
-
-							})
-
-		
-
-							if err != nil {
-
-		
-
-								return ""
-
-		
-
-							}
-
-		
-
-							return selection
-
-		
-
-						}
-
-		
-
-						
-
-		
-
-						func (a *App) ListSkills() []Skill {
-
-		
-
-							skillsDir := a.GetSkillsDir()
-
-		
-
-							metadataPath := filepath.Join(skillsDir, "metadata.json")
-
-		
-
-							
-
-		
-
-							if _, err := os.Stat(metadataPath); os.IsNotExist(err) {
-
-		
-
-								return []Skill{}
-
-		
-
-							}
-
-		
-
-						
-
-		
-
-							data, err := os.ReadFile(metadataPath)
-
-		
-
-							if err != nil {
-
-		
-
-								return []Skill{}
-
-		
-
-							}
-
-		
-
-						
-
-		
-
-							var skills []Skill
-
-		
-
-							json.Unmarshal(data, &skills)
-
-		
-
-							return skills
-
-		
-
-						}
-
-		
-
-						
-
-		
-
-						func (a *App) AddSkill(name, description, skillType, value string) error {
-
-		
-
-							skillsDir := a.GetSkillsDir()
-
-		
-
-							if err := os.MkdirAll(skillsDir, 0755); err != nil {
-
-		
-
-								return err
-
-		
-
-							}
-
-		
-
-						
-
-		
-
-							metadataPath := filepath.Join(skillsDir, "metadata.json")
-
-		
-
-							
-
-		
-
-							// Load existing
-
-		
-
-							var skills []Skill
-
-		
-
-							if data, err := os.ReadFile(metadataPath); err == nil {
-
-		
-
-								json.Unmarshal(data, &skills)
-
-		
-
-							}
-
-		
-
-						
-
-		
-
-							// Check for duplicate name - update if exists
-
-		
-
-							found := false
-
-		
-
-							for i, s := range skills {
-
-		
-
-								if s.Name == name {
-
-		
-
-									finalValue := value
-
-		
-
-									if skillType == "zip" {
-
-		
-
-										// If value is a path (contains separator), assume it's a new file to copy
-
-		
-
-										if strings.Contains(value, string(os.PathSeparator)) {
-
-		
-
-											srcFile, err := os.Open(value)
-
-		
-
-											if err != nil {
-
-		
-
-												return err
-
-		
-
-											}
-
-		
-
-											defer srcFile.Close()
-
-		
-
-						
-
-		
-
-											fileName := filepath.Base(value)
-
-		
-
-											destPath := filepath.Join(skillsDir, fileName)
-
-		
-
-											
-
-		
-
-											destFile, err := os.Create(destPath)
-
-		
-
-											if err != nil {
-
-		
-
-												return err
-
-		
-
-											}
-
-		
-
-											defer destFile.Close()
-
-		
-
-						
-
-		
-
-											_, err = io.Copy(destFile, srcFile)
-
-		
-
-											if err != nil {
-
-		
-
-												return err
-
-		
-
-											}
-
-		
-
-											finalValue = fileName
-
-		
-
-										}
-
-		
-
-									}
-
-		
-
-						
-
-		
-
-									skills[i] = Skill{
-
-		
-
-										Name: name,
-
-		
-
-										Description: description,
-
-		
-
-										Type: skillType,
-
-		
-
-										Value: finalValue,
-
-		
-
-									}
-
-		
-
-									found = true
-
-		
-
-									break
-
-		
-
-								}
-
-		
-
-							}
-
-		
-
-						
-
-		
-
-							if !found {
-
-		
-
-								finalValue := value
-
-		
-
-								if skillType == "zip" {
-
-		
-
-									// Copy file
-
-		
-
-									srcFile, err := os.Open(value)
-
-		
-
-									if err != nil {
-
-		
-
-										return err
-
-		
-
-									}
-
-		
-
-									defer srcFile.Close()
-
-		
-
-						
-
-		
-
-									fileName := filepath.Base(value)
-
-		
-
-									destPath := filepath.Join(skillsDir, fileName)
-
-		
-
-									
-
-		
-
-									destFile, err := os.Create(destPath)
-
-		
-
-									if err != nil {
-
-		
-
-										return err
-
-		
-
-									}
-
-		
-
-									defer destFile.Close()
-
-		
-
-						
-
-		
-
-									_, err = io.Copy(destFile, srcFile)
-
-		
-
-									if err != nil {
-
-		
-
-										return err
-
-		
-
-									}
-
-		
-
-									finalValue = fileName
-
-		
-
-								}
-
-		
-
-						
-
-		
-
-								newSkill := Skill{
-
-		
-
-									Name: name,
-
-		
-
-									Description: description,
-
-		
-
-									Type: skillType,
-
-		
-
-									Value: finalValue,
-
-		
-
-								}
-
-		
-
-								skills = append(skills, newSkill)
-
-		
-
-							}
-
-		
-
-						
-
-		
-
-							// Save
-
-		
-
-							data, err := json.MarshalIndent(skills, "", "  ")
-
-		
-
-							if err != nil {
-
-		
-
-								return err
-
-		
-
-							}
-
-		
-
-							return os.WriteFile(metadataPath, data, 0644)
-
-		
-
-						}
-
-		
-
-						
-
-		
-
-						func (a *App) DeleteSkill(name string) error {
-
-		
-
-							skillsDir := a.GetSkillsDir()
-
-		
-
-							metadataPath := filepath.Join(skillsDir, "metadata.json")
-
-		
-
-						
-
-		
-
-							var skills []Skill
-
-		
-
-							if data, err := os.ReadFile(metadataPath); err == nil {
-
-		
-
-								json.Unmarshal(data, &skills)
-
-		
-
-							}
-
-		
-
-						
-
-		
-
-							var newSkills []Skill
-
-		
-
-							for _, s := range skills {
-
-		
-
-								if s.Name == name {
-
-		
-
-									if s.Type == "zip" {
-
-		
-
-										os.Remove(filepath.Join(skillsDir, s.Value))
-
-		
-
-									}
-
-		
-
-								} else {
-
-		
-
-									newSkills = append(newSkills, s)
-
-		
-
-								}
-
-		
-
-							}
-
-		
-
-						
-
-		
-
-							data, err := json.MarshalIndent(newSkills, "", "  ")
-
-		
-
-							if err != nil {
-
-		
-
-								return err
-
-		
-
-							}
-
-		
-
-							return os.WriteFile(metadataPath, data, 0644)
-
-		
-
-						}
-
-		
-
-				
-
-		
-
-				// Translation logic
-
-		
-
-				var translations = map[string]map[string]string{
-
-		
-
-										"Checking Node.js installation...": {
-
-		
-
-											"zh-Hans": "正在检查 Node.js 安装...",
-
-		
-
-											"zh-Hant": "正在檢查 Node.js 安裝...",
-
-		
-
-										},
-
-		
-
-																				"Initializing...": {
-
-		
-
-																					"zh-Hans": "初始化中...",
-
-		
-
-																					"zh-Hant": "初始化中...",
-
-		
-
-																				},
-
-		
-
-																				"Skipping environment check and installation.": {
-
-		
-
-																					"zh-Hans": "跳过环境检测安装。",
-
-		
-
-																					"zh-Hant": "跳過環境檢測安裝。",
-
-		
-
-																				},
-
-		
-
-																				"Manual environment check triggered.": {
-
-		
-
-																					"zh-Hans": "手动触发环境检测。",
-
-		
-
-																					"zh-Hant": "手動觸發環境檢測。",
-
-		
-
-																				},
-
-		
-
-					"Node.js not found. Downloading and installing...": {
-
-		
-
-						"zh-Hans": "未找到 Node.js。正在下载并安装...",
-
-		
-
-						"zh-Hant": "未找到 Node.js。正在下載並安裝...",
-
-		
-
-					},
-
-		
-
-					"Node.js not found. Attempting manual installation...": {
-
-		
-
-						"zh-Hans": "未找到 Node.js。尝试手动安装...",
-
-		
-
-						"zh-Hant": "未找到 Node.js。嘗試手動安裝...",
-
-		
-
-					},
-
-		
-
-					"Node.js installed successfully.": {
-
-		
-
-						"zh-Hans": "Node.js 安装成功。",
-
-		
-
-						"zh-Hant": "Node.js 安裝成功。",
-
-		
-
-					},
-
-		
-
-					"Node.js is installed.": {
-
-		
-
-						"zh-Hans": "Node.js 已安装。",
-
-		
-
-						"zh-Hant": "Node.js 已安裝。",
-
-		
-
-					},
-
-		
-
-					"Checking Git installation...": {
-
-		
-
-						"zh-Hans": "正在检查 Git 安装...",
-
-		
-
-						"zh-Hant": "正在檢查 Git 安裝...",
-
-		
-
-					},
-
-		
-
-					"Git found in standard location.": {
-
-		
-
-						"zh-Hans": "在标准位置找到 Git。",
-
-		
-
-						"zh-Hant": "在標準位置找到 Git。",
-
-		
-
-					},
-
-		
-
-					"Git not found. Downloading and installing...": {
-
-		
-
-						"zh-Hans": "未找到 Git。正在下载并安装...",
-
-		
-
-						"zh-Hant": "未找到 Git。正在下載並安裝...",
-
-		
-
-					},
-
-		
-
-					"Git installed successfully.": {
-
-		
-
-						"zh-Hans": "Git 安装成功。",
-
-		
-
-						"zh-Hant": "Git 安裝成功。",
-
-		
-
-					},
-
-		
-
-					"Git is installed.": {
-
-		
-
-						"zh-Hans": "Git 已安装。",
-
-		
-
-						"zh-Hant": "Git 已安裝。",
-
-		
-
-					},
-
-		
-
-					"Environment check complete.": {
-
-		
-
-						"zh-Hans": "环境检查完成。",
-
-		
-
-						"zh-Hant": "環境檢查完成。",
-
-		
-
-					},
-
-		
-
-					"npm not found.": {
-
-		
-
-						"zh-Hans": "未找到 npm。",
-
-		
-
-						"zh-Hant": "未找到 npm。",
-
-		
-
-					},
-
-		
-
-					// Templates
-
-		
-
-					"Checking %s...": {
-
-		
-
-						"zh-Hans": "正在检查 %s...",
-
-		
-
-						"zh-Hant": "正在檢查 %s...",
-
-		
-
-					},
-
-		
-
-					"%s not found. Attempting automatic installation...": {
-
-		
-
-						"zh-Hans": "未找到 %s。尝试自动安装...",
-
-		
-
-						"zh-Hant": "未找到 %s。嘗試自動安裝...",
-
-		
-
-					},
-
-		
-
-					"ERROR: Failed to install %s: %v": {
-
-		
-
-						"zh-Hans": "错误：安装 %s 失败: %v",
-
-		
-
-						"zh-Hant": "錯誤：安裝 %s 失敗: %v",
-
-		
-
-					},
-
-		
-
-					"%s installed successfully.": {
-
-		
-
-						"zh-Hans": "%s 安装成功。",
-
-		
-
-						"zh-Hant": "%s 安裝成功。",
-
-		
-
-					},
-
-		
-
-					"%s found at %s (version: %s).": {
-
-		
-
-						"zh-Hans": "发现 %s 位于 %s (版本: %s)。",
-
-		
-
-						"zh-Hant": "發現 %s 位於 %s (版本: %s)。",
-
-		
-
-					},
-
-		
-
-					"Checking for %s updates...": {
-
-		
-
-						"zh-Hans": "正在检查 %s 更新...",
-
-		
-
-						"zh-Hant": "正在檢查 %s 更新...",
-
-		
-
-					},
-
-		
-
-					"New version available for %s: %s (current: %s). Updating...": {
-
-		
-
-						"zh-Hans": "%s 有新版本可用: %s (当前: %s)。正在更新...",
-
-		
-
-						"zh-Hant": "%s 有新版本可用: %s (當前: %s)。正在更新...",
-
-		
-
-					},
-
-		
-
-					"ERROR: Failed to update %s: %v": {
-
-		
-
-						"zh-Hans": "错误：更新 %s 失败: %v",
-
-		
-
-						"zh-Hant": "錯誤：更新 %s 失敗: %v",
-
-		
-
-					},
-
-		
-
-										"%s updated successfully to %s.": {
-
-		
-
-							
-
-		
-
-											"zh-Hans": "%s 成功更新到 %s。",
-
-		
-
-							
-
-		
-
-											"zh-Hant": "%s 成功更新到 %s。",
-
-		
-
-							
-
-		
-
-										},
-
-		
-
-					
-
-		
-
-																				"CheckUpdate: Starting check against %s": {
-
-		
-
-					
-
-		
-
-																					"zh-Hans": "检查更新：正在从 %s 检查...",
-
-		
-
-					
-
-		
-
-																					"zh-Hant": "檢查更新：正在從 %s 檢查...",
-
-		
-
-					
-
-		
-
-																				},
-
-		
-
-					
-
-		
-
-																				"CheckUpdate: Failed to create request: %v": {
-
-		
-
-					
-
-		
-
-																					"zh-Hans": "检查更新：创建请求失败: %v",
-
-		
-
-					
-
-		
-
-																					"zh-Hant": "檢查更新：建立請求失敗: %v",
-
-		
-
-					
-
-		
-
-																				},
-
-		
-
-					
-
-		
-
-																				"CheckUpdate: Failed to decode token at iteration %d: %v": {
-
-		
-
-					
-
-		
-
-																					"zh-Hans": "检查更新：第 %d 次迭代解码令牌失败: %v",
-
-		
-
-					
-
-		
-
-																					"zh-Hant": "檢查更新：第 %d 次迭代解碼令牌失敗: %v",
-
-		
-
-					
-
-		
-
-																				},
-
-		
-
-					
-
-		
-
-																				"CheckUpdate: HTTP Status: %d": {
-
-		
-
-					
-
-		
-
-																					"zh-Hans": "检查更新：HTTP 状态码: %d",
-
-		
-
-					
-
-		
-
-																					"zh-Hant": "檢查更新：HTTP 狀態碼: %d",
-
-		
-
-					
-
-		
-
-																				},
-
-		
-
-					
-
-		
-
-																														"CheckUpdate: Rate Limit: %s/%s, Reset: %s": {
-
-		
-
-					
-
-		
-
-																															"zh-Hans": "检查更新：速率限制: %s/%s, 重置时间: %s",
-
-		
-
-					
-
-		
-
-																															"zh-Hant": "檢查更新：速率限制: %s/%s, 重置時間: %s",
-
-		
-
-					
-
-		
-
-																														},
-
-		
-
-					
-
-		
-
-																																								"CheckUpdate: Response: %s": {
-
-		
-
-					
-
-		
-
-																																									"zh-Hans": "检查更新：响应内容: %s",
-
-		
-
-					
-
-		
-
-																																									"zh-Hant": "檢查更新：響應內容: %s",
-
-		
-
-					
-
-		
-
-																																								},
-
-		
-
-					
-
-		
-
-																																								"CheckUpdate: Failed to read response body: %v": {
-
-		
-
-					
-
-		
-
-																																									"zh-Hans": "检查更新：读取响应体失败: %v",
-
-		
-
-					
-
-		
-
-																																									"zh-Hant": "檢查更新：讀取響應體失敗: %v",
-
-		
-
-					
-
-		
-
-																																								},
-
-		
-
-					
-
-		
-
-																																								"CheckUpdate: Raw response length: %d bytes": {
-
-		
-
-					
-
-		
-
-																																									"zh-Hans": "检查更新：原始响应长度: %d 字节",
-
-		
-
-					
-
-		
-
-																																									"zh-Hant": "檢查更新：原始響應長度: %d 位元組",
-
-		
-
-					
-
-		
-
-																																								},
-
-		
-
-					
-
-		
-
-																																																		"CheckUpdate: Response body: %s": {
-
-		
-
-					
-
-		
-
-																																																			"zh-Hans": "检查更新：响应体: %s",
-
-		
-
-					
-
-		
-
-																																																			"zh-Hant": "檢查更新：響應體: %s",
-
-		
-
-					
-
-		
-
-																																																		},
-
-		
-
-					
-
-		
-
-																																																		"CheckUpdate: Parsed keys: %v": {
-
-		
-
-					
-
-		
-
-																																																			"zh-Hans": "检查更新：解析出的键: %v",
-
-		
-
-					
-
-		
-
-																																																			"zh-Hant": "檢查更新：解析出的鍵: %v",
-
-		
-
-					
-
-		
-
-																																																		},
-
-		
-
-					
-
-		
-
-																																																		"CheckUpdate: Found version in 'tag_name' field: %s": {
-
-		
-
-					
-
-		
-
-																																																			"zh-Hans": "检查更新：在 'tag_name' 字段中找到版本: %s",
-
-		
-
-					
-
-		
-
-																																																			"zh-Hant": "檢查更新：在 'tag_name' 欄位中找到版本: %s",
-
-		
-
-					
-
-		
-
-																																																		},
-
-		
-
-					
-
-		
-
-																																																		"CheckUpdate: Found version in 'name' field: %s": {
-
-		
-
-					
-
-		
-
-																																																			"zh-Hans": "检查更新：在 'name' 字段中找到版本: %s",
-
-		
-
-					
-
-		
-
-																																																			"zh-Hant": "檢查更新：在 'name' 欄位中找到版本: %s",
-
-		
-
-					
-
-		
-
-																																																		},
-
-		
-
-					
-
-		
-
-																																																		"CheckUpdate: Neither 'name' nor 'tag_name' found. Available: %v": {
-
-		
-
-					
-
-		
-
-																																																			"zh-Hans": "检查更新：未找到 'name' 或 'tag_name'。可用字段: %v",
-
-		
-
-					
-
-		
-
-																																																			"zh-Hant": "檢查更新：未找到 'name' 或 'tag_name'。可用欄位: %v",
-
-		
-
-					
-
-		
-
-																																																		},
-
-		
-
-					
-
-		
-
-																																																		"CheckUpdate: Using version: %s": {
-
-		
-
-					
-
-		
-
-																																																			"zh-Hans": "检查更新：使用版本: %s",
-
-		
-
-					
-
-		
-
-																																																			"zh-Hant": "檢查更新：使用版本: %s",
-
-		
-
-					
-
-		
-
-																																																		},
-
-		
-
-					
-
-		
-
-										"CheckUpdate: Using built-in GitHub token for authentication": {
-
-		
-
-											"zh-Hans": "检查更新：使用内置 GitHub 令牌进行身份验证",
-
-		
-
-											"zh-Hant": "檢查更新：使用內置 GitHub 令牌進行身份驗證",
-
-		
-
-										},
-
-		
-
-					
-
-		
-
-															"CheckUpdate: Using custom GitHub token from environment variable": {
-
-		
-
-					
-
-		
-
-																"zh-Hans": "检查更新：使用环境变量中的自定义 GitHub 令牌",
-
-		
-
-					
-
-		
-
-																"zh-Hant": "檢查更新：使用環境變數中的自定義 GitHub 令牌",
-
-		
-
-					
-
-		
-
-															},
-
-		
-
-					
-
-		
-
-										
-
-		
-
-					
-
-		
-
-															"CheckUpdate: Already on latest version": {
-
-		
-
-					
-
-		
-
-																"zh-Hans": "检查更新：已是最新版本",
-
-		
-
-					
-
-		
-
-																"zh-Hant": "檢查更新：已是最新版本",
-
-		
-
-					
-
-		
-
-															},
-
-		
-
-					
-
-		
-
-										
-
-		
-
-					
-
-		
-
-															"CheckUpdate: Latest version: %s, Current version: %s, Display version: %s": {
-
-		
-
-					
-
-		
-
-																"zh-Hans": "检查更新：最新版本: %s, 当前版本: %s, 显示版本: %s",
-
-		
-
-					
-
-		
-
-																"zh-Hant": "檢查更新：最新版本: %s, 當前版本: %s, 顯示版本: %s",
-
-		
-
-					
-
-		
-
-															},
-
-		
-
-					
-
-		
-
-										
-
-		
-
-					
-
-		
-
-																												"CheckUpdate: Update available! %s > %s": {
-
-		
-
-					
-
-		
-
-										
-
-		
-
-					
-
-		
-
-																													"zh-Hans": "检查更新：发现新版本！ %s > %s",
-
-		
-
-					
-
-		
-
-										
-
-		
-
-					
-
-		
-
-																													"zh-Hant": "檢查更新：發現新版本！ %s > %s",
-
-		
-
-					
-
-		
-
-										
-
-		
-
-					
-
-		
-
-																												},
-
-		
-
-					
-
-		
-
-										
-
-		
-
-					
-
-		
-
-															
-
-		
-
-					
-
-		
-
-										
-
-		
-
-					
-
-		
-
-																												"CheckUpdate: Failed to fetch GitHub API: %v": {
-
-		
-
-					
-
-		
-
-										
-
-		
-
-					
-
-		
-
-																													"zh-Hans": "检查更新：获取 GitHub API 失败: %v",
-
-		
-
-					
-
-		
-
-										
-
-		
-
-					
-
-		
-
-																													"zh-Hant": "檢查更新：獲取 GitHub API 失敗: %v",
-
-		
-
-					
-
-		
-
-										
-
-		
-
-					
-
-		
-
-																												},
-
-		
-
-					
-
-		
-
-										
-
-		
-
-					
-
-		
-
-															
-
-		
-
-					
-
-		
-
-										
-
-		
-
-					
-
-		
-
-																												"CheckUpdate: Rate limit exceeded, resets at: %s": {
-
-		
-
-					
-
-		
-
-										
-
-		
-
-					
-
-		
-
-																													"zh-Hans": "检查更新：超出速率限制，重置时间: %s",
-
-		
-
-					
-
-		
-
-										
-
-		
-
-					
-
-		
-
-																													"zh-Hant": "檢查更新：超出速率限制，重置時間: %s",
-
-		
-
-					
-
-		
-
-										
-
-		
-
-					
-
-		
-
-																												},
-
-		
-
-					
-
-		
-
-										
-
-		
-
-					
-
-		
-
-															
-
-		
-
-					
-
-		
-
-										
-
-		
-
-					
-
-		
-
-																												"CheckUpdate: Failed to parse JSON: %v": {
-
-		
-
-					
-
-		
-
-										
-
-		
-
-					
-
-		
-
-																													"zh-Hans": "检查更新：解析 JSON 失败: %v",
-
-		
-
-					
-
-		
-
-										
-
-		
-
-					
-
-		
-
-																													"zh-Hant": "檢查更新：解析 JSON 失敗: %v",
-
-		
-
-					
-
-		
-
-										
-
-		
-
-					
-
-		
-
-																												},
-
-		
-
-					
-
-		
-
-										
-
-		
-
-					
-
-		
-
-															
-
-		
-
-					
-
-		
-
-										
-
-		
-
-					
-
-		
-
-																												"CheckUpdate: GitHub API returned status %d": {
-
-		
-
-					
-
-		
-
-										
-
-		
-
-					
-
-		
-
-																													"zh-Hans": "检查更新：GitHub API 返回状态 %d",
-
-		
-
-					
-
-		
-
-										
-
-		
-
-					
-
-		
-
-																													"zh-Hant": "檢查更新：GitHub API 返回狀態 %d",
-
-		
-
-					
-
-		
-
-										
-
-		
-
-					
-
-		
-
-																												},
-
-		
-
-					
-
-		
-
-										
-
-		
-
-					
-
-		
-
-															
-
-		
-
-					
-
-		
-
-										
-
-		
-
-					
-
-		
-
-																				
-
-		
-
-					
-
-		
-
-										
-
-		
-
-					
-
-		
-
-															
-
-		
-
-					
-
-		
-
-										
-
-		
-
-					
-
-		
-
-																												"Config file modified: ": {
-
-		
-
-					
-
-		
-
-																"zh-Hans": "配置文件已修改：",
-
-		
-
-					
-
-		
-
-																"zh-Hant": "配置文件已修改：",
-
-		
-
-					
-
-		
-
-															},
-
-		
-
-					
-
-		
-
-										
-
-		
-
-					
-
-		
-
-															"Updated PATH environment variable: ": {
-
-		
-
-											"zh-Hans": "已更新 PATH 环境变量：",
-
-		
-
-											"zh-Hant": "已更新 PATH 環境變數：",
-
-		
-
-										},
-
-		
-
-					
-
-		
-
-										"Updated PATH environment variable for Git.": {
-
-		
-
-											"zh-Hans": "已为 Git 更新 PATH 环境变量。",
-
-		
-
-											"zh-Hant": "已為 Git 更新 PATH 環境變數。",
-
-		
-
-										},
-
-		
-
-					"Installing Node.js (this may take a moment, please grant administrator permission if prompted)...": {
-
-		
-
-						"zh-Hans": "正在安装 Node.js (这可能需要一些时间，如果提示请授予管理员权限)...",
-
-		
-
-						"zh-Hant": "正在安裝 Node.js (這可能需要一些時間，如果提示請授予管理員權限)...",
-
-		
-
-					},
-
-		
-
-					"Installing Git (this may take a moment, please grant administrator permission if prompted)...": {
-
-		
-
-						"zh-Hans": "正在安装 Git (这可能需要一些时间，如果提示请授予管理员权限)...",
-
-		
-
-						"zh-Hant": "正在安裝 Git (這可能需要一些時間，如果提示請授予管理員權限)...",
-
-		
-
-					},
-
-		
-
-				    "Downloading Node.js %s for %s...": {
-
-		
-
-				        "zh-Hans": "正在下载 Node.js %s (%s)...",
-
-		
-
-				        "zh-Hant": "正在下載 Node.js %s (%s)...",
-
-		
-
-				    },
-
-		
-
-				    "Downloading Node.js v%s from %s...": {
-
-		
-
-				        "zh-Hans": "正在从 %s 下载 Node.js v%s...",
-
-		
-
-				        "zh-Hant": "正在從 %s 下載 Node.js v%s...",
-
-		
-
-				    },
-
-		
-
-				    				    "Downloading Git %s...": {
-
-		
-
-				    		
-
-		
-
-				    				        "zh-Hans": "正在下载 Git %s...",
-
-		
-
-				    		
-
-		
-
-				    				        "zh-Hant": "正在下載 Git %s...",
-
-		
-
-				    		
-
-		
-
-				    				    },
-
-		
-
-				    
-
-		
-
-				    					"Downloading Node.js (%.1f%%): %d/%d bytes": {
-
-		
-
-				    						"zh-Hans": "正在下载 Node.js (%.1f%%): %d/%d 字节",
-
-		
-
-				    						"zh-Hant": "正在下載 Node.js (%.1f%%): %d/%d 字節",
-
-		
-
-				    					},
-
-		
-
-				    		
-
-		
-
-				    				    "Node.js installer is not accessible (Status: %s). Please check your internet connection or mirror availability.": {
-
-		
-
-				        "zh-Hans": "无法访问 Node.js 安装程序 (状态: %s)。请检查您的网络连接或镜像可用性。",
-
-		
-
-				        "zh-Hant": "無法訪問 Node.js 安裝程序 (狀態: %s)。請檢查您的網絡連接或鏡像可用性。",
-
-		
-
-				    },
-
-		
-
-				        "Failed to install Node.js: ": {
-
-		
-
-				            "zh-Hans": "安装 Node.js 失败: ",
-
-		
-
-				            "zh-Hant": "安裝 Node.js 失敗: ",
-
-		
-
-				        },
-
-		
-
-				        "Node.js not found. Checking for Homebrew...": {
-
-		
-
-				            "zh-Hans": "未找到 Node.js。正在检查 Homebrew...",
-
-		
-
-				            "zh-Hant": "未找到 Node.js。正在檢查 Homebrew...",
-
-		
-
-				        },
-
-		
-
-				        "Installing Node.js via Homebrew...": {
-
-		
-
-				            "zh-Hans": "正在通过 Homebrew 安装 Node.js...",
-
-		
-
-				            "zh-Hant": "正在通過 Homebrew 安裝 Node.js...",
-
-		
-
-				        },
-
-		
-
-				        "Homebrew installation failed.": {
-
-		
-
-				            "zh-Hans": "Homebrew 安装失败。",
-
-		
-
-				            "zh-Hant": "Homebrew 安裝失敗。",
-
-		
-
-				        },
-
-		
-
-				        "Node.js installed via Homebrew.": {
-
-		
-
-				            "zh-Hans": "Node.js 已通过 Homebrew 安装。",
-
-		
-
-				            "zh-Hant": "Node.js 已通過 Homebrew 安裝。",
-
-		
-
-				        },
-
-		
-
-				        "Homebrew not found. Attempting manual installation...": {
-
-		
-
-				            "zh-Hans": "未找到 Homebrew。尝试手动安装...",
-
-		
-
-				            "zh-Hant": "未找到 Homebrew。嘗試手動安裝...",
-
-		
-
-				        },
-
-		
-
-				        				        "Manual installation failed: ": {
-
-		
-
-				        		
-
-		
-
-				        				            "zh-Hans": "手动安装失败: ",
-
-		
-
-				        		
-
-		
-
-				        				            "zh-Hant": "手動安裝失敗: ",
-
-		
-
-				        		
-
-		
-
-				        				        },
-
-		
-
-				        
-
-		
-
-				        						"Downloading Node.js from %s": {
-
-		
-
-				        							"zh-Hans": "正在从 %s 下载 Node.js",
-
-		
-
-				        							"zh-Hant": "正在從 %s 下載 Node.js",
-
-		
-
-				        						},
-
-		
-
-				        
-
-		
-
-				        												"Extracting Node.js (this should be fast)...": {
-
-		
-
-				        
-
-		
-
-				        													"zh-Hans": "正在解压 Node.js (这应该很快)...",
-
-		
-
-				        
-
-		
-
-				        													"zh-Hant": "正在解壓 Node.js (這應該很快)...",
-
-		
-
-				        
-
-		
-
-				        												},
-
-		
-
-				        
-
-		
-
-				        						
-
-		
-
-				        
-
-		
-
-				        												"Extracting Node.js...": {
-
-		
-
-				        
-
-		
-
-				        													"zh-Hans": "正在解压 Node.js...",
-
-		
-
-				        
-
-		
-
-				        													"zh-Hant": "正在解壓 Node.js...",
-
-		
-
-				        
-
-		
-
-				        												},
-
-		
-
-				        
-
-		
-
-				        								
-
-		
-
-				        
-
-		
-
-				        										        "Node.js manually installed to ": {
-
-		
-
-				            "zh-Hans": "Node.js 已手动安装到 ",
-
-		
-
-				            "zh-Hant": "Node.js 已手動安裝到 ",
-
-		
-
-				        },
-
-		
-
-				        "Verifying Node.js installation...": {
-
-		
-
-				            "zh-Hans": "正在验证 Node.js 安装...",
-
-		
-
-				            "zh-Hant": "正在驗證 Node.js 安裝...",
-
-		
-
-				        },
-
-		
-
-				        "Node.js installation completed but binary not found.": {
-
-		
-
-				            "zh-Hans": "Node.js 安装完成但未找到二进制文件。",
-
-		
-
-				            "zh-Hant": "Node.js 安裝完成但未找到二進制文件。",
-
-		
-
-				        },
-
-		
-
-				            "Node.js found at: ": {
-
-		
-
-				                "zh-Hans": "Node.js 位于: ",
-
-		
-
-				                "zh-Hant": "Node.js 位於: ",
-
-		
-
-				            },
-
-		
-
-				                "Updated PATH: ": {
-
-		
-
-				                    "zh-Hans": "已更新 PATH: ",
-
-		
-
-				                    "zh-Hant": "已更新 PATH: ",
-
-		
-
-				                },
-
-		
-
-				                "Running installation: %s %s": {
-
-		
-
-				                    "zh-Hans": "正在运行安装: %s %s",
-
-		
-
-				                    "zh-Hant": "正在運行安裝: %s %s",
-
-		
-
-				                },
-
-		
-
-				                "Detected npm cache permission issue. Attempting to clear cache...": {
-
-		
-
-				                    "zh-Hans": "检测到 npm 缓存权限问题。正在尝试清理缓存...",
-
-		
-
-				                    "zh-Hant": "檢測到 npm 緩存權限問題。正在嘗試清理緩存...",
-
-		
-
-				                },
-
-		
-
-				                "Retrying installation after cache clean...": {
-
-		
-
-				                    "zh-Hans": "清理缓存后重试安装...",
-
-		
-
-				                    "zh-Hant": "清理緩存後重試安裝...",
-
-		
-
-				                },
-
-		
-
-				                "Running update: %s %s": {
-
-		
-
-				                    "zh-Hans": "正在运行更新: %s %s",
-
-		
-
-				                    "zh-Hant": "正在運行更新: %s %s",
-
-		
-
-				                },
-
-		
-
-				                    "Warning: Failed to create local npm cache dir: %v": {
-
-		
-
-				                        "zh-Hans": "警告: 创建本地 npm 缓存目录失败: %v",
-
-		
-
-				                        "zh-Hant": "警告: 創建本地 npm 緩存目錄失敗: %v",
-
-		
-
-				                    },
-
-		
-
-				                    "Found conda environment: %s at %s": {
-
-		
-
-				                        "zh-Hans": "发现 conda 环境: %s 位于 %s",
-
-		
-
-				                        "zh-Hant": "發現 conda 環境: %s 位於 %s",
-
-		
-
-				                    },
-
-		
-
-				                    "Using conda command: ": {
-
-		
-
-				                        "zh-Hans": "使用 conda 命令: ",
-
-		
-
-				                        "zh-Hant": "使用 conda 命令: ",
-
-		
-
-				                    },
-
-		
-
-				                    "Failed to list conda environments: ": {
-
-		
-
-				                        "zh-Hans": "列出 conda 环境失败: ",
-
-		
-
-				                        "zh-Hant": "列出 conda 環境失敗: ",
-
-		
-
-				                    },
-
-		
-
-				                    "Total conda environments found: %d": {
-
-		
-
-				                        "zh-Hans": "共发现 %d 个 conda 环境",
-
-		
-
-				                        "zh-Hant": "共發現 %d 個 conda 環境",
-
-		
-
-				                    },
-
-		
-
-				                    "Found conda from CONDA_EXE: ": {
-
-		
-
-				                        "zh-Hans": "从 CONDA_EXE 发现 conda: ",
-
-		
-
-				                        "zh-Hant": "從 CONDA_EXE 發現 conda: ",
-
-		
-
-				                    },
-
-		
-
-				                    "Found conda in PATH: ": {
-
-		
-
-				                        "zh-Hans": "在 PATH 中发现 conda: ",
-
-		
-
-				                        "zh-Hant": "在 PATH 中發現 conda: ",
-
-		
-
-				                    },
-
-		
-
-				                    "Searching for conda in %d common paths...": {
-
-		
-
-				                        "zh-Hans": "正在 %d 个常用路径中搜索 conda...",
-
-		
-
-				                        "zh-Hant": "正在 %d 個常用路徑中搜索 conda...",
-
-		
-
-				                    },
-
-		
-
-				                    "Found conda at: ": {
-
-		
-
-				                        "zh-Hans": "发现 conda 位于: ",
-
-		
-
-				                        "zh-Hant": "發現 conda 位於: ",
-
-		
-
-				                    },
-
-		
-
-				                    "Conda not found in any common location": {
-
-		
-
-				                        "zh-Hans": "在任何常用位置都未找到 Conda",
-
-		
-
-				                        "zh-Hant": "在任何常用位置都未找到 Conda",
-
-		
-
-				                    },
-
-		
-
-				                }
-
-		
-
-				
-
-		
-
-				func (a *App) tr(key string, args ...interface{}) string {
-
-		
-
-					lang := strings.ToLower(a.CurrentLanguage)
-
-		
-
-					if strings.HasPrefix(lang, "zh-hans") || strings.HasPrefix(lang, "zh-cn") {
-
-		
-
-						lang = "zh-Hans"
-
-		
-
-					} else if strings.HasPrefix(lang, "zh-hant") || strings.HasPrefix(lang, "zh-tw") || strings.HasPrefix(lang, "zh-hk") {
-
-		
-
-						lang = "zh-Hant"
-
-		
-
-					} else {
-
-		
-
-						lang = "en"
-
-		
-
-					}
-
-		
-
-				
-
-		
-
-					var format string
-
-		
-
-					if dict, ok := translations[key]; ok {
-
-		
-
-						if val, ok := dict[lang]; ok {
-
-		
-
-							format = val
-
-		
-
-						}
-
-		
-
-					}
-
-		
-
-				
-
-		
-
-					if format == "" {
-
-		
-
-						format = key
-
-		
-
-					}
-
-		
-
-				
-
-		
-
-					if len(args) > 0 {
-
-		
-
-						return fmt.Sprintf(format, args...)
-
-		
-
-					}
-
-		
-
-					return format
-
-		
-
-				}
-
-		
-
-			
-
-		
-
-			func (a *App) OpenSystemUrl(url string) error {
-
-		
-
-				var cmd *exec.Cmd
-
-		
-
-				switch goruntime.GOOS {
-
-		
-
-												case "darwin":
-
-		
-
-													a.log("Opening URL on macOS: " + url)
-
-		
-
-													cmd = exec.Command("open", url)
-
-		
-
-												case "windows":
-
-		
-
-													a.log("Opening URL on Windows: " + url)
-
-		
-
-													// Escape & to ^& for cmd.exe
-
-		
-
-													escapedUrl := strings.ReplaceAll(url, "&", "^&")
-
-		
-
-													cmd = exec.Command("cmd", "/c", "start", "", escapedUrl)
-
-		
-
-												case "linux":
-
-		
-
-													cmd = exec.Command("xdg-open", url)
-
-		
-
-				default:
-
-		
-
-					return fmt.Errorf("unsupported platform")
-
-		
-
-				}
-
-		
-
-				return cmd.Start()
-
-		
-
+			cmd.Env = os.Environ()
+			if out, err := cmd.CombinedOutput(); err != nil {
+				return fmt.Errorf("install failed: %v, output: %s", err, string(out))
 			}
+		} else {
+			// Unzip to ~/.<tool>/skills
+			home, _ := os.UserHomeDir()
+			destDir := filepath.Join(home, configDirName, "skills")
+			if err := a.unzip(fullPath, destDir); err != nil {
+				return fmt.Errorf("unzip failed: %v", err)
+			}
+		}
+	} else if location == "project" {
+		if projectPath == "" {
+			return fmt.Errorf("project path required")
+		}
+		destDir := filepath.Join(projectPath, configDirName, "skills")
+		if err := a.unzip(fullPath, destDir); err != nil {
+			return fmt.Errorf("unzip failed: %v", err)
+		}
+	}
+	// 3. Add to App List
+	return a.AddSkill(name, description, skillType, value, toolName)
+}
+func (a *App) DeleteSkill(name, toolName string) error {
+	// Prevent deletion of the hardcoded skill
+	if name == "Claude Official Documentation Skill Package" {
+		return fmt.Errorf("cannot delete system skill package")
+	}
+	skillsDir := a.GetSkillsDir(toolName)
+	metadataPath := filepath.Join(skillsDir, "metadata.json")
+	var skills []Skill
+	if data, err := os.ReadFile(metadataPath); err == nil {
+		json.Unmarshal(data, &skills)
+	}
+	var newSkills []Skill
+	for _, s := range skills {
+		if s.Name == name {
+			if s.Type == "zip" {
+				os.Remove(filepath.Join(skillsDir, s.Value))
+			}
+		} else {
+			newSkills = append(newSkills, s)
+		}
+	}
+	data, err := json.MarshalIndent(newSkills, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(metadataPath, data, 0644)
+}
+// Translation logic
+var translations = map[string]map[string]string{
+	"Checking Node.js installation...": {
+		"zh-Hans": "正在检查?Node.js 安装...",
+		"zh-Hant": "正在檢查 Node.js 安裝...",
+	},
+	"Initializing...": {
+		"zh-Hans": "初始化中...",
+		"zh-Hant": "初始化中...",
+	},
+	"Skipping environment check and installation.": {
+		"zh-Hans": "跳过环境检测安装。",
+		"zh-Hant": "跳過環境檢測安裝。",
+	},
+	"Manual environment check triggered.": {
+		"zh-Hans": "手动触发环境检测。",
+		"zh-Hant": "手動觸發環境檢測。",
+	},
+	"Detected missing .cceasy directory. Forcing environment check...": {
+		"zh-Hans": "检测到缺失 .cceasy 目录。正在强制进行环境检...",
+		"zh-Hant": "檢測到缺�?.cceasy 目錄。正在強制進行環境檢測...",
+	},
+	"Init mode: Forcing environment check (ignoring configuration).": {
+		"zh-Hans": "初始化模式：正在强制进行环境检测（忽略配置）。",
+		"zh-Hant": "初始化模式：正在強制進行環境檢測（忽略配置）。",
+	},
+	"Forced environment check triggered (ignoring configuration).": {
+		"zh-Hans": "已触发强制环境检测（忽略配置）。",
+		"zh-Hant": "已觸發強制環境檢測（忽略配置）。",
+	},
+	"Forced environment check triggered.": {
+		"zh-Hans": "已触发强制环境检测。",
+		"zh-Hant": "已觸發強制環境檢測。",
+	},
+	"Node.js not found. Downloading and installing...": {
+		"zh-Hans": "未找到 Node.js。正在下载并安装...",
+		"zh-Hant": "未找到 Node.js。正在下載並安裝...",
+	},
+	"Node.js not found. Attempting manual installation...": {
+		"zh-Hans": "未找到 Node.js。尝试手动安...",
+		"zh-Hant": "未找到 Node.js。嘗試手動安...",
+	},
+	"Node.js installed successfully.": {
+		"zh-Hans": "Node.js 安装成功。",
+		"zh-Hant": "Node.js 安裝成功。",
+	},
+	"Node.js is installed.": {
+		"zh-Hans": "Node.js 已安装。",
+		"zh-Hant": "Node.js 已安裝。",
+	},
+	"Checking Git installation...": {
+		"zh-Hans": "正在检查 Git 安装...",
+		"zh-Hant": "正在檢查 Git 安裝...",
+	},
+	"Git found in standard location.": {
+		"zh-Hans": "在标准位置找到 Git",
+		"zh-Hant": "在標準位置找到 Git",
+	},
+	"Git not found. Downloading and installing...": {
+		"zh-Hans": "未找到?Git。正在下载并安装...",
+		"zh-Hant": "未找到?Git。正在下載並安裝...",
+	},
+	"Git installed successfully.": {
+		"zh-Hans": "Git 安装成功",
+		"zh-Hant": "Git 安裝成功",
+	},
+	"Git is installed.": {
+		"zh-Hans": "Git 已安装",
+		"zh-Hant": "Git 已安裝",
+	},
+	"Environment check complete.": {
+		"zh-Hans": "环境检查完成",
+		"zh-Hant": "環境檢查完成",
+	},
+	"npm not found.": {
+		"zh-Hans": "未找到?npm",
+		"zh-Hant": "未找到?npm",
+	},
+	// Templates
+	"Checking %s...": {
+		"zh-Hans": "正在检查?%s...",
+		"zh-Hant": "正在檢查 %s...",
+	},
+	"%s not found. Attempting automatic installation...": {
+		"zh-Hans": "未找到?%s。尝试自动安...",
+		"zh-Hant": "未找到?%s。嘗試自動安...",
+	},
+	"ERROR: Failed to install %s: %v": {
+		"zh-Hans": "错误：安装 %s 失败: %v",
+		"zh-Hant": "錯誤：安裝 %s 失敗: %v",
+	},
+	"%s installed successfully.": {
+		"zh-Hans": "%s 安装成功",
+		"zh-Hant": "%s 安裝成功",
+	},
+	"%s found at %s (version: %s).": {
+		"zh-Hans": "发现 %s 位于 %s (版本: %s)",
+		"zh-Hant": "發現 %s 位於 %s (版本: %s)",
+	},
+	"Checking for %s updates...": {
+		"zh-Hans": "正在检查?%s 更新...",
+		"zh-Hant": "正在檢查 %s 更新...",
+	},
+	"New version available for %s: %s (current: %s). Updating...": {
+		"zh-Hans": "%s 有新版本可用: %s (当前: %s)。正在更...",
+		"zh-Hant": "%s 有新版本可用: %s (當前: %s)。正在更...",
+	},
+	"ERROR: Failed to update %s: %v": {
+		"zh-Hans": "错误：更新 %s 失败: %v",
+		"zh-Hant": "錯誤：更新 %s 失敗: %v",
+	},
+	"%s updated successfully to %s.": {
+		"zh-Hans": "%s 成功更新到 %s",
+		"zh-Hant": "%s 成功更新到 %s",
+	},
+	"CheckUpdate: Starting check against %s": {
+		"zh-Hans": "检查更新：正在�?%s 检...",
+		"zh-Hant": "檢查更新：正在從 %s 檢查...",
+	},
+	"CheckUpdate: Failed to create request: %v": {
+		"zh-Hans": "检查更新：创建请求失败: %v",
+		"zh-Hant": "檢查更新：建立請求失敗: %v",
+	},
+	"CheckUpdate: Failed to decode token at iteration %d: %v": {
+		"zh-Hans": "检查更新：第 %d 次迭代解码令牌失败: %v",
+		"zh-Hant": "檢查更新：第 %d 次迭代解碼令牌失敗: %v",
+	},
+	"CheckUpdate: HTTP Status: %d": {
+		"zh-Hans": "检查更新：HTTP 状态码: %d",
+		"zh-Hant": "檢查更新：HTTP 狀態碼: %d",
+	},
+	"CheckUpdate: Rate Limit: %s/%s, Reset: %s": {
+		"zh-Hans": "检查更新：速率限制: %s/%s, 重置时间: %s",
+		"zh-Hant": "檢查更新：速率限制: %s/%s, 重置時間: %s",
+	},
+	"CheckUpdate: Response: %s": {
+		"zh-Hans": "检查更新：响应内容: %s",
+		"zh-Hant": "檢查更新：響應內容: %s",
+	},
+	"CheckUpdate: Failed to read response body: %v": {
+		"zh-Hans": "检查更新：读取响应体失败: %v",
+		"zh-Hant": "檢查更新：讀取響應體失敗: %v",
+	},
+	"CheckUpdate: Raw response length: %d bytes": {
+		"zh-Hans": "检查更新：原始响应长度: %d 字节",
+		"zh-Hant": "檢查更新：原始響應長�? %d 位元",
+	},
+	"CheckUpdate: Response body: %s": {
+		"zh-Hans": "检查更新：响应体: %s",
+		"zh-Hant": "檢查更新：響應體: %s",
+	},
+	"CheckUpdate: Parsed keys: %v": {
+		"zh-Hans": "检查更新：解析出的键: %v",
+		"zh-Hant": "檢查更新：解析出的鍵: %v",
+	},
+	"CheckUpdate: Found version in 'tag_name' field: %s": {
+		"zh-Hans": "检查更新：�?'tag_name' 字段中找到版�? %s",
+		"zh-Hant": "檢查更新：在 'tag_name' 欄位中找到版�? %s",
+	},
+	"CheckUpdate: Found version in 'name' field: %s": {
+		"zh-Hans": "检查更新：�?'name' 字段中找到版�? %s",
+		"zh-Hant": "檢查更新：在 'name' 欄位中找到版�? %s",
+	},
+	"CheckUpdate: Neither 'name' nor 'tag_name' found. Available: %v": {
+		"zh-Hans": "检查更新：未找到?'name' �?'tag_name'。可用字�? %v",
+		"zh-Hant": "檢查更新：未找到 'name' �?'tag_name'。可用欄�? %v",
+	},
+	"CheckUpdate: Using version: %s": {
+		"zh-Hans": "检查更新：使用版本: %s",
+		"zh-Hant": "檢查更新：使用版�? %s",
+	},
+	"CheckUpdate: Using built-in GitHub token for authentication": {
+		"zh-Hans": "检查更新：使用内置 GitHub 令牌进行身份验证",
+		"zh-Hant": "檢查更新：使用內�?GitHub 令牌進行身份驗證",
+	},
+	"CheckUpdate: Using custom GitHub token from environment variable": {
+		"zh-Hans": "检查更新：使用环境变量中的自定�?GitHub 令牌",
+		"zh-Hant": "檢查更新：使用環境變數中的自定義 GitHub 令牌",
+	},
+	"CheckUpdate: Already on latest version": {
+		"zh-Hans": "检查更新：已是最新版",
+		"zh-Hant": "檢查更新：已是最新版",
+	},
+	"CheckUpdate: Latest version: %s, Current version: %s, Display version: %s": {
+		"zh-Hans": "检查更新：最新版�? %s, 当前版本: %s, 显示版本: %s",
+		"zh-Hant": "檢查更新：最新版�? %s, 當前版本: %s, 顯示版本: %s",
+	},
+	"CheckUpdate: Update available! %s > %s": {
+		"zh-Hans": "检查更新：发现新版本！ %s > %s",
+		"zh-Hant": "檢查更新：發現新版本�?%s > %s",
+	},
+	"CheckUpdate: Failed to fetch GitHub API: %v": {
+		"zh-Hans": "检查更新：获取 GitHub API 失败: %v",
+		"zh-Hant": "檢查更新：獲�?GitHub API 失敗: %v",
+	},
+	"CheckUpdate: Rate limit exceeded, resets at: %s": {
+		"zh-Hans": "检查更新：超出速率限制，重置时�? %s",
+		"zh-Hant": "檢查更新：超出速率限制，重置時�? %s",
+	},
+	"CheckUpdate: Failed to parse JSON: %v": {
+		"zh-Hans": "检查更新：解析 JSON 失败: %v",
+		"zh-Hant": "檢查更新：解�?JSON 失敗: %v",
+	},
+	"CheckUpdate: GitHub API returned status %d": {
+		"zh-Hans": "检查更新：GitHub API 返回状�?%d",
+		"zh-Hant": "檢查更新：GitHub API 返回狀�?%d",
+	},
+	"Config file modified: ": {
+		"zh-Hans": "配置文件已修改：",
+		"zh-Hant": "配置文件已修改：",
+	},
+	"Updated PATH environment variable: ": {
+		"zh-Hans": "已更�?PATH 环境变量",
+		"zh-Hant": "已更�?PATH 環境變數",
+	},
+	"Updated PATH environment variable for Git.": {
+		"zh-Hans": "已为 Git 更新 PATH 环境变量",
+		"zh-Hant": "已為 Git 更新 PATH 環境變數",
+	},
+	"Installing Node.js (this may take a moment, please grant administrator permission if prompted)...": {
+		"zh-Hans": "正在安装 Node.js (这可能需要一些时间，如果提示请授予管理员权限)...",
+		"zh-Hant": "正在安裝 Node.js (這可能需要一些時間，如果提示請授予管理員權限)...",
+	},
+	"Installing Git (this may take a moment, please grant administrator permission if prompted)...": {
+		"zh-Hans": "正在安装 Git (这可能需要一些时间，如果提示请授予管理员权限)...",
+		"zh-Hant": "正在安裝 Git (這可能需要一些時間，如果提示請授予管理員權限)...",
+	},
+	"Downloading Node.js %s for %s...": {
+		"zh-Hans": "正在下载 Node.js %s (%s)...",
+		"zh-Hant": "正在下載 Node.js %s (%s)...",
+	},
+	"Downloading Node.js v%s from %s...": {
+		"zh-Hans": "正在�?%s 下载 Node.js v%s...",
+		"zh-Hant": "正在�?%s 下載 Node.js v%s...",
+	},
+	"Downloading Git %s...": {
+		"zh-Hans": "正在下载 Git %s...",
+		"zh-Hant": "正在下載 Git %s...",
+	},
+	"Downloading Node.js (%.1f%%): %d/%d bytes": {
+		"zh-Hans": "正在下载 Node.js (%.1f%%): %d/%d 字节",
+		"zh-Hant": "正在下載 Node.js (%.1f%%): %d/%d 字節",
+	},
+	"Node.js installer is not accessible (Status: %s). Please check your internet connection or mirror availability.": {
+		"zh-Hans": "无法访问 Node.js 安装程序 (状�? %s)。请检查您的网络连接或镜像可用性",
+		"zh-Hant": "無法訪問 Node.js 安裝程序 (狀�? %s)。請檢查您的網絡連接或鏡像可用性",
+	},
+	"Failed to install Node.js: ": {
+		"zh-Hans": "安装 Node.js 失败: ",
+		"zh-Hant": "安裝 Node.js 失敗: ",
+	},
+	"Node.js not found. Checking for Homebrew...": {
+		"zh-Hans": "未找到 Node.js。正在检查?Homebrew...",
+		"zh-Hant": "未找到 Node.js。正在檢查?Homebrew...",
+	},
+	"Installing Node.js via Homebrew...": {
+		"zh-Hans": "正在通过 Homebrew 安装 Node.js...",
+		"zh-Hant": "正在通過 Homebrew 安裝 Node.js...",
+	},
+	"Homebrew installation failed.": {
+		"zh-Hans": "Homebrew 安装失败",
+		"zh-Hant": "Homebrew 安裝失敗",
+	},
+	"Node.js installed via Homebrew.": {
+		"zh-Hans": "Node.js 已通过 Homebrew 安装",
+		"zh-Hant": "Node.js 已通過 Homebrew 安裝",
+	},
+	"Homebrew not found. Attempting manual installation...": {
+		"zh-Hans": "未找到?Homebrew。尝试手动安...",
+		"zh-Hant": "未找到?Homebrew。嘗試手動安...",
+	},
+	"Manual installation failed: ": {
+		"zh-Hans": "手动安装失败: ",
+		"zh-Hant": "手動安裝失敗: ",
+	},
+	"Downloading Node.js from %s": {
+		"zh-Hans": "正在�?%s 下载 Node.js",
+		"zh-Hant": "正在�?%s 下載 Node.js",
+	},
+	"Extracting Node.js (this should be fast)...": {
+		"zh-Hans": "正在解压 Node.js (这应该很....",
+		"zh-Hant": "正在解壓 Node.js (這應該很....",
+	},
+	"Extracting Node.js...": {
+		"zh-Hans": "正在解压 Node.js...",
+		"zh-Hant": "正在解壓 Node.js...",
+	},
+	"Node.js manually installed to ": {
+		"zh-Hans": "Node.js 已手动安装到 ",
+		"zh-Hant": "Node.js 已手動安裝到 ",
+	},
+	"Verifying Node.js installation...": {
+		"zh-Hans": "正在验证 Node.js 安装...",
+		"zh-Hant": "正在驗證 Node.js 安裝...",
+	},
+	"Node.js installation completed but binary not found.": {
+		"zh-Hans": "Node.js 安装完成但未找到二进制文件",
+		"zh-Hant": "Node.js 安裝完成但未找到二進制文件",
+	},
+	"Node.js found at: ": {
+		"zh-Hans": "Node.js 位于: ",
+		"zh-Hant": "Node.js 位於: ",
+	},
+	"Updated PATH: ": {
+		"zh-Hans": "已更�?PATH: ",
+		"zh-Hant": "已更�?PATH: ",
+	},
+	"Running installation: %s %s": {
+		"zh-Hans": "正在运行安装: %s %s",
+		"zh-Hant": "正在運行安裝: %s %s",
+	},
+	"Detected npm cache permission issue. Attempting to clear cache...": {
+		"zh-Hans": "检测到 npm 缓存权限问题。正在尝试清理缓...",
+		"zh-Hant": "檢測�?npm 緩存權限問題。正在嘗試清理緩...",
+	},
+	"Retrying installation after cache clean...": {
+		"zh-Hans": "清理缓存后重试安...",
+		"zh-Hant": "清理緩存後重試安...",
+	},
+	"Running update: %s %s": {
+		"zh-Hans": "正在运行更新: %s %s",
+		"zh-Hant": "正在運行更新: %s %s",
+	},
+	"Warning: Failed to create local npm cache dir: %v": {
+		"zh-Hans": "警告: 创建本地 npm 缓存目录失败: %v",
+		"zh-Hant": "警告: 創建本地 npm 緩存目錄失敗: %v",
+	},
+	"Found conda environment: %s at %s": {
+		"zh-Hans": "发现 conda 环境: %s 位于 %s",
+		"zh-Hant": "發現 conda 環境: %s 位於 %s",
+	},
+	"Using conda command: ": {
+		"zh-Hans": "使用 conda 命令: ",
+		"zh-Hant": "使用 conda 命令: ",
+	},
+	"Failed to list conda environments: ": {
+		"zh-Hans": "列出 conda 环境失败: ",
+		"zh-Hant": "列出 conda 環境失敗: ",
+	},
+	"Total conda environments found: %d": {
+		"zh-Hans": "共发�?%d �?conda 环境",
+		"zh-Hant": "共發�?%d �?conda 環境",
+	},
+	"Found conda from CONDA_EXE: ": {
+		"zh-Hans": "�?CONDA_EXE 发现 conda: ",
+		"zh-Hant": "�?CONDA_EXE 發現 conda: ",
+	},
+	"Found conda in PATH: ": {
+		"zh-Hans": "�?PATH 中发�?conda: ",
+		"zh-Hant": "�?PATH 中發�?conda: ",
+	},
+	"Searching for conda in %d common paths...": {
+		"zh-Hans": "正在 %d 个常用路径中搜索 conda...",
+		"zh-Hant": "正在 %d 個常用路徑中搜索 conda...",
+	},
+	"Found conda at: ": {
+		"zh-Hans": "发现 conda 位于: ",
+		"zh-Hant": "發現 conda 位於: ",
+	},
+	"Conda not found in any common location": {
+		"zh-Hans": "在任何常用位置都未找到?Conda",
+		"zh-Hant": "在任何常用位置都未找到?Conda",
+	},
+}
+func (a *App) tr(key string, args ...interface{}) string {
+	lang := strings.ToLower(a.CurrentLanguage)
+	if strings.HasPrefix(lang, "zh-hans") || strings.HasPrefix(lang, "zh-cn") {
+		lang = "zh-Hans"
+	} else if strings.HasPrefix(lang, "zh-hant") || strings.HasPrefix(lang, "zh-tw") || strings.HasPrefix(lang, "zh-hk") {
+		lang = "zh-Hant"
+	} else {
+		lang = "en"
+	}
+	var format string
+	if dict, ok := translations[key]; ok {
+		if val, ok := dict[lang]; ok {
+			format = val
+		}
+	}
+	if format == "" {
+		format = key
+	}
+	if len(args) > 0 {
+		return fmt.Sprintf(format, args...)
+	}
+	return format
+}
+func (a *App) OpenSystemUrl(url string) error {
+	var cmd *exec.Cmd
+	switch goruntime.GOOS {
+	case "darwin":
+		a.log("Opening URL on macOS: " + url)
+		cmd = exec.Command("open", url)
+	case "windows":
+		a.log("Opening URL on Windows: " + url)
+		// Escape & to ^& for cmd.exe
+		escapedUrl := strings.ReplaceAll(url, "&", "^&")
+		cmd = exec.Command("cmd", "/c", "start", "", escapedUrl)
+	case "linux":
+		cmd = exec.Command("xdg-open", url)
+	default:
+		return fmt.Errorf("unsupported platform")
+	}
+	return cmd.Start()
+}
