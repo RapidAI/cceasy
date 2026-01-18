@@ -10,11 +10,11 @@
         <key>CFBundleIdentifier</key>
         <string>com.rapidai.aicoder</string>
         <key>CFBundleVersion</key>
-        <string>3.5.0.5001</string>
+        <string>3.5.0.5004</string>
         <key>CFBundleGetInfoString</key>
         <string>AICoder Application</string>
         <key>CFBundleShortVersionString</key>
-        <string>3.5.0.5001</string>
+        <string>3.5.0.5004</string>
         <key>CFBundleIconFile</key>
         <string>iconfile</string>
         <key>LSMinimumSystemVersion</key>

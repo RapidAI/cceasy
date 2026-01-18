@@ -177,14 +177,49 @@ func (a *App) installNodeJSCLI() error {
 
 	// Install
 	fmt.Println("  Installing Node.js (this may take a few minutes)...")
-	cmd := exec.Command("msiexec", "/i", msiPath, "/qn", "ALLUSERS=1")
-	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: false}
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("installation failed: %s\n%s", err, string(output))
+	fmt.Println("  You will be prompted for administrator permission. Please accept to continue.")
+
+	// Use ShellExecute with "runas" verb to request admin privileges
+	shell32 := syscall.NewLazyDLL("shell32.dll")
+	shellExecute := shell32.NewProc("ShellExecuteW")
+
+	verb := syscall.StringToUTF16Ptr("runas")
+	file := syscall.StringToUTF16Ptr("msiexec.exe")
+	// Use /qb for basic UI with progress bar (visible in CLI mode)
+	params := syscall.StringToUTF16Ptr(fmt.Sprintf("/i \"%s\" /qb ALLUSERS=1", msiPath))
+	dir := syscall.StringToUTF16Ptr("")
+
+	ret, _, _ := shellExecute.Call(
+		0,
+		uintptr(unsafe.Pointer(verb)),
+		uintptr(unsafe.Pointer(file)),
+		uintptr(unsafe.Pointer(params)),
+		uintptr(unsafe.Pointer(dir)),
+		uintptr(syscall.SW_SHOW),
+	)
+
+	if ret <= 32 {
+		return fmt.Errorf("failed to launch installer with admin privileges (error code: %d)", ret)
 	}
 
-	time.Sleep(2 * time.Second)
+	// Wait for installation to complete by checking if node.exe exists
+	fmt.Println("  Waiting for installation to complete...")
+	nodePath := `C:\Program Files\nodejs\node.exe`
+	maxWaitTime := 5 * time.Minute
+	checkInterval := 2 * time.Second
+	elapsed := time.Duration(0)
+
+	for elapsed < maxWaitTime {
+		if _, err := os.Stat(nodePath); err == nil {
+			fmt.Println("  Installation completed successfully.")
+			time.Sleep(2 * time.Second) // Additional wait for finalization
+			return nil
+		}
+		time.Sleep(checkInterval)
+		elapsed += checkInterval
+	}
+
+	fmt.Println("  Warning: Installation verification timed out.")
 	return nil
 }
 
@@ -205,15 +240,48 @@ func (a *App) installGitBashCLI() error {
 	defer os.Remove(exePath)
 
 	fmt.Println("  Installing Git (this may take a few minutes)...")
-	cmd := exec.Command(exePath, "/VERYSILENT", "/NORESTART", "/NOCANCEL", "/SP-")
-	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: false}
+	fmt.Println("  You will be prompted for administrator permission. Please accept to continue.")
 
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("installation failed: %s\n%s", err, string(output))
+	// Use ShellExecute with "runas" verb to request admin privileges
+	shell32 := syscall.NewLazyDLL("shell32.dll")
+	shellExecute := shell32.NewProc("ShellExecuteW")
+
+	verb := syscall.StringToUTF16Ptr("runas")
+	file := syscall.StringToUTF16Ptr(exePath)
+	params := syscall.StringToUTF16Ptr("/VERYSILENT /NORESTART /NOCANCEL /SP-")
+	dir := syscall.StringToUTF16Ptr("")
+
+	ret, _, _ := shellExecute.Call(
+		0,
+		uintptr(unsafe.Pointer(verb)),
+		uintptr(unsafe.Pointer(file)),
+		uintptr(unsafe.Pointer(params)),
+		uintptr(unsafe.Pointer(dir)),
+		uintptr(syscall.SW_SHOW),
+	)
+
+	if ret <= 32 {
+		return fmt.Errorf("failed to launch installer with admin privileges (error code: %d)", ret)
 	}
 
-	time.Sleep(2 * time.Second)
+	// Wait for installation to complete by checking if git.exe exists
+	fmt.Println("  Waiting for installation to complete...")
+	gitPath := `C:\Program Files\Git\cmd\git.exe`
+	maxWaitTime := 5 * time.Minute
+	checkInterval := 2 * time.Second
+	elapsed := time.Duration(0)
+
+	for elapsed < maxWaitTime {
+		if _, err := os.Stat(gitPath); err == nil {
+			fmt.Println("  Installation completed successfully.")
+			time.Sleep(2 * time.Second) // Additional wait for finalization
+			return nil
+		}
+		time.Sleep(checkInterval)
+		elapsed += checkInterval
+	}
+
+	fmt.Println("  Warning: Installation verification timed out.")
 	return nil
 }
 
@@ -515,17 +583,49 @@ func (a *App) installNodeJS() error {
 	defer os.Remove(msiPath)
 
 	a.log(a.tr("Installing Node.js (this may take a moment, please grant administrator permission if prompted)..."))
-	// Use /qn for completely silent installation (no UI)
-	// Adding ALLUSERS=1 to ensure it's in the standard path.
-	cmd := exec.Command("msiexec", "/i", msiPath, "/qn", "ALLUSERS=1")
-	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("error installing Node.js: %s\n%s", err, string(output))
+
+	// Use ShellExecute with "runas" verb to request admin privileges
+	shell32 := syscall.NewLazyDLL("shell32.dll")
+	shellExecute := shell32.NewProc("ShellExecuteW")
+
+	verb := syscall.StringToUTF16Ptr("runas")
+	file := syscall.StringToUTF16Ptr("msiexec.exe")
+	// Use /qb for basic UI with progress bar, or /qn for silent
+	params := syscall.StringToUTF16Ptr(fmt.Sprintf("/i \"%s\" /qb ALLUSERS=1", msiPath))
+	dir := syscall.StringToUTF16Ptr("")
+
+	ret, _, _ := shellExecute.Call(
+		0,
+		uintptr(unsafe.Pointer(verb)),
+		uintptr(unsafe.Pointer(file)),
+		uintptr(unsafe.Pointer(params)),
+		uintptr(unsafe.Pointer(dir)),
+		uintptr(syscall.SW_HIDE),
+	)
+
+	if ret <= 32 {
+		return fmt.Errorf("failed to launch Node.js installer with admin privileges (error code: %d). Please run the application as administrator.", ret)
 	}
 
-	// Wait a bit for the system to finalize the installation
-	time.Sleep(2 * time.Second)
+	// Wait for installation to complete by checking if node.exe exists
+	a.log(a.tr("Waiting for Node.js installation to complete..."))
+	nodePath := `C:\Program Files\nodejs\node.exe`
+	maxWaitTime := 5 * time.Minute
+	checkInterval := 2 * time.Second
+	elapsed := time.Duration(0)
+
+	for elapsed < maxWaitTime {
+		if _, err := os.Stat(nodePath); err == nil {
+			a.log(a.tr("Node.js installation completed successfully."))
+			time.Sleep(2 * time.Second) // Additional wait for finalization
+			return nil
+		}
+		time.Sleep(checkInterval)
+		elapsed += checkInterval
+	}
+
+	// If we reach here, installation might have failed or taken too long
+	a.log(a.tr("Warning: Node.js installation verification timed out. Please check if Node.js was installed correctly."))
 
 	return nil
 }
@@ -576,17 +676,48 @@ func (a *App) installGitBash() error {
 	defer os.Remove(exePath)
 
 	a.log(a.tr("Installing Git (this may take a moment, please grant administrator permission if prompted)..."))
-	// Silent installation
-	cmd := exec.Command(exePath, "/VERYSILENT", "/NORESTART", "/NOCANCEL", "/SP-", "/CLOSEAPPLICATIONS", "/RESTARTAPPLICATIONS")
-	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
-	
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("error installing Git: %s\n%s", err, string(output))
+
+	// Use ShellExecute with "runas" verb to request admin privileges
+	shell32 := syscall.NewLazyDLL("shell32.dll")
+	shellExecute := shell32.NewProc("ShellExecuteW")
+
+	verb := syscall.StringToUTF16Ptr("runas")
+	file := syscall.StringToUTF16Ptr(exePath)
+	params := syscall.StringToUTF16Ptr("/VERYSILENT /NORESTART /NOCANCEL /SP- /CLOSEAPPLICATIONS /RESTARTAPPLICATIONS")
+	dir := syscall.StringToUTF16Ptr("")
+
+	ret, _, _ := shellExecute.Call(
+		0,
+		uintptr(unsafe.Pointer(verb)),
+		uintptr(unsafe.Pointer(file)),
+		uintptr(unsafe.Pointer(params)),
+		uintptr(unsafe.Pointer(dir)),
+		uintptr(syscall.SW_HIDE),
+	)
+
+	if ret <= 32 {
+		return fmt.Errorf("failed to launch Git installer with admin privileges (error code: %d). Please run the application as administrator.", ret)
 	}
 
-	// Wait a bit for the system to finalize the installation
-	time.Sleep(2 * time.Second)
+	// Wait for installation to complete by checking if git.exe exists
+	a.log(a.tr("Waiting for Git installation to complete..."))
+	gitPath := `C:\Program Files\Git\cmd\git.exe`
+	maxWaitTime := 5 * time.Minute
+	checkInterval := 2 * time.Second
+	elapsed := time.Duration(0)
+
+	for elapsed < maxWaitTime {
+		if _, err := os.Stat(gitPath); err == nil {
+			a.log(a.tr("Git installation completed successfully."))
+			time.Sleep(2 * time.Second) // Additional wait for finalization
+			return nil
+		}
+		time.Sleep(checkInterval)
+		elapsed += checkInterval
+	}
+
+	// If we reach here, installation might have failed or taken too long
+	a.log(a.tr("Warning: Git installation verification timed out. Please check if Git was installed correctly."))
 
 	return nil
 }
