@@ -266,7 +266,7 @@ func (a *App) getClaudeConfigPaths() (string, string, string) {
 func (a *App) getGeminiConfigPaths() (string, string, string) {
 	home, _ := os.UserHomeDir()
 	dir := filepath.Join(home, ".gemini")
-	config := filepath.Join(dir, "config.json")
+	config := filepath.Join(dir, "settings.json")
 	legacy := filepath.Join(home, ".geminirc")
 	return dir, config, legacy
 }
@@ -806,29 +806,49 @@ func (a *App) syncToGeminiSettings(config AppConfig) error {
 	if selectedModel == nil {
 		return fmt.Errorf("selected gemini model not found")
 	}
+
 	dir, configPath, _ := a.getGeminiConfigPaths()
-	// If using original (Google official), clear config to use Google account auth
-	if strings.ToLower(selectedModel.ModelName) == "original" {
-		a.clearGeminiConfig()
-		a.log("Gemini: Using Google account authentication (Original mode)")
-		return nil
-	}
-	// Non-original mode: Configure to use environment variables
+
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return err
 	}
-	// Create config that tells gemini-cli to use environment variables
-	configData := map[string]interface{}{
-		"useEnvironmentVariables": true,
-		// These values will be read from environment variables at runtime
-		"apiKey":  "", // Will use GEMINI_API_KEY env var
-		"baseUrl": "", // Will use GOOGLE_GEMINI_BASE_URL env var if set
+
+	var configData map[string]interface{}
+
+	// If using original (Google official)
+	if strings.ToLower(selectedModel.ModelName) == "original" {
+		a.log("Gemini: Using Google account authentication (Original mode)")
+		configData = map[string]interface{}{
+			"security": map[string]interface{}{
+				"auth": map[string]interface{}{
+					"selectedType": "oauth-personal",
+				},
+			},
+			"general": map[string]interface{}{
+				"previewFeatures": true,
+			},
+		}
+	} else {
+		// Non-original mode: Configure to use environment variables (API Key)
+		configData = map[string]interface{}{
+			"security": map[string]interface{}{
+				"auth": map[string]interface{}{
+					"selectedType": "gemini-api-key",
+				},
+			},
+			"general": map[string]interface{}{
+				"previewFeatures": true,
+			},
+		}
+		a.log(fmt.Sprintf("Gemini: Configured to use environment variables (API Key from env)"))
 	}
+
 	// Use compact JSON format for faster serialization
-	configJson, err := json.Marshal(configData)
+	configJson, err := json.MarshalIndent(configData, "", "  ")
 	if err != nil {
 		return err
 	}
+
 	// Check if file exists and has same content to avoid unnecessary writes
 	if existingData, err := os.ReadFile(configPath); err == nil {
 		if bytes.Equal(existingData, configJson) {
@@ -836,7 +856,7 @@ func (a *App) syncToGeminiSettings(config AppConfig) error {
 			return nil
 		}
 	}
-	a.log(fmt.Sprintf("Gemini: Configured to use environment variables (API Key from env)"))
+
 	return os.WriteFile(configPath, configJson, 0644)
 }
 func (a *App) syncToIFlowSettings(config AppConfig) error {
@@ -1410,7 +1430,7 @@ func (a *App) LaunchTool(toolName string, yoloMode bool, adminMode bool, pythonP
 			a.clearClaudeConfig()
 		} else if strings.ToLower(toolName) == "gemini" {
 			os.Unsetenv("GOOGLE_GEMINI_MODEL")
-			a.clearGeminiConfig()
+			a.syncToGeminiSettings(config)
 		} else if strings.ToLower(toolName) == "codex" {
 			os.Unsetenv("WIRE_API")
 			os.Unsetenv("OPENAI_API_KEY")
