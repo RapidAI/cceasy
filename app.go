@@ -108,8 +108,11 @@ type AppConfig struct {
 	ShowIFlow        bool            `json:"show_iflow"`
 	Language         string          `json:"language"`
 	CheckUpdateOnStartup bool        `json:"check_update_on_startup"`
-	PauseEnvCheck        bool        `json:"pause_env_check"`
-	EnvCheckDone         bool        `json:"env_check_done"`
+	// Environment check settings
+	PauseEnvCheck      bool   `json:"pause_env_check"`       // Whether to skip environment checks
+	EnvCheckDone       bool   `json:"env_check_done"`        // Whether the first environment check has been completed
+	EnvCheckInterval   int    `json:"env_check_interval"`    // Days between environment check reminders (2-30)
+	LastEnvCheckTime   string `json:"last_env_check_time"`   // Last environment check time (RFC3339 format)
 	// Proxy settings (global default)
 	DefaultProxyHost     string `json:"default_proxy_host"`
 	DefaultProxyPort     string `json:"default_proxy_port"`
@@ -1646,14 +1649,15 @@ func (a *App) LoadConfig() (AppConfig, error) {
 					YoloMode: false,
 				},
 			},
-			CurrentProject: "default",
-			ActiveTool:     "claude",
-			ShowGemini:     true,
-			ShowCodex:      true,
-			ShowOpenCode:   true,
-			ShowCodeBuddy:  true,
-			ShowQoder:      true,
-			ShowIFlow:      true,
+			CurrentProject:   "default",
+			ActiveTool:       "claude",
+			ShowGemini:       true,
+			ShowCodex:        true,
+			ShowOpenCode:     true,
+			ShowCodeBuddy:    true,
+			ShowQoder:        true,
+			ShowIFlow:        true,
+			EnvCheckInterval: 7, // Default to 7 days
 		}
 
 		err = a.SaveConfig(defaultConfig)
@@ -1676,6 +1680,11 @@ func (a *App) LoadConfig() (AppConfig, error) {
 	err = json.Unmarshal(data, &config)
 	if err != nil {
 		return config, err
+	}
+
+	// Set default values for new fields if not present or invalid
+	if config.EnvCheckInterval < 2 || config.EnvCheckInterval > 30 {
+		config.EnvCheckInterval = 7 // Default to 7 days
 	}
 
 	// Ensure defaults for new fields

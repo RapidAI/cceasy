@@ -109,6 +109,9 @@ export namespace main {
 	    language: string;
 	    check_update_on_startup: boolean;
 	    pause_env_check: boolean;
+	    env_check_done: boolean;
+	    env_check_interval: number;
+	    last_env_check_time: string;
 	    default_proxy_host: string;
 	    default_proxy_port: string;
 	    default_proxy_username: string;
@@ -140,6 +143,9 @@ export namespace main {
 	        this.language = source["language"];
 	        this.check_update_on_startup = source["check_update_on_startup"];
 	        this.pause_env_check = source["pause_env_check"];
+	        this.env_check_done = source["env_check_done"];
+	        this.env_check_interval = source["env_check_interval"];
+	        this.last_env_check_time = source["last_env_check_time"];
 	        this.default_proxy_host = source["default_proxy_host"];
 	        this.default_proxy_port = source["default_proxy_port"];
 	        this.default_proxy_username = source["default_proxy_username"];
@@ -182,6 +188,24 @@ export namespace main {
 	        this.type = source["type"];
 	    }
 	}
+	export class Skill {
+	    name: string;
+	    description: string;
+	    type: string;
+	    value: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Skill(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.description = source["description"];
+	        this.type = source["type"];
+	        this.value = source["value"];
+	    }
+	}
 	export class SystemInfo {
 	    os: string;
 	    arch: string;
@@ -221,6 +245,8 @@ export namespace main {
 	    has_update: boolean;
 	    latest_version: string;
 	    release_url: string;
+	    tag_name: string;
+	    download_url: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new UpdateResult(source);
@@ -231,27 +257,10 @@ export namespace main {
 	        this.has_update = source["has_update"];
 	        this.latest_version = source["latest_version"];
 	        this.release_url = source["release_url"];
+	        this.tag_name = source["tag_name"];
+	        this.download_url = source["download_url"];
 	    }
 	}
-
-    export class Skill {
-        name: string;
-        description: string;
-        type: string;
-        value: string;
-
-        static createFrom(source: any = {}) {
-            return new Skill(source);
-        }
-
-        constructor(source: any = {}) {
-            if ('string' === typeof source) source = JSON.parse(source);
-            this.name = source["name"];
-            this.description = source["description"];
-            this.type = source["type"];
-            this.value = source["value"];
-        }
-    }
 
 }
 

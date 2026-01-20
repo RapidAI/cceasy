@@ -20,6 +20,10 @@ export function DownloadUpdate(arg1:string,arg2:string):Promise<string>;
 
 export function GetCurrentProjectPath():Promise<string>;
 
+export function GetDownloadsFolder():Promise<string>;
+
+export function GetEnvCheckInterval():Promise<number>;
+
 export function GetLocalCacheDir():Promise<string>;
 
 export function GetSkillsDir():Promise<string>;
@@ -32,9 +36,9 @@ export function Greet(arg1:string):Promise<string>;
 
 export function InstallTool(arg1:string):Promise<void>;
 
-export function LaunchTool(arg1:string,arg2:boolean,arg3:boolean,arg4:boolean,arg5:string,arg6:string,arg7:boolean):Promise<void>;
-
 export function LaunchInstallerAndExit(arg1:string):Promise<void>;
+
+export function LaunchTool(arg1:string,arg2:boolean,arg3:boolean,arg4:boolean,arg5:string,arg6:string,arg7:boolean):Promise<void>;
 
 export function ListPythonEnvironments():Promise<Array<main.PythonEnvironment>>;
 
@@ -62,11 +66,17 @@ export function SelectProjectDir():Promise<string>;
 
 export function SelectSkillFile():Promise<string>;
 
+export function SetEnvCheckInterval(arg1:number):Promise<void>;
+
 export function SetLanguage(arg1:string):Promise<void>;
+
+export function ShouldCheckEnvironment():Promise<boolean>;
 
 export function ShowItemInFolder(arg1:string):Promise<void>;
 
 export function ShowMessage(arg1:string,arg2:string):Promise<void>;
+
+export function UpdateLastEnvCheckTime():Promise<void>;
 
 export function UpdateTool(arg1:string):Promise<void>;
 

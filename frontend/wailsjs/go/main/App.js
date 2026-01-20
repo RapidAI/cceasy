@@ -38,6 +38,14 @@ export function GetCurrentProjectPath() {
   return window['go']['main']['App']['GetCurrentProjectPath']();
 }
 
+export function GetDownloadsFolder() {
+  return window['go']['main']['App']['GetDownloadsFolder']();
+}
+
+export function GetEnvCheckInterval() {
+  return window['go']['main']['App']['GetEnvCheckInterval']();
+}
+
 export function GetLocalCacheDir() {
   return window['go']['main']['App']['GetLocalCacheDir']();
 }
@@ -62,12 +70,12 @@ export function InstallTool(arg1) {
   return window['go']['main']['App']['InstallTool'](arg1);
 }
 
-export function LaunchTool(arg1, arg2, arg3, arg4, arg5, arg6, arg7) {
-  return window['go']['main']['App']['LaunchTool'](arg1, arg2, arg3, arg4, arg5, arg6, arg7);
-}
-
 export function LaunchInstallerAndExit(arg1) {
   return window['go']['main']['App']['LaunchInstallerAndExit'](arg1);
+}
+
+export function LaunchTool(arg1, arg2, arg3, arg4, arg5, arg6, arg7) {
+  return window['go']['main']['App']['LaunchTool'](arg1, arg2, arg3, arg4, arg5, arg6, arg7);
 }
 
 export function ListPythonEnvironments() {
@@ -122,8 +130,16 @@ export function SelectSkillFile() {
   return window['go']['main']['App']['SelectSkillFile']();
 }
 
+export function SetEnvCheckInterval(arg1) {
+  return window['go']['main']['App']['SetEnvCheckInterval'](arg1);
+}
+
 export function SetLanguage(arg1) {
   return window['go']['main']['App']['SetLanguage'](arg1);
+}
+
+export function ShouldCheckEnvironment() {
+  return window['go']['main']['App']['ShouldCheckEnvironment']();
 }
 
 export function ShowItemInFolder(arg1) {
@@ -132,6 +148,10 @@ export function ShowItemInFolder(arg1) {
 
 export function ShowMessage(arg1, arg2) {
   return window['go']['main']['App']['ShowMessage'](arg1, arg2);
+}
+
+export function UpdateLastEnvCheckTime() {
+  return window['go']['main']['App']['UpdateLastEnvCheckTime']();
 }
 
 export function UpdateTool(arg1) {
