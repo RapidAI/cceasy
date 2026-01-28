@@ -1581,6 +1581,7 @@ func (a *App) LoadConfig() (AppConfig, error) {
 		{ModelName: "CodeRelay", ModelId: "claude-3-5-sonnet-20241022", ModelUrl: "https://api.code-relay.com/", ApiKey: ""},
 		{ModelName: "ChatFire", ModelId: "sonnet", ModelUrl: "https://api.chatfire.cn", ApiKey: ""},
 		{ModelName: "Custom", ModelId: "", ModelUrl: "", ApiKey: "", IsCustom: true},
+		{ModelName: "Custom1", ModelId: "", ModelUrl: "", ApiKey: "", IsCustom: true},
 	}
 	defaultGeminiModels := []ModelConfig{
 		{ModelName: "Original", ModelId: "", ModelUrl: "", ApiKey: ""},
@@ -1588,6 +1589,7 @@ func (a *App) LoadConfig() (AppConfig, error) {
 		{ModelName: "AiCodeMirror", ModelId: "gemini-2.0-flash-exp", ModelUrl: "https://api.aicodemirror.com/api/gemini", ApiKey: ""},
 		{ModelName: "ChatFire", ModelId: "gemini-2.5-pro", ModelUrl: "https://api.chatfire.cn/v1beta/models/gemini-2.5-pro:generateContent", ApiKey: ""},
 		{ModelName: "Custom", ModelId: "", ModelUrl: "", ApiKey: "", IsCustom: true},
+		{ModelName: "Custom1", ModelId: "", ModelUrl: "", ApiKey: "", IsCustom: true},
 	}
 	defaultCodexModels := []ModelConfig{
 		{ModelName: "Original", ModelId: "", ModelUrl: "", ApiKey: ""},
@@ -1601,6 +1603,7 @@ func (a *App) LoadConfig() (AppConfig, error) {
 		{ModelName: "Kimi", ModelId: "kimi-for-coding", ModelUrl: "https://api.kimi.com/coding/v1", ApiKey: ""},
 		{ModelName: "MiniMax", ModelId: "MiniMax-M2.1", ModelUrl: "https://api.minimaxi.com/v1", ApiKey: ""},
 		{ModelName: "Custom", ModelId: "", ModelUrl: "", ApiKey: "", IsCustom: true},
+		{ModelName: "Custom1", ModelId: "", ModelUrl: "", ApiKey: "", IsCustom: true},
 	}
 	defaultOpencodeModels := []ModelConfig{
 		{ModelName: "Original", ModelId: "", ModelUrl: "", ApiKey: ""},
@@ -1611,6 +1614,7 @@ func (a *App) LoadConfig() (AppConfig, error) {
 		{ModelName: "Kimi", ModelId: "kimi-for-coding", ModelUrl: "https://api.kimi.com/coding/v1", ApiKey: ""},
 		{ModelName: "MiniMax", ModelId: "MiniMax-M2.1", ModelUrl: "https://api.minimaxi.com/v1", ApiKey: ""},
 		{ModelName: "Custom", ModelId: "", ModelUrl: "", ApiKey: "", IsCustom: true},
+		{ModelName: "Custom1", ModelId: "", ModelUrl: "", ApiKey: "", IsCustom: true},
 	}
 	defaultQoderModels := []ModelConfig{
 		{ModelName: "Original", ModelId: "", ModelUrl: "", ApiKey: ""},
@@ -1625,6 +1629,7 @@ func (a *App) LoadConfig() (AppConfig, error) {
 		{ModelName: "MiniMax", ModelId: "MiniMax-M2.1", ModelUrl: "https://api.minimaxi.com/v1", ApiKey: ""},
 		{ModelName: "XiaoMi", ModelId: "mimo-v2-flash", ModelUrl: "https://api.xiaomimimo.com/v1", ApiKey: ""},
 		{ModelName: "Custom", ModelId: "", ModelUrl: "", ApiKey: "", IsCustom: true},
+		{ModelName: "Custom1", ModelId: "", ModelUrl: "", ApiKey: "", IsCustom: true},
 	}
 	defaultKiloModels := []ModelConfig{
 		{ModelName: "Original", ModelId: "", ModelUrl: "", ApiKey: ""},
@@ -1636,6 +1641,7 @@ func (a *App) LoadConfig() (AppConfig, error) {
 		{ModelName: "MiniMax", ModelId: "MiniMax-M2.1", ModelUrl: "https://api.minimaxi.com/v1", ApiKey: ""},
 		{ModelName: "XiaoMi", ModelId: "mimo-v2-flash", ModelUrl: "https://api.xiaomimimo.com/v1", ApiKey: ""},
 		{ModelName: "Custom", ModelId: "", ModelUrl: "", ApiKey: "", IsCustom: true},
+		{ModelName: "Custom1", ModelId: "", ModelUrl: "", ApiKey: "", IsCustom: true},
 	}
 	defaultKodeModels := []ModelConfig{
 		{ModelName: "ChatFire", ModelId: "gpt-4o", ModelUrl: "https://api.chatfire.cn/v1", ApiKey: ""},
@@ -1646,6 +1652,7 @@ func (a *App) LoadConfig() (AppConfig, error) {
 		{ModelName: "MiniMax", ModelId: "MiniMax-M2.1", ModelUrl: "https://api.minimaxi.com/v1", ApiKey: ""},
 		{ModelName: "XiaoMi", ModelId: "mimo-v2-flash", ModelUrl: "https://api.xiaomimimo.com/v1", ApiKey: ""},
 		{ModelName: "Custom", ModelId: "", ModelUrl: "", ApiKey: "", IsCustom: true},
+		{ModelName: "Custom1", ModelId: "", ModelUrl: "", ApiKey: "", IsCustom: true},
 	}
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		// Check for old config file for migration
@@ -1979,17 +1986,23 @@ func (a *App) LoadConfig() (AppConfig, error) {
 	cleanOpencodeModels(&config.Opencode.Models)
 	cleanOpencodeModels(&config.CodeBuddy.Models)
 	cleanOpencodeModels(&config.IFlow.Models)
-	// Ensure 'Custom' is always present
+	// Ensure 'Custom' and 'Custom1' are always present
 	ensureCustom := func(models *[]ModelConfig) {
-		found := false
+		foundCustom := false
+		foundCustom1 := false
 		for _, m := range *models {
-			if m.ModelName == "Custom" || m.IsCustom {
-				found = true
-				break
+			if m.ModelName == "Custom" {
+				foundCustom = true
+			}
+			if m.ModelName == "Custom1" {
+				foundCustom1 = true
 			}
 		}
-		if !found {
+		if !foundCustom {
 			*models = append(*models, ModelConfig{ModelName: "Custom", ModelUrl: "", ApiKey: "", IsCustom: true})
+		}
+		if !foundCustom1 {
+			*models = append(*models, ModelConfig{ModelName: "Custom1", ModelUrl: "", ApiKey: "", IsCustom: true})
 		}
 	}
 	ensureCustom(&config.Claude.Models)
@@ -1999,6 +2012,7 @@ func (a *App) LoadConfig() (AppConfig, error) {
 	ensureCustom(&config.CodeBuddy.Models)
 	ensureCustom(&config.IFlow.Models)
 	ensureCustom(&config.Kilo.Models)
+	ensureCustom(&config.Kode.Models)
 	// Qoder only has Original and Qoder
 	// Preserve existing Qoder key if present
 	var existingQoderKey string
@@ -2017,20 +2031,33 @@ func (a *App) LoadConfig() (AppConfig, error) {
 			}
 		}
 	}
-	// Ensure 'Custom' is always last for all tools
+	// Ensure 'Custom' and 'Custom1' are always last for all tools
 	moveCustomToLast := func(models *[]ModelConfig) {
 		var customModel *ModelConfig
+		var custom1Model *ModelConfig
 		var newModels []ModelConfig
 		for _, m := range *models {
-			if m.IsCustom || m.ModelName == "Custom" {
+			if m.ModelName == "Custom" {
 				m.IsCustom = true // Ensure flag is set
 				customModel = &m
+			} else if m.ModelName == "Custom1" {
+				m.IsCustom = true // Ensure flag is set
+				custom1Model = &m
+			} else if m.IsCustom {
+				// Handle other custom models with IsCustom flag
+				m.IsCustom = true
+				if customModel == nil {
+					customModel = &m
+				}
 			} else {
 				newModels = append(newModels, m)
 			}
 		}
 		if customModel != nil {
 			newModels = append(newModels, *customModel)
+		}
+		if custom1Model != nil {
+			newModels = append(newModels, *custom1Model)
 		}
 		*models = newModels
 	}
@@ -2057,6 +2084,7 @@ func (a *App) LoadConfig() (AppConfig, error) {
 	moveCustomToLast(&config.CodeBuddy.Models)
 	moveCustomToLast(&config.IFlow.Models)
 	moveCustomToLast(&config.Kilo.Models)
+	moveCustomToLast(&config.Kode.Models)
 	ensureOriginalFirst(&config.Claude.Models)
 	ensureOriginalFirst(&config.Gemini.Models)
 	ensureOriginalFirst(&config.Codex.Models)
@@ -2141,6 +2169,8 @@ func syncAllProviderApiKeys(a *App, oldConfig, newConfig *AppConfig) {
 		"codebuddy": &newConfig.CodeBuddy,
 		"qoder":     &newConfig.Qoder,
 		"iflow":     &newConfig.IFlow,
+		"kilo":      &newConfig.Kilo,
+		"kode":      &newConfig.Kode,
 	}
 	oldTools := map[string]*ToolConfig{
 		"claude":    &oldConfig.Claude,
@@ -2150,6 +2180,8 @@ func syncAllProviderApiKeys(a *App, oldConfig, newConfig *AppConfig) {
 		"codebuddy": &oldConfig.CodeBuddy,
 		"qoder":     &oldConfig.Qoder,
 		"iflow":     &oldConfig.IFlow,
+		"kilo":      &oldConfig.Kilo,
+		"kode":      &oldConfig.Kode,
 	}
 	// providerName (lower) -> intended API key
 	intentions := make(map[string]string)
@@ -2224,6 +2256,8 @@ func (a *App) SaveConfig(config AppConfig) error {
 	sanitizeCustomNames(config.CodeBuddy.Models)
 	sanitizeCustomNames(config.Qoder.Models)
 	sanitizeCustomNames(config.IFlow.Models)
+	sanitizeCustomNames(config.Kilo.Models)
+	sanitizeCustomNames(config.Kode.Models)
 	// Load old config to compare for sync logic
 	var oldConfig AppConfig
 	path, _ := a.getConfigPath()
@@ -3684,7 +3718,7 @@ func (a *App) DeleteSkill(name, toolName string) error {
 // Translation logic
 var translations = map[string]map[string]string{
 	"Checking Node.js installation...": {
-		"zh-Hans": "正在检查?Node.js 安装...",
+		"zh-Hans": "正在检查 Node.js 安装...",
 		"zh-Hant": "正在檢查 Node.js 安裝...",
 	},
 	"Initializing...": {
@@ -3776,7 +3810,7 @@ var translations = map[string]map[string]string{
 		"zh-Hant": "在標準位置找到 Git",
 	},
 	"Git not found. Downloading and installing...": {
-		"zh-Hans": "未找到?Git。正在下载并安装...",
+		"zh-Hans": "未找到 Git。正在下载并安装...",
 		"zh-Hant": "未找到?Git。正在下載並安裝...",
 	},
 	"Git installed successfully.": {
@@ -3792,16 +3826,16 @@ var translations = map[string]map[string]string{
 		"zh-Hant": "環境檢查完成",
 	},
 	"npm not found.": {
-		"zh-Hans": "未找到?npm",
-		"zh-Hant": "未找到?npm",
+		"zh-Hans": "未找到 npm",
+		"zh-Hant": "未找到 npm",
 	},
 	// Templates
 	"Checking %s...": {
-		"zh-Hans": "正在检查?%s...",
+		"zh-Hans": "正在检查 %s...",
 		"zh-Hant": "正在檢查 %s...",
 	},
 	"%s not found. Attempting automatic installation...": {
-		"zh-Hans": "未找到?%s。尝试自动安...",
+		"zh-Hans": "未找到 %s。尝试自动安装...",
 		"zh-Hant": "未找到?%s。嘗試自動安...",
 	},
 	"ERROR: Failed to install %s: %v": {
@@ -3817,7 +3851,7 @@ var translations = map[string]map[string]string{
 		"zh-Hant": "發現 %s 位於 %s (版本: %s)",
 	},
 	"Checking for %s updates...": {
-		"zh-Hans": "正在检查?%s 更新...",
+		"zh-Hans": "正在检查 %s 更新...",
 		"zh-Hant": "正在檢查 %s 更新...",
 	},
 	"New version available for %s: %s (current: %s). Updating...": {
@@ -3833,7 +3867,7 @@ var translations = map[string]map[string]string{
 		"zh-Hant": "%s 成功更新到 %s",
 	},
 	"CheckUpdate: Starting check against %s": {
-		"zh-Hans": "检查更新：正在�?%s 检...",
+		"zh-Hans": "检查更新：正在从 %s 检查...",
 		"zh-Hant": "檢查更新：正在從 %s 檢查...",
 	},
 	"CheckUpdate: Failed to create request: %v": {
@@ -3873,15 +3907,15 @@ var translations = map[string]map[string]string{
 		"zh-Hant": "檢查更新：解析出的鍵: %v",
 	},
 	"CheckUpdate: Found version in 'tag_name' field: %s": {
-		"zh-Hans": "检查更新：�?'tag_name' 字段中找到版�? %s",
+		"zh-Hans": "检查更新：在 'tag_name' 字段中找到版本 %s",
 		"zh-Hant": "檢查更新：在 'tag_name' 欄位中找到版�? %s",
 	},
 	"CheckUpdate: Found version in 'name' field: %s": {
-		"zh-Hans": "检查更新：�?'name' 字段中找到版�? %s",
+		"zh-Hans": "检查更新：在 'name' 字段中找到版本 %s",
 		"zh-Hant": "檢查更新：在 'name' 欄位中找到版�? %s",
 	},
 	"CheckUpdate: Neither 'name' nor 'tag_name' found. Available: %v": {
-		"zh-Hans": "检查更新：未找到?'name' �?'tag_name'。可用字�? %v",
+		"zh-Hans": "检查更新：未找到 'name' 或 'tag_name'。可用字段: %v",
 		"zh-Hant": "檢查更新：未找到 'name' �?'tag_name'。可用欄�? %v",
 	},
 	"CheckUpdate: Using version: %s": {
@@ -3893,7 +3927,7 @@ var translations = map[string]map[string]string{
 		"zh-Hant": "檢查更新：使用內�?GitHub 令牌進行身份驗證",
 	},
 	"CheckUpdate: Using custom GitHub token from environment variable": {
-		"zh-Hans": "检查更新：使用环境变量中的自定�?GitHub 令牌",
+		"zh-Hans": "检查更新：使用环境变量中的自定义 GitHub 令牌",
 		"zh-Hant": "檢查更新：使用環境變數中的自定義 GitHub 令牌",
 	},
 	"CheckUpdate: Already on latest version": {
@@ -3901,7 +3935,7 @@ var translations = map[string]map[string]string{
 		"zh-Hant": "檢查更新：已是最新版",
 	},
 	"CheckUpdate: Latest version: %s, Current version: %s, Display version: %s": {
-		"zh-Hans": "检查更新：最新版�? %s, 当前版本: %s, 显示版本: %s",
+		"zh-Hans": "检查更新：最新版本 %s, 当前版本: %s, 显示版本: %s",
 		"zh-Hant": "檢查更新：最新版�? %s, 當前版本: %s, 顯示版本: %s",
 	},
 	"CheckUpdate: Update available! %s > %s": {
@@ -3913,7 +3947,7 @@ var translations = map[string]map[string]string{
 		"zh-Hant": "檢查更新：獲�?GitHub API 失敗: %v",
 	},
 	"CheckUpdate: Rate limit exceeded, resets at: %s": {
-		"zh-Hans": "检查更新：超出速率限制，重置时�? %s",
+		"zh-Hans": "检查更新：超出速率限制，重置时间 %s",
 		"zh-Hant": "檢查更新：超出速率限制，重置時�? %s",
 	},
 	"CheckUpdate: Failed to parse JSON: %v": {
@@ -3921,7 +3955,7 @@ var translations = map[string]map[string]string{
 		"zh-Hant": "檢查更新：解�?JSON 失敗: %v",
 	},
 	"CheckUpdate: GitHub API returned status %d": {
-		"zh-Hans": "检查更新：GitHub API 返回状�?%d",
+		"zh-Hans": "检查更新：GitHub API 返回状态 %d",
 		"zh-Hant": "檢查更新：GitHub API 返回狀�?%d",
 	},
 	"Config file modified: ": {
@@ -3929,7 +3963,7 @@ var translations = map[string]map[string]string{
 		"zh-Hant": "配置文件已修改：",
 	},
 	"Updated PATH environment variable: ": {
-		"zh-Hans": "已更�?PATH 环境变量",
+		"zh-Hans": "已更新 PATH 环境变量",
 		"zh-Hant": "已更�?PATH 環境變數",
 	},
 	"Updated PATH environment variable for Git.": {
@@ -3949,7 +3983,7 @@ var translations = map[string]map[string]string{
 		"zh-Hant": "正在下載 Node.js %s (%s)...",
 	},
 	"Downloading Node.js v%s from %s...": {
-		"zh-Hans": "正在�?%s 下载 Node.js v%s...",
+		"zh-Hans": "正在从 %s 下载 Node.js v%s...",
 		"zh-Hant": "正在�?%s 下載 Node.js v%s...",
 	},
 	"Downloading Git %s...": {
@@ -3961,7 +3995,7 @@ var translations = map[string]map[string]string{
 		"zh-Hant": "正在下載 (%.1f%%): %d/%d 字節",
 	},
 	"Node.js installer is not accessible (Status: %s). Please check your internet connection or mirror availability.": {
-		"zh-Hans": "无法访问 Node.js 安装程序 (状�? %s)。请检查您的网络连接或镜像可用性",
+		"zh-Hans": "无法访问 Node.js 安装程序 (状态 %s)。请检查您的网络连接或镜像可用性",
 		"zh-Hant": "無法訪問 Node.js 安裝程序 (狀�? %s)。請檢查您的網絡連接或鏡像可用性",
 	},
 	"Failed to install Node.js: ": {
@@ -3969,7 +4003,7 @@ var translations = map[string]map[string]string{
 		"zh-Hant": "安裝 Node.js 失敗: ",
 	},
 	"Node.js not found. Checking for Homebrew...": {
-		"zh-Hans": "未找到 Node.js。正在检查?Homebrew...",
+		"zh-Hans": "未找到 Node.js。正在检查 Homebrew...",
 		"zh-Hant": "未找到 Node.js。正在檢查?Homebrew...",
 	},
 	"Installing Node.js via Homebrew...": {
@@ -3985,7 +4019,7 @@ var translations = map[string]map[string]string{
 		"zh-Hant": "Node.js 已通過 Homebrew 安裝",
 	},
 	"Homebrew not found. Attempting manual installation...": {
-		"zh-Hans": "未找到?Homebrew。尝试手动安...",
+		"zh-Hans": "未找到 Homebrew。尝试手动安装...",
 		"zh-Hant": "未找到?Homebrew。嘗試手動安...",
 	},
 	"Manual installation failed: ": {
@@ -3993,7 +4027,7 @@ var translations = map[string]map[string]string{
 		"zh-Hant": "手動安裝失敗: ",
 	},
 	"Downloading Node.js from %s": {
-		"zh-Hans": "正在�?%s 下载 Node.js",
+		"zh-Hans": "正在从 %s 下载 Node.js",
 		"zh-Hant": "正在�?%s 下載 Node.js",
 	},
 	"Extracting Node.js (this should be fast)...": {
@@ -4021,8 +4055,8 @@ var translations = map[string]map[string]string{
 		"zh-Hant": "Node.js 位於: ",
 	},
 	"Updated PATH: ": {
-		"zh-Hans": "已更�?PATH: ",
-		"zh-Hant": "已更�?PATH: ",
+		"zh-Hans": "已更新 PATH: ",
+		"zh-Hant": "已更新 PATH: ",
 	},
 	"Running installation: %s %s": {
 		"zh-Hans": "正在运行安装: %s %s",
@@ -4057,15 +4091,15 @@ var translations = map[string]map[string]string{
 		"zh-Hant": "注意：無法通過命令列出 conda 環境（conda 可能未完全初始化）: ",
 	},
 	"Total conda environments found: %d": {
-		"zh-Hans": "共发�?%d �?conda 环境",
+		"zh-Hans": "共发现 %d 个 conda 环境",
 		"zh-Hant": "共發�?%d �?conda 環境",
 	},
 	"Found conda from CONDA_EXE: ": {
-		"zh-Hans": "�?CONDA_EXE 发现 conda: ",
+		"zh-Hans": "从 CONDA_EXE 发现 conda: ",
 		"zh-Hant": "�?CONDA_EXE 發現 conda: ",
 	},
 	"Found conda in PATH: ": {
-		"zh-Hans": "�?PATH 中发�?conda: ",
+		"zh-Hans": "从 PATH 中发现 conda: ",
 		"zh-Hant": "�?PATH 中發�?conda: ",
 	},
 	"Searching for conda in %d common paths...": {

@@ -371,13 +371,65 @@ func (tm *ToolManager) UpdateTool(name string) error {
 	localToolsDir := filepath.Join(home, ".cceasy", "tools")
 
 	// Use npm install with latest version to update
-	args := []string{"install", "-g", "--prefix", localToolsDir, packageName + "@latest"}
+	args := []string{"install", "-g", "--prefix", localToolsDir, packageName + "@latest", "--force"}
+
+	// Add ignore-scripts for tools that have problematic postinstall scripts
+	if name == "iflow" || name == "kilo" {
+		args = append(args, "--ignore-scripts")
+	}
+
+	// Use local cache directory
+	localCacheDir := tm.app.GetLocalCacheDir()
+	if localCacheDir != "" {
+		args = append(args, "--cache", localCacheDir)
+	}
 
 	cmd := createNpmInstallCmd(npmExec, args)
 
 	tm.app.log(tm.app.tr("Running: npm %s", strings.Join(args, " ")))
-	out, err := cmd.CombinedOutput()
+
+	// Retry logic for Windows file locking issues
+	maxRetries := 3
+	var out []byte
+	for i := 0; i < maxRetries; i++ {
+		if i > 0 {
+			tm.app.log(tm.app.tr("Retry attempt %d/%d after waiting...", i+1, maxRetries))
+			time.Sleep(time.Duration(i*2) * time.Second) // Progressive backoff
+		}
+
+		out, err = cmd.CombinedOutput()
+		if err == nil {
+			break
+		}
+
+		// Check if it's a file locking error
+		outputStr := string(out)
+		isLockError := strings.Contains(outputStr, "EPERM") ||
+					  strings.Contains(outputStr, "EBUSY") ||
+					  strings.Contains(outputStr, "ENOTEMPTY") ||
+					  strings.Contains(outputStr, "operation not permitted") ||
+					  strings.Contains(outputStr, "resource busy or locked")
+
+		if !isLockError || i == maxRetries-1 {
+			// Not a lock error or final retry failed
+			break
+		}
+
+		tm.app.log(tm.app.tr("Detected file lock issue, will retry..."))
+
+		// Recreate command for retry
+		cmd = createNpmInstallCmd(npmExec, args)
+	}
+
 	if err != nil {
+		outputStr := string(out)
+		// Check for specific errors that can be ignored
+		if strings.Contains(outputStr, "403") && strings.Contains(outputStr, "ripgrep") {
+			tm.app.log(tm.app.tr("Warning: ripgrep download failed (GitHub API limit), but %s may still work", name))
+			// Don't fail the update for ripgrep download issues
+			return nil
+		}
+
 		return fmt.Errorf("failed to update %s: %v\nOutput: %s", name, err, string(out))
 	}
 

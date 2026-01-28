@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -16,6 +17,75 @@ import (
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
+
+// compareVersions compares two semantic version strings
+// Returns: -1 if v1 < v2, 0 if v1 == v2, 1 if v1 > v2
+func (a *App) compareVersions(v1, v2 string) int {
+	// Clean version strings (remove 'v' prefix, extra text, etc.)
+	cleanVersion := func(v string) string {
+		v = strings.TrimSpace(v)
+		v = strings.TrimPrefix(v, "v")
+		v = strings.TrimPrefix(v, "V")
+		// Extract version number from strings like "2.1.14 (Claude Code)" or "codex-cli 0.87.0"
+		if idx := strings.Index(v, " "); idx > 0 {
+			v = v[:idx]
+		}
+		return v
+	}
+
+	v1 = cleanVersion(v1)
+	v2 = cleanVersion(v2)
+
+	// Split by dots
+	parts1 := strings.Split(v1, ".")
+	parts2 := strings.Split(v2, ".")
+
+	// Compare each part
+	maxLen := len(parts1)
+	if len(parts2) > maxLen {
+		maxLen = len(parts2)
+	}
+
+	for i := 0; i < maxLen; i++ {
+		var n1, n2 int
+
+		if i < len(parts1) {
+			// Parse number, ignore non-numeric suffixes
+			numStr := parts1[i]
+			for j, c := range numStr {
+				if c < '0' || c > '9' {
+					numStr = numStr[:j]
+					break
+				}
+			}
+			if numStr != "" {
+				n1, _ = strconv.Atoi(numStr)
+			}
+		}
+
+		if i < len(parts2) {
+			numStr := parts2[i]
+			for j, c := range numStr {
+				if c < '0' || c > '9' {
+					numStr = numStr[:j]
+					break
+				}
+			}
+			if numStr != "" {
+				n2, _ = strconv.Atoi(numStr)
+			}
+		}
+
+		if n1 < n2 {
+			return -1
+		}
+		if n1 > n2 {
+			return 1
+		}
+	}
+
+	return 0
+}
 
 func (a *App) platformStartup() {
 	// No console to hide if built with -H windowsgui
@@ -870,12 +940,26 @@ func (a *App) CheckEnvironment(force bool) {
 				if tool == "codex" || tool == "opencode" || tool == "codebuddy" || tool == "qoder" || tool == "iflow" || tool == "gemini" || tool == "claude" || tool == "kilo" {
 					a.log(a.tr("Checking for %s updates in private directory...", tool))
 					latest, err := a.getLatestNpmVersion(npmExec, tm.GetPackageName(tool))
-					if err == nil && latest != "" && latest != status.Version {
-						a.log(a.tr("New version available for %s: %s (current: %s). Updating private version...", tool, latest, status.Version))
-						if err := tm.UpdateTool(tool); err != nil {
-							a.log(a.tr("ERROR: Failed to update %s: %v", tool, err))
+					if err == nil && latest != "" {
+						// Use semantic version comparison
+						needsUpdate := a.compareVersions(status.Version, latest) < 0
+						if needsUpdate {
+							a.log(a.tr("New version available for %s: %s (current: %s). Updating private version...", tool, latest, status.Version))
+							if err := tm.UpdateTool(tool); err != nil {
+								// Check if it's a non-critical error
+								errStr := err.Error()
+								if strings.Contains(errStr, "ripgrep") && strings.Contains(errStr, "403") {
+									a.log(a.tr("Warning: %s update completed with ripgrep download issue (GitHub API limit). Tool should still work.", tool))
+								} else if strings.Contains(errStr, "EPERM") || strings.Contains(errStr, "EBUSY") {
+									a.log(a.tr("Warning: %s update failed due to file lock. Please close any running instances and try again later.", tool))
+								} else {
+									a.log(a.tr("ERROR: Failed to update %s: %v", tool, err))
+								}
+							} else {
+								a.log(a.tr("%s updated successfully to %s in private directory.", tool, latest))
+							}
 						} else {
-							a.log(a.tr("%s updated successfully to %s in private directory.", tool, latest))
+							a.log(a.tr("%s is already up to date (version: %s).", tool, status.Version))
 						}
 					}
 				}
