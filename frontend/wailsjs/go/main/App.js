@@ -78,6 +78,10 @@ export function InstallTool(arg1) {
   return window['go']['main']['App']['InstallTool'](arg1);
 }
 
+export function InstallToolOnDemand(arg1) {
+  return window['go']['main']['App']['InstallToolOnDemand'](arg1);
+}
+
 export function LaunchInstallerAndExit(arg1) {
   return window['go']['main']['App']['LaunchInstallerAndExit'](arg1);
 }

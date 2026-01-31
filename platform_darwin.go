@@ -31,6 +31,8 @@ func (a *App) RunEnvironmentCheckCLI() {
 	// TODO: Port logic from CheckEnvironment
 }
 
+// CheckEnvironment checks and installs base environment (Node.js, Git)
+// Tools are checked and updated in background after base environment is ready
 func (a *App) CheckEnvironment(force bool) {
 	go func() {
 		// If in init mode, always force
@@ -52,8 +54,10 @@ func (a *App) CheckEnvironment(force bool) {
 		} else {
 			config, err := a.LoadConfig()
 			if err == nil && config.PauseEnvCheck {
-				a.log(a.tr("Skipping environment check and installation."))
+				a.log(a.tr("Skipping base environment check."))
 				a.emitEvent("env-check-done")
+				// Always start background tool check/update on every startup
+				go a.installToolsInBackground()
 				return
 			}
 		}
@@ -63,7 +67,7 @@ func (a *App) CheckEnvironment(force bool) {
 		localBinDir := filepath.Join(localNodeDir, "bin")
 
 		// 1. Setup PATH
-	var envPath = os.Getenv("PATH")
+		var envPath = os.Getenv("PATH")
 		commonPaths := []string{"/usr/local/bin", "/usr/bin", "/bin", "/usr/sbin", "/sbin"}
 		commonPaths = append([]string{localBinDir}, commonPaths...)
 
@@ -132,43 +136,107 @@ func (a *App) CheckEnvironment(force bool) {
 			return
 		}
 
-		// 5. Check AI Tools
-		tm := NewToolManager(a)
-		// Install kilo first, then other tools
+		a.log(a.tr("Base environment check complete. Starting background tool check/update..."))
+		
+		// Update config to mark base env check done
+		if cfg, err := a.LoadConfig(); err == nil {
+			needsSave := false
+			if !cfg.EnvCheckDone {
+				cfg.EnvCheckDone = true
+				cfg.PauseEnvCheck = true
+				needsSave = true
+			}
+			if needsSave {
+				a.SaveConfig(cfg)
+			}
+		}
+		
+		a.emitEvent("env-check-done")
+		
+		// 5. Check and update AI Tools in background (runs on every startup)
+		go a.installToolsInBackground()
+	}()
+}
+
+// installToolsInBackground checks, installs and updates AI tools in background
+// This runs on every application startup
+func (a *App) installToolsInBackground() {
+	a.log(a.tr("Starting background tool check/update..."))
+	
+	home, _ := os.UserHomeDir()
+	localBinDir := filepath.Join(home, ".cceasy", "tools", "bin")
+	
+	// Find npm
+	npmPath, err := exec.LookPath("npm")
+	if err != nil {
+		localNpmPath := filepath.Join(localBinDir, "npm")
+		if _, err := os.Stat(localNpmPath); err == nil {
+			npmPath = localNpmPath
+		}
+	}
+	
+	if npmPath == "" {
+		a.log(a.tr("npm not found. Cannot install tools in background."))
+		return
+	}
+
+	tm := NewToolManager(a)
 	tools := []string{"kilo", "claude", "gemini", "codex", "opencode", "codebuddy", "qoder", "iflow"}
 
-		for _, tool := range tools {
-			a.log(a.tr("Checking %s...", tool))
-			status := tm.GetToolStatus(tool)
+	for _, tool := range tools {
+		a.log(a.tr("Background: Checking %s...", tool))
+		status := tm.GetToolStatus(tool)
 
-			if !status.Installed {
-				a.log(a.tr("%s not found. Installing...", tool))
-				if err := tm.InstallTool(tool); err != nil {
-					a.log(a.tr("ERROR: Failed to install %s: %v", tool, err))
-				} else {
-					a.log(a.tr("%s installed successfully.", tool))
-				}
+		if !status.Installed {
+			a.log(a.tr("Background: %s not found. Installing...", tool))
+			if err := tm.InstallTool(tool); err != nil {
+				a.log(a.tr("Background: ERROR: Failed to install %s: %v", tool, err))
 			} else {
-				a.log(a.tr("%s found at %s (version: %s).", tool, status.Path, status.Version))
-				
-				if tool == "codex" || tool == "opencode" || tool == "codebuddy" || tool == "qoder" || tool == "iflow" || tool == "gemini" || tool == "claude" || tool == "kilo" {
-					a.log(a.tr("Checking for %s updates...", tool))
-					latest, err := a.getLatestNpmVersion(npmPath, tm.GetPackageName(tool))
-					if err == nil && latest != "" && latest != status.Version {
-						a.log(a.tr("New version available for %s: %s (current: %s). Updating...", tool, latest, status.Version))
-						if err := tm.UpdateTool(tool); err != nil {
-							a.log(a.tr("ERROR: Failed to update %s: %v", tool, err))
-						} else {
-							a.log(a.tr("%s updated successfully to %s.", tool, latest))
-						}
-					}
+				a.log(a.tr("Background: %s installed successfully.", tool))
+				// Emit event to notify frontend
+				a.emitEvent("tool-installed", tool)
+			}
+		} else {
+			a.log(a.tr("Background: %s found at %s (version: %s).", tool, status.Path, status.Version))
+			
+			// Check for updates
+			a.log(a.tr("Background: Checking for %s updates...", tool))
+			latest, err := a.getLatestNpmVersion(npmPath, tm.GetPackageName(tool))
+			if err == nil && latest != "" && latest != status.Version {
+				a.log(a.tr("Background: New version available for %s: %s (current: %s). Updating...", tool, latest, status.Version))
+				if err := tm.UpdateTool(tool); err != nil {
+					a.log(a.tr("Background: ERROR: Failed to update %s: %v", tool, err))
+				} else {
+					a.log(a.tr("Background: %s updated successfully to %s.", tool, latest))
+					a.emitEvent("tool-updated", tool)
 				}
 			}
 		}
+	}
 
-		a.log(a.tr("Environment check complete."))
-		a.emitEvent("env-check-done")
-	}()
+	a.log(a.tr("Background tool check/update complete."))
+	a.emitEvent("tools-install-done")
+}
+
+// InstallToolOnDemand installs a specific tool when user clicks on it
+// Returns error if installation fails
+func (a *App) InstallToolOnDemand(toolName string) error {
+	tm := NewToolManager(a)
+	status := tm.GetToolStatus(toolName)
+	
+	if status.Installed {
+		return nil // Already installed
+	}
+	
+	a.log(a.tr("On-demand installation: Installing %s...", toolName))
+	if err := tm.InstallTool(toolName); err != nil {
+		a.log(a.tr("On-demand installation: ERROR: Failed to install %s: %v", toolName, err))
+		return err
+	}
+	
+	a.log(a.tr("On-demand installation: %s installed successfully.", toolName))
+	a.emitEvent("tool-installed", toolName)
+	return nil
 }
 
 func (a *App) installNodeJSManually(targetDir string) error {
@@ -290,7 +358,7 @@ func (a *App) platformLaunch(binaryName string, yoloMode bool, adminMode bool, p
 	
 	scriptContent += fmt.Sprintf("\"%s\" %s\n", status.Path, strings.Join(cmdArgs, " "))
 	
-os.WriteFile(scriptPath, []byte(scriptContent), 0755)
+	os.WriteFile(scriptPath, []byte(scriptContent), 0755)
 	
 	cmd := exec.Command("open", "-a", "Terminal", scriptPath)
 	cmd.Start()

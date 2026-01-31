@@ -11,7 +11,7 @@ import opencodeIcon from './assets/images/opencode.png';
 import kiloIcon from './assets/images/KiloCode.png';
 import kodeIcon from './assets/images/Kodecli.png';
 import qoderIcon from './assets/images/qodercli.png';
-import { CheckToolsStatus, InstallTool, LoadConfig, SaveConfig, CheckEnvironment, ResizeWindow, WindowHide, LaunchTool, SelectProjectDir, SetLanguage, GetUserHomeDir, CheckUpdate, ShowMessage, ReadBBS, ReadTutorial, ReadThanks, ClipboardGetText, ListPythonEnvironments, PackLog, ShowItemInFolder, GetSystemInfo, OpenSystemUrl, DownloadUpdate, CancelDownload, LaunchInstallerAndExit, ListSkills, ListSkillsWithInstallStatus, AddSkill, DeleteSkill, SelectSkillFile, GetSkillsDir, SetEnvCheckInterval, GetEnvCheckInterval, ShouldCheckEnvironment, UpdateLastEnvCheckTime, InstallDefaultMarketplace, InstallSkill } from "../wailsjs/go/main/App";
+import { CheckToolsStatus, InstallTool, InstallToolOnDemand, LoadConfig, SaveConfig, CheckEnvironment, ResizeWindow, WindowHide, LaunchTool, SelectProjectDir, SetLanguage, GetUserHomeDir, CheckUpdate, ShowMessage, ReadBBS, ReadTutorial, ReadThanks, ClipboardGetText, ListPythonEnvironments, PackLog, ShowItemInFolder, GetSystemInfo, OpenSystemUrl, DownloadUpdate, CancelDownload, LaunchInstallerAndExit, ListSkills, ListSkillsWithInstallStatus, AddSkill, DeleteSkill, SelectSkillFile, GetSkillsDir, SetEnvCheckInterval, GetEnvCheckInterval, ShouldCheckEnvironment, UpdateLastEnvCheckTime, InstallDefaultMarketplace, InstallSkill } from "../wailsjs/go/main/App";
 import { EventsOn, EventsOff, BrowserOpenURL, Quit } from "../wailsjs/runtime";
 import { main } from "../wailsjs/go/models";
 import ReactMarkdown from 'react-markdown';
@@ -1258,12 +1258,40 @@ function App() {
         EventsOn("config-changed", handleConfigChange);
         EventsOn("config-updated", handleConfigChange);
 
+        // Listen for background tool installation events
+        EventsOn("tool-installed", (toolName: string) => {
+            console.log("Tool installed in background:", toolName);
+            // Refresh tool statuses
+            CheckToolsStatus().then(statuses => {
+                setToolStatuses(statuses);
+            });
+        });
+
+        EventsOn("tool-updated", (toolName: string) => {
+            console.log("Tool updated in background:", toolName);
+            // Refresh tool statuses
+            CheckToolsStatus().then(statuses => {
+                setToolStatuses(statuses);
+            });
+        });
+
+        EventsOn("tools-install-done", () => {
+            console.log("Background tool installation complete");
+            // Final refresh of tool statuses
+            CheckToolsStatus().then(statuses => {
+                setToolStatuses(statuses);
+            });
+        });
+
         return () => {
             EventsOff("env-log");
             EventsOff("env-check-done");
             EventsOff("download-progress");
             EventsOff("config-changed");
             EventsOff("config-updated");
+            EventsOff("tool-installed");
+            EventsOff("tool-updated");
+            EventsOff("tools-install-done");
         };
     }, []);
 
@@ -1271,64 +1299,8 @@ function App() {
         try {
             const statuses = await CheckToolsStatus();
             setToolStatuses(statuses);
-
-            // Add opencode check and installation if missing
-            const opencodeStatus = statuses?.find((s: any) => s.name === "opencode");
-            if (opencodeStatus && !opencodeStatus.installed) {
-                setEnvLogs(prev => [...prev, lang === 'zh-Hans' ? "正在安装 Opencode AI..." :
-                    lang === 'zh-Hant' ? "正在安裝 Opencode AI..." :
-                        "Installing Opencode AI..."]);
-                await InstallTool("opencode");
-            }
-
-            // Add codebuddy check and installation if missing
-            const codebuddyStatus = statuses?.find((s: any) => s.name === "codebuddy");
-            if (codebuddyStatus && !codebuddyStatus.installed) {
-                setEnvLogs(prev => [...prev, lang === 'zh-Hans' ? "正在安装 CodeBuddy AI..." :
-                    lang === 'zh-Hant' ? "正在安裝 CodeBuddy AI..." :
-                        "Installing CodeBuddy AI..."]);
-                await InstallTool("codebuddy");
-            }
-
-            // Add qoder check and installation if missing
-            const qoderStatus = statuses?.find((s: any) => s.name === "qoder");
-            if (qoderStatus && !qoderStatus.installed) {
-                setEnvLogs(prev => [...prev, lang === 'zh-Hans' ? "正在安装 Qoder CLI..." :
-                    lang === 'zh-Hant' ? "正在安裝 Qoder CLI..." :
-                        "Installing Qoder CLI..."]);
-                await InstallTool("qoder");
-            }
-
-            // Add iflow check and installation if missing
-            const iflowStatus = statuses?.find((s: any) => s.name === "iflow");
-            if (iflowStatus && !iflowStatus.installed) {
-                setEnvLogs(prev => [...prev, lang === 'zh-Hans' ? "正在安装 iFlow CLI..." :
-                    lang === 'zh-Hant' ? "正在安裝 iFlow CLI..." :
-                        "Installing iFlow CLI..."]);
-                await InstallTool("iflow");
-            }
-
-            // Add kilo check and installation if missing
-            const kiloStatus = statuses?.find((s: any) => s.name === "kilo");
-            if (kiloStatus && !kiloStatus.installed) {
-                setEnvLogs(prev => [...prev, lang === 'zh-Hans' ? "正在安装 Kilo Code CLI..." :
-                    lang === 'zh-Hant' ? "正在安裝 Kilo Code CLI..." :
-                        "Installing Kilo Code CLI..."]);
-                await InstallTool("kilo");
-            }
-
-            // Add kode check and installation if missing
-            const kodeStatus = statuses?.find((s: any) => s.name === "kode");
-            if (kodeStatus && !kodeStatus.installed) {
-                setEnvLogs(prev => [...prev, lang === 'zh-Hans' ? "正在安装 Kode CLI..." :
-                    lang === 'zh-Hant' ? "正在安裝 Kode CLI..." :
-                        "Installing Kode CLI..."]);
-                await InstallTool("kode");
-            }
-
-            // Re-check after installation
-            const updatedStatuses = await CheckToolsStatus();
-            setToolStatuses(updatedStatuses);
+            // Tools are now installed in background by the backend
+            // No need to install here - just update the status
         } catch (err) {
             console.error("Failed to check tools:", err);
         }
@@ -3367,10 +3339,28 @@ ${instruction}`;
                                 <button
                                     className="btn-launch"
                                     style={{ padding: '8px 24px', textAlign: 'center' }}
-                                    onClick={() => {
+                                    onClick={async () => {
                                         console.log("Launch button clicked. activeTool:", activeTool);
                                         const selectedProj = config?.projects?.find((p: any) => p.id === selectedProjectForLaunch);
                                         if (selectedProj) {
+                                            // Check if tool is installed
+                                            const toolStatus = toolStatuses?.find((s: any) => s.name === activeTool);
+                                            if (toolStatus && !toolStatus.installed) {
+                                                // Tool not installed, try to install on demand
+                                                setStatus(lang === 'zh-Hans' ? `正在安装 ${activeTool}...` : `Installing ${activeTool}...`);
+                                                try {
+                                                    await InstallToolOnDemand(activeTool);
+                                                    // Refresh tool statuses
+                                                    const updatedStatuses = await CheckToolsStatus();
+                                                    setToolStatuses(updatedStatuses);
+                                                    setStatus(lang === 'zh-Hans' ? `${activeTool} 安装成功` : `${activeTool} installed successfully`);
+                                                } catch (err) {
+                                                    console.error("Failed to install tool on demand:", err);
+                                                    setStatus(lang === 'zh-Hans' ? `安装 ${activeTool} 失败: ${err}` : `Failed to install ${activeTool}: ${err}`);
+                                                    return;
+                                                }
+                                            }
+                                            
                                             console.log("Launching tool with project:", selectedProj.name, "path:", selectedProj.path);
                                             setStatus(lang === 'zh-Hans' ? "正在启动..." : "Launching...");
                                             LaunchTool(activeTool, selectedProj.yolo_mode, selectedProj.admin_mode || false, selectedProj.python_project || false, selectedProj.python_env || "", selectedProj.path || "", selectedProj.use_proxy || false)

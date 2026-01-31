@@ -40,6 +40,8 @@ export function InstallSkill(arg1:string,arg2:string,arg3:string,arg4:string,arg
 
 export function InstallTool(arg1:string):Promise<void>;
 
+export function InstallToolOnDemand(arg1:string):Promise<void>;
+
 export function LaunchInstallerAndExit(arg1:string):Promise<void>;
 
 export function LaunchTool(arg1:string,arg2:boolean,arg3:boolean,arg4:boolean,arg5:string,arg6:string,arg7:boolean):Promise<void>;
